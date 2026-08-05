@@ -1,0 +1,4 @@
+interface:
+  display_name: "NVL Comments"
+  short_description: "Build secure polymorphic discussions"
+  default_prompt: "Use $nvl-comments to install, configure, implement, or review a production-ready comments integration, including stable identities, APIs, Media policy, TypeScript contracts, and diagnostics."

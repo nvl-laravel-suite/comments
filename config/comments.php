@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+use Nvl\Comments\Services\ConfiguredCommentAuthorization;
+use Nvl\Comments\Services\SafeCommentAuthorPresenter;
+use Nvl\Comments\Support\CommentActorFactory;
+
+return [
+    'connection' => null,
+
+    'tables' => [
+        'comments' => 'comments',
+        'comment_reactions' => 'comment_reactions',
+        'comment_revisions' => 'comment_revisions',
+        'comment_reports' => 'comment_reports',
+    ],
+
+    'migrations' => [
+        'enabled' => true,
+    ],
+
+    'authorization' => [
+        'class' => ConfiguredCommentAuthorization::class,
+    ],
+
+    'query_scope' => [
+        'class' => ConfiguredCommentAuthorization::class,
+    ],
+
+    'actor_resolver' => [
+        'class' => CommentActorFactory::class,
+    ],
+
+    'author_presenter' => [
+        'class' => SafeCommentAuthorPresenter::class,
+    ],
+
+    'targets' => [],
+
+    'routes' => [
+        'management' => [
+            'enabled' => false,
+            'prefix' => 'api/v1/comments',
+            'name' => 'nvl.comments.management.',
+            'middleware' => ['api', 'auth', 'throttle:60,1'],
+        ],
+        'member' => [
+            'enabled' => false,
+            'prefix' => 'api/v1/member/discussions',
+            'name' => 'nvl.comments.member.',
+            'middleware' => ['api', 'auth', 'throttle:60,1'],
+        ],
+        'public' => [
+            'enabled' => false,
+            'prefix' => 'api/v1/discussions',
+            'name' => 'nvl.comments.public.',
+            'middleware' => ['api', 'throttle:60,1'],
+        ],
+        'attachments' => [
+            'enabled' => true,
+            'prefix' => 'api/v1/comment-attachments',
+            'name' => 'nvl.comments.attachments.',
+            'middleware' => ['api', 'throttle:120,1'],
+        ],
+    ],
+
+    'moderation' => [
+        'new_status' => 'pending',
+        'edited_status' => 'pending',
+        'restored_status' => 'pending',
+        'actionable_statuses' => ['pending', 'spam'],
+        'allow_author_delete' => true,
+        'allow_author_restore' => true,
+    ],
+
+    'anonymous' => [
+        'enabled' => false,
+    ],
+
+    'idempotency' => [
+        'digest_key' => env('COMMENTS_IDEMPOTENCY_DIGEST_KEY'),
+    ],
+
+    'threading' => [
+        'maximum_depth' => 6,
+        'maximum_replies_per_page' => 100,
+    ],
+
+    'content' => [
+        'maximum_bytes' => 20_000,
+        'allowed_formats' => ['plain', 'markdown'],
+        'maximum_tags' => 20,
+    ],
+
+    'reactions' => [
+        'allowed' => ['like', 'love', 'insightful', 'helpful'],
+    ],
+
+    'attachments' => [
+        'enabled' => true,
+        'maximum_per_comment' => 5,
+        'maximum_file_bytes' => 10 * 1024 * 1024,
+        'allow_public_media' => false,
+        'signed_url_lifetime' => 5,
+    ],
+
+    'mutation_lock' => [
+        'enabled' => true,
+        'store' => null,
+        'seconds' => 300,
+        'wait_seconds' => 30,
+        'allow_local_store' => false,
+    ],
+
+    'transactions' => [
+        'attempts' => 3,
+    ],
+
+    'reconciliation' => [
+        'chunk_size' => 500,
+    ],
+
+    'pagination' => [
+        'default' => 25,
+        'maximum' => 100,
+    ],
+
+    'cache' => [
+        'public_max_age' => 60,
+    ],
+];
