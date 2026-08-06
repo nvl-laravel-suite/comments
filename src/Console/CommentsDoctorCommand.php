@@ -1540,8 +1540,13 @@ final class CommentsDoctorCommand extends Command
      */
     private function columnDefaultReady(mixed $actual, bool|int|string|null $expected): bool
     {
-        if ($expected === null || $actual === null) {
-            return $actual === $expected;
+        if ($expected === null) {
+            return $actual === null
+                || (is_string($actual) && strtoupper(trim($actual)) === 'NULL');
+        }
+
+        if ($actual === null) {
+            return false;
         }
 
         if (is_bool($actual)) {

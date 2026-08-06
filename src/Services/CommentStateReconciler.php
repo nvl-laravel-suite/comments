@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use LogicException;
 use Nvl\Comments\Data\CommentReconciliationResultData;
@@ -326,12 +327,39 @@ final readonly class CommentStateReconciler
             'associable_type',
             (new Comment)->getMorphClass(),
         );
-        $query->whereNotExists($this->exactCommentOwnerQuery());
+        $danglingOwners = [];
+        $danglingAssociations = 0;
 
-        return [
-            (clone $query)->distinct()->count('associable_id'),
-            $query->count(),
-        ];
+        $query->chunkById(1_000, function (Collection $associations) use (
+            &$danglingOwners,
+            &$danglingAssociations,
+        ): void {
+            $candidateIds = $associations
+                ->pluck('associable_id')
+                ->filter(static fn (mixed $id): bool => is_string($id) && Str::isUuid($id))
+                ->unique()
+                ->values()
+                ->all();
+            $existingIds = $candidateIds === []
+                ? []
+                : Comment::query()
+                    ->withTrashed()
+                    ->whereIn((new Comment)->getKeyName(), $candidateIds)
+                    ->pluck((new Comment)->getKeyName())
+                    ->all();
+            $existing = array_fill_keys(array_filter($existingIds, 'is_string'), true);
+
+            foreach ($associations as $association) {
+                $ownerId = $association->associable_id;
+
+                if (! isset($existing[$ownerId])) {
+                    $danglingAssociations++;
+                    $danglingOwners[$ownerId] = true;
+                }
+            }
+        });
+
+        return [count($danglingOwners), $danglingAssociations];
     }
 
     /**
@@ -723,6 +751,12 @@ final readonly class CommentStateReconciler
             ->orderBy('order')
             ->orderBy('id');
         $associations = $associationQuery->get();
+        $commentIdSet = array_fill_keys($commentIds, true);
+        $associations = $associations->filter(
+            static fn (MediaAssociation $association): bool => isset(
+                $commentIdSet[$association->associable_id],
+            ),
+        );
         $mediaIds = $associations->pluck('media_id')->unique()->values()->all();
 
         if ($mediaIds === []) {
