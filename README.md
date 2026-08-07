@@ -38,7 +38,7 @@ support is a first-class integration.
 ## Install
 
 ```bash
-composer require nvl/comments
+composer require nvl/laravel-suite:^1.0
 php artisan migrate
 ```
 
@@ -651,7 +651,7 @@ SQLite, MySQL 8.4, MariaDB 12.1, and PostgreSQL 17; concurrency coverage;
 strict Doctor; TypeScript and public-contract checks; clean source and
 relocated-artifact consumers on Laravel 12–13; and every supported PHP version.
 
-From a standalone checkout:
+From the suite root:
 
 ```bash
 composer install

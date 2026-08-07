@@ -15,7 +15,7 @@ Run the required install and only the publish commands for assets the consumer
 will own:
 
 ```bash
-composer require nvl/comments
+composer require nvl/laravel-suite:^1.0
 php artisan vendor:publish --tag=comments-config
 php artisan vendor:publish --tag=comments-migrations
 php artisan vendor:publish --tag=comments-skills

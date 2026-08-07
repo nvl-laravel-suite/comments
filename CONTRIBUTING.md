@@ -36,7 +36,7 @@ php artisan nvl:comments:doctor --strict --format=json
 php artisan nvl:comments:reconcile --strict --format=json
 ```
 
-From a standalone package checkout:
+From the suite root:
 
 ```bash
 composer install
