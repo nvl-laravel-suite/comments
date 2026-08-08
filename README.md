@@ -1,4 +1,6 @@
-# NVL Comments
+# NVL Comments — API and usage
+
+[← NVL Laravel Suite](../../../README.md)
 
 `nvl/comments` is a production-oriented, headless comments domain for Laravel
 12–13. It provides polymorphic discussion threads, anonymous and authenticated
