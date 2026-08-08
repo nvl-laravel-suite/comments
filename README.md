@@ -2,6 +2,16 @@
 
 [← NVL Laravel Suite](../../../README.md)
 
+## Quick reference
+
+| Item | Value |
+|---|---|
+| Installed through | `composer require nvl/laravel-suite:^1.0` |
+| Module identifier | `nvl/comments` |
+| PHP namespace | `Nvl\Comments` |
+| Service provider | `Nvl\Comments\Providers\CommentsServiceProvider` |
+| Configuration | `config/comments.php` |
+
 `nvl/comments` is a production-oriented, headless comments domain for Laravel
 12–13. It provides polymorphic discussion threads, anonymous and authenticated
 creation, audience-aware reads, optimistic lifecycle mutations, reactions,
