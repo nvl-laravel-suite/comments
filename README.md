@@ -64,14 +64,12 @@ php artisan vendor:publish --tag=comments-migrations
 php artisan vendor:publish --tag=comments-skills
 ```
 
-Automatic migrations are enabled by default. Set
-`comments.migrations.enabled` to `false` while inspecting or importing an
-existing schema or before running a published copy; exactly one migration source
-must own the tables. The bundled create migrations deliberately target the
-default database connection and canonical table names. If the application
-configures a different Comments connection or table name, disable the bundled
-migrations and ship application-owned migrations for that frozen storage
-layout.
+Choose exactly one migration owner:
+
+1. **Automatic vendor loading (default):** leave `comments.migrations.enabled=true`, do not publish `comments-migrations`, and run `php artisan migrate`.
+2. **Host-owned published migrations:** publish `comments-migrations`, set `comments.migrations.enabled=false` before migrating, and maintain the published files as application migrations.
+
+Never run both sources. Laravel retimestamps files published through the migration tag. `php artisan nvl:comments:doctor` reports a warning when automatic loading remains enabled and `database/migrations` contains a timestamp-independent name matching a package migration; `--strict` promotes that warning to failure. The bundled create migrations deliberately target the default database connection and canonical table names. If the application configures a different Comments connection or table name, disable the bundled migrations and ship application-owned migrations for that frozen storage layout.
 
 ## Persistence
 

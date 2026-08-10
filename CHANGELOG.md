@@ -4,6 +4,7 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+- Registered migration publication through Laravel's timestamp-aware API and made Doctor warn when automatic vendor loading overlaps a published host copy.
 - Completed the unreleased v1 headless comments domain with string-key-safe
   polymorphic targets, bounded reply trees, source locale, optimistic
   revisions, moderation, lifecycle audit fields, reactions, reports, and

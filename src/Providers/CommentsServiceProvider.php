@@ -95,7 +95,7 @@ final class CommentsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../../config/comments.php' => config_path('comments.php'),
         ], 'comments-config');
-        $this->publishes([
+        $this->publishesMigrations([
             __DIR__.'/../../database/migrations' => database_path('migrations'),
         ], 'comments-migrations');
         $this->publishes([

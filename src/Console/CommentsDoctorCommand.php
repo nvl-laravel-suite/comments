@@ -711,6 +711,20 @@ final class CommentsDoctorCommand extends Command
         $configurationValuesReady = $this->configurationValuesReady();
         $checks['configuration.values'] = $configurationValuesReady;
         $requiredChecks[] = $configurationValuesReady;
+        $migrationDuplicates = config('comments.migrations.enabled') === true
+            ? $this->publishedMigrationDuplicates(dirname(__DIR__, 2).'/database/migrations')
+            : [];
+        $migrationOwnershipReady = $migrationDuplicates === [];
+        $checks['migrations.ownership'] = [
+            'severity' => 'warning',
+            'passed' => $migrationOwnershipReady,
+            'message' => $migrationOwnershipReady
+                ? 'Automatic vendor migration loading does not overlap a published host copy.'
+                : sprintf(
+                    'Automatic vendor migration loading overlaps published host migration(s): %s. Disable comments.migrations.enabled before running host-owned copies.',
+                    implode(', ', $migrationDuplicates),
+                ),
+        ];
 
         foreach (self::REQUIRED_COLUMNS as $key => $requiredColumns) {
             try {
@@ -911,7 +925,47 @@ final class CommentsDoctorCommand extends Command
             }
         }
 
-        return $healthy || ! $this->option('strict') ? self::SUCCESS : self::FAILURE;
+        $strictFailure = (bool) $this->option('strict')
+            && (! $healthy || ! $migrationOwnershipReady);
+
+        return $strictFailure ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Find host migrations whose timestamp-independent names match package migrations.
+     *
+     * @return list<string>
+     */
+    private function publishedMigrationDuplicates(string $packagePath): array
+    {
+        $packageMigrations = glob($packagePath.'/*.php') ?: [];
+        $hostMigrations = glob(database_path('migrations/*.php')) ?: [];
+        $packageNames = array_map($this->migrationName(...), $packageMigrations);
+        $duplicates = [];
+
+        foreach ($hostMigrations as $migration) {
+            $name = $this->migrationName($migration);
+
+            if (in_array($name, $packageNames, true)) {
+                $duplicates[] = $name;
+            }
+        }
+
+        sort($duplicates);
+
+        return array_values(array_unique($duplicates));
+    }
+
+    /**
+     * Remove Laravel's timestamp prefix from a migration filename.
+     */
+    private function migrationName(string $path): string
+    {
+        return (string) preg_replace(
+            '/^\d{4}_\d{2}_\d{2}_\d{6}_/',
+            '',
+            pathinfo($path, PATHINFO_FILENAME),
+        );
     }
 
     /**

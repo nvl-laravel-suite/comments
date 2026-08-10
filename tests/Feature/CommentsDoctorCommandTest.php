@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ServiceProvider;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentActorData;
@@ -17,6 +18,7 @@ use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentMutationLockStore;
 use Nvl\Comments\Tests\Fixtures\TestCommentTargetResolver;
@@ -69,6 +71,45 @@ it('reports complete schema and dependency readiness by default', function (): v
         ->and(array_key_exists('policy.public_ready', $report))->toBeFalse()
         ->and(array_key_exists('routes.management_ready', $report))->toBeFalse()
         ->and(array_key_exists('policy.management_ready', $report))->toBeFalse();
+});
+
+it('registers timestamp-aware migration publishing and warns about duplicate ownership', function (): void {
+    $migrationPath = realpath(dirname(__DIR__, 2).'/database/migrations');
+    $publishableMigrationPaths = array_map(
+        static fn (string $path): string|false => realpath($path),
+        ServiceProvider::publishableMigrationPaths(),
+    );
+
+    expect(CommentsServiceProvider::pathsToPublish(
+        CommentsServiceProvider::class,
+        'comments-migrations',
+    ))->not->toBeEmpty()
+        ->and($publishableMigrationPaths)->toContain($migrationPath);
+
+    $published = database_path(
+        'migrations/2099_01_01_000000_create_comments_table.php',
+    );
+    file_put_contents($published, "<?php\n");
+
+    try {
+        $exitCode = Artisan::call('nvl:comments:doctor', ['--format' => 'json']);
+        $report = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+        expect($exitCode)->toBe(0)
+            ->and($report['migrations.ownership'])->toMatchArray([
+                'severity' => 'warning',
+                'passed' => false,
+            ])
+            ->and($report['migrations.ownership']['message'])
+            ->toContain('create_comments_table');
+
+        [$strictExitCode, $strictReport] = runCommentsDoctor();
+
+        expect($strictExitCode)->toBe(1)
+            ->and($strictReport['healthy'])->toBeTrue();
+    } finally {
+        unlink($published);
+    }
 });
 
 it('fails strict diagnostics when a configured package table lacks required columns', function (): void {
