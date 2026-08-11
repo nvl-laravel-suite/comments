@@ -11,6 +11,17 @@ use InvalidArgumentException;
  */
 final class CommentsTables
 {
+    public const string Comments = 'comments';
+
+    public const string Reactions = 'comment_reactions';
+
+    public const string Revisions = 'comment_revisions';
+
+    public const string Reports = 'comment_reports';
+
+    /**
+     * Return one validated configured package table name.
+     */
     public static function get(string $key): string
     {
         $table = config("comments.tables.{$key}");

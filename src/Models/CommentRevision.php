@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Support\CommentsConfiguration;
 
@@ -48,7 +49,7 @@ final class CommentRevision extends Model
 
     public function getTable(): string
     {
-        return CommentsConfiguration::table('comment_revisions');
+        return CommentsConfiguration::table(CommentsTables::Revisions);
     }
 
     public function getConnectionName(): ?string

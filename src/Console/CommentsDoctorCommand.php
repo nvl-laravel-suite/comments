@@ -15,6 +15,7 @@ use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
@@ -35,7 +36,7 @@ final class CommentsDoctorCommand extends Command
 {
     /** @var array<string, list<string>> */
     private const array REQUIRED_COLUMNS = [
-        'comments' => [
+        CommentsTables::Comments => [
             'id',
             'commentable_type',
             'commentable_id',
@@ -81,7 +82,7 @@ final class CommentsDoctorCommand extends Command
             'updated_at',
             'deleted_at',
         ],
-        'comment_reactions' => [
+        CommentsTables::Reactions => [
             'id',
             'comment_id',
             'actor_type',
@@ -92,7 +93,7 @@ final class CommentsDoctorCommand extends Command
             'created_at',
             'updated_at',
         ],
-        'comment_revisions' => [
+        CommentsTables::Revisions => [
             'id',
             'comment_id',
             'revision',
@@ -105,7 +106,7 @@ final class CommentsDoctorCommand extends Command
             'edited_by',
             'created_at',
         ],
-        'comment_reports' => [
+        CommentsTables::Reports => [
             'id',
             'comment_id',
             'reporter_type',
@@ -133,7 +134,7 @@ final class CommentsDoctorCommand extends Command
      * }>>
      */
     private const array REQUIRED_COLUMN_DEFINITIONS = [
-        'comments' => [
+        CommentsTables::Comments => [
             'id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'commentable_type' => [
                 'kind' => 'string',
@@ -339,7 +340,7 @@ final class CommentsDoctorCommand extends Command
                 'default' => null,
             ],
         ],
-        'comment_reactions' => [
+        CommentsTables::Reactions => [
             'id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'comment_id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'actor_type' => [
@@ -383,7 +384,7 @@ final class CommentsDoctorCommand extends Command
                 'default' => null,
             ],
         ],
-        'comment_revisions' => [
+        CommentsTables::Revisions => [
             'id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'comment_id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'revision' => [
@@ -421,7 +422,7 @@ final class CommentsDoctorCommand extends Command
                 'default' => 'current_timestamp',
             ],
         ],
-        'comment_reports' => [
+        CommentsTables::Reports => [
             'id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'comment_id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
             'reporter_type' => [
@@ -498,7 +499,7 @@ final class CommentsDoctorCommand extends Command
      * }>>
      */
     private const array REQUIRED_INDEXES = [
-        'comments' => [
+        CommentsTables::Comments => [
             'primary' => [
                 'columns' => ['id'],
                 'primary' => true,
@@ -556,7 +557,7 @@ final class CommentsDoctorCommand extends Command
                 ],
             ],
         ],
-        'comment_reactions' => [
+        CommentsTables::Reactions => [
             'primary' => [
                 'columns' => ['id'],
                 'primary' => true,
@@ -572,7 +573,7 @@ final class CommentsDoctorCommand extends Command
                 'columns' => ['actor_identity_hash'],
             ],
         ],
-        'comment_revisions' => [
+        CommentsTables::Revisions => [
             'primary' => [
                 'columns' => ['id'],
                 'primary' => true,
@@ -585,7 +586,7 @@ final class CommentsDoctorCommand extends Command
                 'columns' => ['comment_id', 'created_at'],
             ],
         ],
-        'comment_reports' => [
+        CommentsTables::Reports => [
             'primary' => [
                 'columns' => ['id'],
                 'primary' => true,
@@ -605,16 +606,16 @@ final class CommentsDoctorCommand extends Command
 
     /** @var array<string, array<string, list<string>>> */
     private const array REQUIRED_FOREIGN_KEYS = [
-        'comments' => [
+        CommentsTables::Comments => [
             'parent' => ['parent_id'],
         ],
-        'comment_reactions' => [
+        CommentsTables::Reactions => [
             'comment' => ['comment_id'],
         ],
-        'comment_revisions' => [
+        CommentsTables::Revisions => [
             'comment' => ['comment_id'],
         ],
-        'comment_reports' => [
+        CommentsTables::Reports => [
             'comment' => ['comment_id'],
         ],
     ];
@@ -782,7 +783,7 @@ final class CommentsDoctorCommand extends Command
         }
 
         try {
-            $commentsTable = CommentsConfiguration::table('comments');
+            $commentsTable = CommentsConfiguration::table(CommentsTables::Comments);
         } catch (Throwable) {
             $commentsTable = '';
         }
@@ -1150,10 +1151,10 @@ final class CommentsDoctorCommand extends Command
 
         if (config('comments.migrations.enabled') === true
             && ($connection !== null || config('comments.tables') !== [
-                'comments' => 'comments',
-                'comment_reactions' => 'comment_reactions',
-                'comment_revisions' => 'comment_revisions',
-                'comment_reports' => 'comment_reports',
+                CommentsTables::Comments => CommentsTables::Comments,
+                CommentsTables::Reactions => CommentsTables::Reactions,
+                CommentsTables::Revisions => CommentsTables::Revisions,
+                CommentsTables::Reports => CommentsTables::Reports,
             ])) {
             return false;
         }

@@ -18,6 +18,7 @@ use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
@@ -129,14 +130,14 @@ final class CommentsServiceProvider extends ServiceProvider
         }
 
         $defaults = require __DIR__.'/../../config/comments.php';
-        $configured = $this->app->make(Repository::class)->get('comments', []);
+        $configured = $this->app->make(Repository::class)->get(CommentsTables::Comments, []);
 
         if (! is_array($defaults) || ! is_array($configured)) {
             throw new RuntimeException('Comments configuration must contain an array.');
         }
 
         $this->app->make(Repository::class)->set(
-            'comments',
+            CommentsTables::Comments,
             $this->mergeConfigurationValues($defaults, $configured),
         );
     }

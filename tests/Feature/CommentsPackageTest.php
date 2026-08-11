@@ -23,6 +23,7 @@ use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
 use Nvl\Comments\Data\Mutations\ResolveCommentReportData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Enums\CommentStatus;
@@ -43,10 +44,10 @@ it('installs the complete schema with both route groups disabled', function (): 
     $commentIndexes = Schema::getIndexListing('comments');
     $reportIndexes = Schema::getIndexListing('comment_reports');
 
-    expect(Schema::hasTable('comments'))->toBeTrue()
-        ->and(Schema::hasTable('comment_reactions'))->toBeTrue()
-        ->and(Schema::hasTable('comment_revisions'))->toBeTrue()
-        ->and(Schema::hasTable('comment_reports'))->toBeTrue()
+    expect(Schema::hasTable(CommentsTables::Comments))->toBeTrue()
+        ->and(Schema::hasTable(CommentsTables::Reactions))->toBeTrue()
+        ->and(Schema::hasTable(CommentsTables::Revisions))->toBeTrue()
+        ->and(Schema::hasTable(CommentsTables::Reports))->toBeTrue()
         ->and($commentIndexes)->toContain(
             'comments_target_visibility_idx',
             'comments_thread_order_idx',

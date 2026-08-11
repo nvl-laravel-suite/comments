@@ -15,6 +15,7 @@ use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
@@ -180,7 +181,7 @@ it('accepts route-safe domain target identifiers up to the persistence limit', f
         'visibility' => 'public',
     ])->assertCreated();
 
-    $this->assertDatabaseHas('comments', [
+    $this->assertDatabaseHas(CommentsTables::Comments, [
         'commentable_id' => $targetId,
         'body' => 'Domain identifier route contract',
     ]);

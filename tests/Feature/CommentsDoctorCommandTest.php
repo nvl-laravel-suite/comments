@@ -14,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
@@ -130,7 +131,7 @@ it('fails strict diagnostics when a configured package table lacks required colu
 it('fails strict diagnostics when a fingerprint column has the wrong type', function (): void {
     $driver = DB::connection()->getDriverName();
 
-    Schema::table('comments', function (Blueprint $table) use ($driver): void {
+    Schema::table(CommentsTables::Comments, function (Blueprint $table) use ($driver): void {
         if ($driver === 'sqlite') {
             $table->text('commentable_identity_hash')->change();
 
@@ -151,7 +152,7 @@ it('fails strict diagnostics when a fingerprint column has the wrong type', func
 it('fails strict diagnostics when a UUID column has the wrong type', function (): void {
     $driver = DB::connection()->getDriverName();
 
-    Schema::table('comments', function (Blueprint $table) use ($driver): void {
+    Schema::table(CommentsTables::Comments, function (Blueprint $table) use ($driver): void {
         if ($driver === 'sqlite') {
             $table->text('root_id')->nullable()->change();
 
@@ -170,7 +171,7 @@ it('fails strict diagnostics when a UUID column has the wrong type', function ()
 });
 
 it('fails strict diagnostics when identity nullability drifts', function (): void {
-    Schema::table('comment_reactions', function (Blueprint $table): void {
+    Schema::table(CommentsTables::Reactions, function (Blueprint $table): void {
         $table->char('actor_identity_hash', 64)->nullable()->change();
     });
 
@@ -183,7 +184,7 @@ it('fails strict diagnostics when identity nullability drifts', function (): voi
 });
 
 it('fails strict diagnostics when a counter default drifts', function (): void {
-    Schema::table('comments', function (Blueprint $table): void {
+    Schema::table(CommentsTables::Comments, function (Blueprint $table): void {
         $table->unsignedInteger('reply_count')->default(9)->change();
     });
 
@@ -196,7 +197,7 @@ it('fails strict diagnostics when a counter default drifts', function (): void {
 });
 
 it('fails strict diagnostics when a lifecycle timestamp has the wrong type', function (): void {
-    Schema::table('comments', function (Blueprint $table): void {
+    Schema::table(CommentsTables::Comments, function (Blueprint $table): void {
         $table->string('anonymized_at', 255)->nullable()->change();
     });
 
@@ -209,7 +210,7 @@ it('fails strict diagnostics when a lifecycle timestamp has the wrong type', fun
 });
 
 it('fails strict diagnostics when an idempotency constraint is missing', function (): void {
-    Schema::table('comment_reactions', function (Blueprint $table): void {
+    Schema::table(CommentsTables::Reactions, function (Blueprint $table): void {
         $table->dropUnique('comment_reactions_actor_type_unique');
     });
 

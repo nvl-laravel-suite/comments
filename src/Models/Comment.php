@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use LogicException;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
@@ -218,7 +219,7 @@ final class Comment extends Model implements HasMedia
 
     public function getTable(): string
     {
-        return CommentsConfiguration::table('comments');
+        return CommentsConfiguration::table(CommentsTables::Comments);
     }
 
     public function getConnectionName(): ?string

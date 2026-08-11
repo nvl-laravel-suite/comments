@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
@@ -85,7 +86,7 @@ final class CommentReport extends Model
      */
     public function getTable(): string
     {
-        return CommentsConfiguration::table('comment_reports');
+        return CommentsConfiguration::table(CommentsTables::Reports);
     }
 
     /**

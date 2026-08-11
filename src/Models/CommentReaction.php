@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 
@@ -56,7 +57,7 @@ final class CommentReaction extends Model
 
     public function getTable(): string
     {
-        return CommentsConfiguration::table('comment_reactions');
+        return CommentsConfiguration::table(CommentsTables::Reactions);
     }
 
     public function getConnectionName(): ?string

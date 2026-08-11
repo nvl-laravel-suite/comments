@@ -5,11 +5,10 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 
 return new class extends Migration
 {
-    private const string TABLE_NAME = 'comments';
-
     /**
      * Create polymorphic threaded comments.
      */
@@ -17,7 +16,7 @@ return new class extends Migration
     {
         $this->assertCanonicalManagedStorage();
 
-        Schema::create(self::TABLE_NAME, function (Blueprint $table): void {
+        Schema::create(CommentsTables::Comments, function (Blueprint $table): void {
             $table->uuid('id');
             $table->primary('id');
             $table->string('commentable_type', 100);
@@ -65,7 +64,7 @@ return new class extends Migration
 
             $table->foreign('parent_id')
                 ->references('id')
-                ->on(self::TABLE_NAME)
+                ->on(CommentsTables::Comments)
                 ->cascadeOnDelete();
             $table->index(
                 [
@@ -125,7 +124,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(self::TABLE_NAME);
+        Schema::dropIfExists(CommentsTables::Comments);
     }
 
     /**
@@ -135,10 +134,10 @@ return new class extends Migration
     {
         $tables = config('comments.tables');
         $canonicalTables = [
-            'comments' => self::TABLE_NAME,
-            'comment_reactions' => 'comment_reactions',
-            'comment_revisions' => 'comment_revisions',
-            'comment_reports' => 'comment_reports',
+            CommentsTables::Comments => CommentsTables::Comments,
+            CommentsTables::Reactions => CommentsTables::Reactions,
+            CommentsTables::Revisions => CommentsTables::Revisions,
+            CommentsTables::Reports => CommentsTables::Reports,
         ];
 
         if (config('comments.connection') !== null || $tables !== $canonicalTables) {

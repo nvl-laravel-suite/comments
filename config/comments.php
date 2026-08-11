@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
 use Nvl\Comments\Services\SafeCommentAuthorPresenter;
 use Nvl\Comments\Support\CommentActorFactory;
@@ -10,10 +11,10 @@ return [
     'connection' => null,
 
     'tables' => [
-        'comments' => 'comments',
-        'comment_reactions' => 'comment_reactions',
-        'comment_revisions' => 'comment_revisions',
-        'comment_reports' => 'comment_reports',
+        CommentsTables::Comments => CommentsTables::Comments,
+        CommentsTables::Reactions => CommentsTables::Reactions,
+        CommentsTables::Revisions => CommentsTables::Revisions,
+        CommentsTables::Reports => CommentsTables::Reports,
     ],
 
     'migrations' => [

@@ -27,6 +27,7 @@ use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
 use Nvl\Comments\Data\Mutations\ResolveCommentReportData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentReportStatus;
@@ -284,7 +285,7 @@ it('fails closed for noncanonical imported lifecycle classifications', function 
         new CreateCommentData('Imported classification'),
         new CommentActorData('member', '42'),
     );
-    DB::table('comments')->where('id', $comment->id)->update([
+    DB::table(CommentsTables::Comments)->where('id', $comment->id)->update([
         'status' => 'APPROVED',
         'status_hash' => CommentIdentity::value('comment-status', 'APPROVED'),
     ]);
@@ -295,7 +296,7 @@ it('fails closed for noncanonical imported lifecycle classifications', function 
         FilterSet::none(),
     );
 
-    DB::table('comments')->where('id', $comment->id)->update([
+    DB::table(CommentsTables::Comments)->where('id', $comment->id)->update([
         'status' => CommentStatus::Approved->value,
         'status_hash' => CommentIdentity::value(
             'comment-status',
@@ -364,7 +365,7 @@ it('classifies malformed imported integer targets as drift without issuing a cas
         new CreateCommentData('Imported row'),
         new CommentActorData('member', '42'),
     );
-    DB::table('comments')->where('id', $comment->id)->update([
+    DB::table(CommentsTables::Comments)->where('id', $comment->id)->update([
         'commentable_id' => 'not-an-integer',
         'commentable_identity_hash' => CommentIdentity::pair(
             $comment->commentable_type,
@@ -403,13 +404,13 @@ it('fails reconciliation safely for stale identity fingerprints without repairin
     );
     $invalidHash = str_repeat('0', 64);
 
-    DB::table('comments')->where('id', $comment->id)->update([
+    DB::table(CommentsTables::Comments)->where('id', $comment->id)->update([
         'status_hash' => $invalidHash,
     ]);
-    DB::table('comment_reactions')->where('id', $reaction?->id)->update([
+    DB::table(CommentsTables::Reactions)->where('id', $reaction?->id)->update([
         'actor_identity_hash' => $invalidHash,
     ]);
-    DB::table('comment_reports')->where('id', $report->id)->update([
+    DB::table(CommentsTables::Reports)->where('id', $report->id)->update([
         'status_hash' => $invalidHash,
     ]);
 

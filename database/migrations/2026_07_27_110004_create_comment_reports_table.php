@@ -5,11 +5,10 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 
 return new class extends Migration
 {
-    private const string TABLE_NAME = 'comment_reports';
-
     /**
      * Create per-actor moderation reports.
      */
@@ -17,7 +16,7 @@ return new class extends Migration
     {
         $this->assertCanonicalManagedStorage();
 
-        Schema::create(self::TABLE_NAME, function (Blueprint $table): void {
+        Schema::create(CommentsTables::Reports, function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('comment_id');
             $table->string('reporter_type', 100);
@@ -35,7 +34,7 @@ return new class extends Migration
 
             $table->foreign('comment_id')
                 ->references('id')
-                ->on('comments')
+                ->on(CommentsTables::Comments)
                 ->cascadeOnDelete();
             $table->unique(
                 ['comment_id', 'reporter_identity_hash'],
@@ -57,14 +56,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(self::TABLE_NAME);
+        Schema::dropIfExists(CommentsTables::Reports);
     }
 
     private function assertCanonicalManagedStorage(): void
     {
         if (config('comments.connection') !== null
-            || config('comments.tables.comment_reports') !== self::TABLE_NAME
-            || config('comments.tables.comments') !== 'comments') {
+            || config('comments.tables.comment_reports') !== CommentsTables::Reports
+            || config('comments.tables.comments') !== CommentsTables::Comments) {
             throw new LogicException(
                 'The package-managed Comments migrations only own canonical tables on the default connection.',
             );
