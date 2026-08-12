@@ -4,6 +4,8 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-08-12
+
 - Registered migration publication through Laravel's timestamp-aware API and made Doctor warn when automatic vendor loading overlaps a published host copy.
 - Completed the unreleased v1 headless comments domain with string-key-safe
   polymorphic targets, bounded reply trees, source locale, optimistic
@@ -93,6 +95,6 @@ All notable changes to `nvl/comments` are documented here.
   morph identities, Media production Doctor and private-owner authorization,
   installation/configuration, TypeScript checks, and application smoke tests.
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-08-08
 
 - Initial coordinated package-family release for Laravel 12–13.
