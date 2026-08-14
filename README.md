@@ -16,7 +16,7 @@
 12–13. It provides polymorphic discussion threads, anonymous and authenticated
 creation, audience-aware reads, optimistic lifecycle mutations, reactions,
 reports, moderation, revision history, and ownership-authorized Media
-attachments. It supports PHP 8.3–8.5 and integer, UUID, ULID, or string target
+attachments. It supports PHP 8.4+ and integer, UUID, ULID, or string target
 and actor identifiers.
 
 ## Purpose

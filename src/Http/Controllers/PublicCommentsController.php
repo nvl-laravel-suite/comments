@@ -37,11 +37,13 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAttachmentDataFactory;
 use Nvl\Comments\Services\CommentAttachmentUrlFactory;
 use Nvl\Comments\Services\CommentProjectionFactory;
+use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Filterable\Http\QueryFilterSetFactory;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Media\Services\MediaQueryService;
 
 /**
  * Anonymous-capable public discussion endpoints with viewer-independent reads.
@@ -49,6 +51,11 @@ use Nvl\Media\Models\MediaAssociation;
 final class PublicCommentsController extends Controller
 {
     private const int SIGNED_URL_CACHE_SAFETY_SECONDS = 30;
+
+    public function __construct(
+        private readonly CommentReadService $reads,
+        private readonly MediaQueryService $mediaQueries,
+    ) {}
 
     /**
      * List approved public comments for one canonical target.
@@ -178,13 +185,18 @@ final class PublicCommentsController extends Controller
         CommentProjectionFactory $projections,
         CommentTargetLocator $targets,
     ): JsonResponse {
+        $actor = $actors->fromRequest($request);
         $action->execute(
             $comment,
             DeleteCommentData::validateAndCreate($request->all()),
-            $actors->fromRequest($request),
+            $actor,
             CommentAudience::Public,
         );
-        $comment = Comment::query()->withTrashed()->findOrFail($comment);
+        $comment = $this->reads->findById(
+            $comment,
+            $actor,
+            CommentAudience::Public,
+        );
 
         return $this->privateResponse(response()->json([
             'data' => $projections
@@ -204,15 +216,21 @@ final class PublicCommentsController extends Controller
         CommentProjectionFactory $projections,
         CommentTargetLocator $targets,
     ): JsonResponse {
+        $actor = $actors->fromRequest($request);
         $data = SetCommentReactionData::validateAndCreate($request->all());
         $action->execute(
             $comment,
             $data->type,
             $data->active,
-            $actors->fromRequest($request),
+            $actor,
             CommentAudience::Public,
         );
-        $comment = Comment::query()->findOrFail($comment);
+        $comment = $this->reads->findById(
+            $comment,
+            $actor,
+            CommentAudience::Public,
+            withTrashed: false,
+        );
 
         return $this->privateResponse(response()->json([
             'data' => $projections
@@ -284,10 +302,17 @@ final class PublicCommentsController extends Controller
             $actor,
             CommentAudience::Public,
         );
-        $comment = Comment::query()->findOrFail($comment);
-        $association = MediaAssociation::query()
-            ->with(['media.imageVariations', 'media.translations'])
-            ->findOrFail($association->id);
+        $comment = $this->reads->findById(
+            $comment,
+            $actor,
+            CommentAudience::Public,
+            withTrashed: false,
+        );
+        $association = $this->mediaQueries->activeAssociation(
+            $association->id,
+            $comment->getMorphClass(),
+            'attachments',
+        );
         $attachment = $attachments->fromAssociation(
             $association,
             $comment,

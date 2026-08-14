@@ -4,6 +4,14 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-08-13
+
+### Changed
+
+- Routed post-mutation comment reloads and active attachment association reads
+  through authorized Comments and Media service boundaries instead of
+  controller-owned persistence queries.
+
 ## [1.0.5] - 2026-08-12
 
 ### Changed

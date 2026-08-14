@@ -22,6 +22,7 @@ use Nvl\Comments\Actions\ResolveCommentReportAction;
 use Nvl\Comments\Actions\RestoreCommentAction;
 use Nvl\Comments\Actions\RestoreCommentRevisionAction;
 use Nvl\Comments\Contracts\CommentActorResolver;
+use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Data\CommentManagementData;
 use Nvl\Comments\Data\CommentReportManagementData;
@@ -32,11 +33,13 @@ use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Data\Mutations\ResolveCommentReportData;
 use Nvl\Comments\Data\Mutations\RestoreCommentData;
 use Nvl\Comments\Data\Mutations\RestoreCommentRevisionData;
+use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentProjectionFactory;
+use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Filterable\Http\QueryFilterSetFactory;
@@ -46,6 +49,10 @@ use Nvl\Filterable\Http\QueryFilterSetFactory;
  */
 final class CommentsManagementController extends Controller
 {
+    public function __construct(
+        private readonly CommentReadService $reads,
+    ) {}
+
     /**
      * Return one target's actionable moderation comment queue.
      */
@@ -282,7 +289,7 @@ final class CommentsManagementController extends Controller
             $actor,
             CommentAudience::Management,
         );
-        $comment = $this->reloadForManagement($comment->id);
+        $comment = $this->reloadForManagement($comment->id, $actor);
         $target = $targets->locate($comment);
 
         return $this->respond([
@@ -312,7 +319,7 @@ final class CommentsManagementController extends Controller
             $actor,
             CommentAudience::Management,
         );
-        $comment = $this->reloadForManagement($comment->id);
+        $comment = $this->reloadForManagement($comment->id, $actor);
         $target = $targets->locate($comment);
 
         return $this->respond([
@@ -411,7 +418,7 @@ final class CommentsManagementController extends Controller
             $actor,
             CommentAudience::Management,
         );
-        $comment = $this->reloadForManagement($comment->id);
+        $comment = $this->reloadForManagement($comment->id, $actor);
         $target = $targets->locate($comment);
 
         return $this->respond([
@@ -426,11 +433,16 @@ final class CommentsManagementController extends Controller
     /**
      * Reload a lifecycle result with the aggregate needed by management projection.
      */
-    private function reloadForManagement(string $commentId): Comment
-    {
-        return Comment::query()
-            ->withTrashed()
-            ->findOrFail($commentId);
+    private function reloadForManagement(
+        string $commentId,
+        CommentActorData $actor,
+    ): Comment {
+        return $this->reads->resolveById(
+            $commentId,
+            $actor,
+            CommentAudience::Management,
+            CommentAbility::Moderate,
+        );
     }
 
     /**

@@ -42,16 +42,23 @@ use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentAttachmentDataFactory;
 use Nvl\Comments\Services\CommentAttachmentUrlFactory;
 use Nvl\Comments\Services\CommentProjectionFactory;
+use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Filterable\Http\QueryFilterSetFactory;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Media\Services\MediaQueryService;
 
 /**
  * Authenticated viewer-aware comment endpoints.
  */
 final class MemberCommentsController extends Controller
 {
+    public function __construct(
+        private readonly CommentReadService $reads,
+        private readonly MediaQueryService $mediaQueries,
+    ) {}
+
     /**
      * List public comments plus the member's policy-scoped comments.
      */
@@ -182,7 +189,11 @@ final class MemberCommentsController extends Controller
             $actor,
             CommentAudience::Member,
         );
-        $comment = Comment::query()->withTrashed()->findOrFail($comment);
+        $comment = $this->reads->findById(
+            $comment,
+            $actor,
+            CommentAudience::Member,
+        );
 
         return $this->respond([
             'data' => $projections
@@ -237,7 +248,12 @@ final class MemberCommentsController extends Controller
             $actor,
             CommentAudience::Member,
         );
-        $comment = Comment::query()->findOrFail($comment);
+        $comment = $this->reads->findById(
+            $comment,
+            $actor,
+            CommentAudience::Member,
+            withTrashed: false,
+        );
 
         return $this->respond([
             'data' => $projections
@@ -306,10 +322,17 @@ final class MemberCommentsController extends Controller
             $actor,
             CommentAudience::Member,
         );
-        $comment = Comment::query()->findOrFail($comment);
-        $association = MediaAssociation::query()
-            ->with(['media.imageVariations', 'media.translations'])
-            ->findOrFail($association->id);
+        $comment = $this->reads->findById(
+            $comment,
+            $actor,
+            CommentAudience::Member,
+            withTrashed: false,
+        );
+        $association = $this->mediaQueries->activeAssociation(
+            $association->id,
+            $comment->getMorphClass(),
+            'attachments',
+        );
         $attachment = $attachments->fromAssociation(
             $association,
             $comment,

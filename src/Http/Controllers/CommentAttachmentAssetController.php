@@ -10,8 +10,8 @@ use Illuminate\Routing\Controller;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAttachmentAssetResponder;
 use Nvl\Media\Models\Media;
-use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaConfiguredVariationService;
+use Nvl\Media\Services\MediaQueryService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -22,6 +22,7 @@ final class CommentAttachmentAssetController extends Controller
 {
     public function __construct(
         private readonly CommentAttachmentAssetResponder $assets,
+        private readonly MediaQueryService $mediaQueries,
         private readonly MediaConfiguredVariationService $variations,
     ) {}
 
@@ -53,14 +54,11 @@ final class CommentAttachmentAssetController extends Controller
         string $associationId,
         bool $thumbnail,
     ): BinaryFileResponse|StreamedResponse|Response {
-        $association = MediaAssociation::query()
-            ->whereKey($associationId)
-            ->where('associable_type', (new Comment)->getMorphClass())
-            ->where('collection', 'attachments')
-            ->where('is_active', true)
-            ->with('media.imageVariations')
-            ->firstOrFail();
-        $comment = Comment::query()->findOrFail($association->associable_id);
+        $association = $this->mediaQueries->activeAssociation(
+            $associationId,
+            (new Comment)->getMorphClass(),
+            'attachments',
+        );
         $media = $association->getRelation('media');
 
         abort_unless($media instanceof Media && $media->isAvailable(), 404);
