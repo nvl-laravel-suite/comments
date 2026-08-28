@@ -555,6 +555,42 @@ sort, threads are pin-first then newest-first with UUID as the deterministic
 tie-breaker. An explicit allowlisted caller sort replaces that default pin
 priority and still receives the UUID tie-breaker.
 
+## Latest target comment read
+
+Use `FindLatestTargetCommentAction` when an application needs one newest
+comment for a workflow or summary instead of a paginated thread or a direct
+`Comment` query:
+
+```php
+use Nvl\Comments\Actions\FindLatestTargetCommentAction;
+use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\Queries\CommentSelectorData;
+use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentStatus;
+
+$comment = app(FindLatestTargetCommentAction::class)->execute(
+    target: $candidacy,
+    actor: CommentActorData::system(),
+    selector: new CommentSelectorData(
+        tags: ['candidacy-workflow'],
+        status: CommentStatus::Approved,
+    ),
+    audience: CommentAudience::Management,
+);
+
+$body = $comment?->body;
+```
+
+Every selected tag must be present. Tags use the same list, distinctness,
+UTF-8, and 64-character limits as comment writes, with a hard query cap of 20
+or the lower configured write limit; status is an optional `CommentStatus`.
+The Action applies authorization and `CommentQueryScope` before these
+selectors, excludes soft-deleted comments, orders by `created_at` then `id`
+descending, and returns the DTO for the requested audience or `null`.
+Management denial occurs before SQL. The selector never accepts raw columns or
+JSON paths; registered metadata selectors belong to the package contract
+rather than consumer query code.
+
 ## Operations
 
 Audit package readiness:
