@@ -12,6 +12,7 @@
         "nvl/data": "^1.0",
         "nvl/filterable": "^1.0",
         "nvl/media": "^1.0",
+        "nvl/support": "^1.0",
         "spatie/laravel-data": "^4.23",
         "spatie/typescript-transformer": "^3.3",
         "symfony/http-foundation": "^7.2 || ^8.0"
