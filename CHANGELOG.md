@@ -4,6 +4,13 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Added forward-only rich-document columns, normalized current mention rows,
+  strict bounded version-one document compilation, server-owned label
+  snapshots, and dedicated rich create/update Actions with revision,
+  idempotency, concurrency, restore, deletion, and anonymization integration.
+
 ## [1.0.7] - 2026-08-22
 
 ### Changed

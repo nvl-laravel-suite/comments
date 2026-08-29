@@ -40,9 +40,11 @@ UI.
   Never accept a tenant or member scope from request input.
 - Public author data is presented through an audience-safe contract. Stored
   polymorphic actor identities are not public profile data.
-- Notifications, mentions, subscriptions, search, realtime delivery, spam
+- Notification delivery, subscriptions, search, realtime delivery, spam
   scoring, retention schedules, and UI components belong in consumers and can
-  subscribe to the package's typed events.
+  subscribe to the package's typed events. Comments owns bounded rich-document
+  persistence and normalized current mention references; applications own the
+  registered resource resolvers and their authorization policy.
 
 `nvl/comments` declares `nvl/data`, `nvl/filterable`, and `nvl/media`; attachment
 support is a first-class integration.
@@ -91,6 +93,9 @@ populate them with `CommentIdentity` or persist through the package models.
 - `comment_reports` stores one reviewable report per comment/reporter.
 - `comment_metadata_values` stores only keyed hashes for registered queryable
   scalar metadata; the JSON document remains the revisioned source of truth.
+- `comment_mentions` stores current ordered mention references by registered
+  alias and opaque application ID. It intentionally has no foreign key to an
+  application resource; revisions retain immutable server-label snapshots.
 
 `report_count` is a lifetime distinct-reporter count.
 `open_report_count` is the current actionable count. Composite indexes support
@@ -215,6 +220,30 @@ increments the direct-parent count once, and dispatches after commit.
 
 Anonymous creation remains available when explicitly enabled and authorized.
 The public HTTP group accepts public visibility only.
+
+### Rich documents and mentions
+
+Rich mutations use `CreateRichCommentAction` and `UpdateRichCommentAction`.
+They do not change the released plain/Markdown Action or DTO signatures. The
+only accepted version-one nodes are paragraph blocks containing text,
+hard-break, or mention nodes. Clients submit mention token UUIDs, registered
+resource aliases, and opaque IDs only; labels are resolved and stored by the
+server. HTML, URLs, client labels, arbitrary fields, and nested children are
+rejected.
+
+Rich support is disabled by default through `comments.mentions.enabled` until
+the application registers resolvers. The package bounds encoded bytes, blocks,
+nodes, resource aliases, mentions, and resolution batches. `body` is always a
+deterministic plain-text projection for compatibility and search. Raw stored
+documents and resource identity hashes are hidden from model serialization;
+viewer-safe rich projections are a separate public transport boundary.
+
+Applications using custom table names must disable vendor migrations and add
+nullable JSON `document` columns to both comment and revision tables plus a
+compatible configured mentions table. Restoring a revision rebuilds current
+mention rows from its historical server-label snapshot. Soft deletion retains
+them, physical deletion cascades them, and anonymization removes all current
+references and rich document state.
 
 ### Idempotent creation
 

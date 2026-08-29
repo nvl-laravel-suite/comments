@@ -14,4 +14,6 @@ enum CommentFormat: string
 {
     case Plain = 'plain';
     case Markdown = 'markdown';
+
+    case RichText = 'rich_text';
 }

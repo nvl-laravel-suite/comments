@@ -102,6 +102,20 @@ return [
         'schemas' => [],
     ],
 
+    'rich_text' => [
+        'maximum_bytes' => 32_768,
+        'maximum_blocks' => 100,
+        'maximum_nodes' => 500,
+    ],
+
+    'mentions' => [
+        'enabled' => false,
+        'maximum_per_comment' => 25,
+        'maximum_resource_types_per_comment' => 10,
+        'maximum_batch_size' => 100,
+        'resources' => [],
+    ],
+
     'reactions' => [
         'allowed' => ['like', 'love', 'insightful', 'helpful'],
     ],

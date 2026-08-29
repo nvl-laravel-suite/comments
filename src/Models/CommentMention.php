@@ -9,77 +9,74 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
-use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Support\CommentsConfiguration;
 
 /**
- * Immutable snapshot of comment content before an edit.
+ * Current normalized reference to one registered application resource.
  *
  * @property string $id
  * @property string $comment_id
- * @property int $revision
- * @property string $body
- * @property CommentFormat $format
- * @property string|null $locale
- * @property list<string>|null $tags
- * @property array<string, mixed>|null $metadata
- * @property array<string, mixed>|null $document
- * @property string|null $edited_by_type
- * @property string|null $edited_by
+ * @property string $token_id
+ * @property string $resource_alias
+ * @property string $resource_id
+ * @property string $resource_identity_hash
+ * @property string $label_snapshot
+ * @property int $position
  * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Comment $comment
  */
-final class CommentRevision extends Model
+final class CommentMention extends Model
 {
     use HasUuids;
-
-    public const null UPDATED_AT = null;
 
     /** @var list<string> */
     protected $fillable = [
         'comment_id',
-        'revision',
-        'body',
-        'format',
-        'locale',
-        'tags',
-        'metadata',
-        'document',
-        'edited_by_type',
-        'edited_by',
+        'token_id',
+        'resource_alias',
+        'resource_id',
+        'resource_identity_hash',
+        'label_snapshot',
+        'position',
     ];
 
     /** @var list<string> */
     protected $hidden = [
-        'document',
+        'resource_identity_hash',
     ];
 
+    /**
+     * Return the configured mention table.
+     */
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::Revisions);
+        return CommentsConfiguration::table(CommentsTables::Mentions);
     }
 
+    /**
+     * Return the configured Comments connection.
+     */
     public function getConnectionName(): ?string
     {
         return CommentsConfiguration::connection() ?? parent::getConnectionName();
     }
 
     /**
+     * Return mention attribute casts.
+     *
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'revision' => 'integer',
-            'format' => CommentFormat::class,
-            'tags' => 'array',
-            'metadata' => 'array',
-            'document' => 'array',
-            'created_at' => 'immutable_datetime',
+            'position' => 'integer',
         ];
     }
 
     /**
+     * Return the owning comment.
+     *
      * @return BelongsTo<Comment, $this>
      */
     public function comment(): BelongsTo

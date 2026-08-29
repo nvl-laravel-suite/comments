@@ -17,6 +17,7 @@ use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentTargetRegistry;
@@ -70,6 +71,7 @@ final class CommentsServiceProvider extends ServiceProvider
         );
         $this->app->scoped(CommentMutationLock::class);
         $this->app->singleton(CommentMetadataRegistry::class);
+        $this->app->singleton(CommentMentionResourceRegistry::class);
         $this->app->singleton(CommentTargetRegistry::class);
     }
 

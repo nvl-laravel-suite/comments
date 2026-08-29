@@ -21,6 +21,8 @@ final class CommentsTables
 
     public const string MetadataValues = 'comment_metadata_values';
 
+    public const string Mentions = 'comment_mentions';
+
     /**
      * Return one validated configured package table name.
      */
@@ -28,8 +30,8 @@ final class CommentsTables
     {
         $table = config("comments.tables.{$key}");
 
-        if ($table === null && $key === self::MetadataValues) {
-            $table = self::MetadataValues;
+        if ($table === null && in_array($key, [self::MetadataValues, self::Mentions], true)) {
+            $table = $key;
         }
 
         if (! is_string($table)

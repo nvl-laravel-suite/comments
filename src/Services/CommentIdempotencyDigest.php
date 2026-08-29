@@ -8,6 +8,7 @@ use JsonException;
 use LogicException;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
+use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Enums\CommentVisibility;
 
 /**
@@ -68,6 +69,48 @@ final class CommentIdempotencyDigest
         );
         $encoded = json_encode(
             $this->canonicalValue($jsonValue),
+            JSON_PRESERVE_ZERO_FRACTION
+                | JSON_THROW_ON_ERROR
+                | JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE,
+        );
+
+        return hash_hmac('sha256', $encoded, $this->keyBytes());
+    }
+
+    /**
+     * Hash one canonical rich creation request without server-owned label snapshots.
+     *
+     * @throws JsonException
+     * @throws LogicException
+     */
+    public function makeRich(
+        string $targetType,
+        string $targetId,
+        ?string $parentId,
+        CommentVisibility $visibility,
+        CreateRichCommentData $data,
+        CommentActorData $actor,
+        string $canonicalDocument,
+    ): string {
+        $payload = [
+            'version' => 1,
+            'target' => ['type' => $targetType, 'id' => $targetId],
+            'parentId' => $parentId,
+            'actor' => [
+                'type' => $actor->type,
+                'id' => $actor->id,
+                'system' => $actor->system,
+            ],
+            'document' => json_decode($canonicalDocument, true, 512, JSON_THROW_ON_ERROR),
+            'requestedVisibility' => $data->visibility->value,
+            'effectiveVisibility' => $visibility->value,
+            'locale' => $data->locale,
+            'tags' => $data->tags,
+            'metadata' => $this->metadata->normalize($data->metadata),
+        ];
+        $encoded = json_encode(
+            $this->canonicalValue($payload),
             JSON_PRESERVE_ZERO_FRACTION
                 | JSON_THROW_ON_ERROR
                 | JSON_UNESCAPED_SLASHES

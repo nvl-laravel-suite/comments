@@ -37,6 +37,7 @@ use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentMention;
 use Nvl\Comments\Services\CommentContentGuard;
 use Nvl\Comments\Services\CommentProjectionFactory;
 use Nvl\Comments\Services\CommentStateReconciler;
@@ -89,6 +90,29 @@ it('soft deletes a reply while preserving descendants and correcting its parent 
 
     $this->assertSoftDeleted($reply);
     $this->assertModelExists($descendant);
+});
+
+it('preserves released plain and markdown persistence and serialization shapes', function (): void {
+    $target = TestCommentTarget::query()->create(['name' => 'Legacy format article']);
+    $actor = new CommentActorData('member', 'legacy-format-author');
+    $plain = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Plain body'),
+        $actor,
+    );
+    $markdown = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('**Markdown body**', format: CommentFormat::Markdown),
+        $actor,
+    );
+
+    expect($plain->format)->toBe(CommentFormat::Plain)
+        ->and($markdown->format)->toBe(CommentFormat::Markdown)
+        ->and($plain->document)->toBeNull()
+        ->and($markdown->document)->toBeNull()
+        ->and($plain->toArray())->not->toHaveKey('document')
+        ->and($markdown->toArray())->not->toHaveKey('document')
+        ->and(CommentMention::query()->count())->toBe(0);
 });
 
 it('rejects stale deletion without changing the comment', function (): void {

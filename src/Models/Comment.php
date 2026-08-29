@@ -58,6 +58,7 @@ use Nvl\Media\Traits\InteractsWithMedia;
  * @property string $visibility_hash
  * @property list<string>|null $tags
  * @property array<string, mixed>|null $metadata
+ * @property array<string, mixed>|null $document
  * @property int $revision
  * @property int $reply_count
  * @property int $reaction_count
@@ -89,6 +90,7 @@ use Nvl\Media\Traits\InteractsWithMedia;
  * @property-read Collection<int, CommentRevision> $revisions
  * @property-read Collection<int, CommentReport> $reports
  * @property-read Collection<int, CommentMetadataValue> $metadataValues
+ * @property-read Collection<int, CommentMention> $mentions
  * @property-read Collection<int, MediaAssociation> $attachmentAssociations
  */
 final class Comment extends Model implements HasMedia
@@ -115,6 +117,7 @@ final class Comment extends Model implements HasMedia
         'visibility',
         'tags',
         'metadata',
+        'document',
         'revision',
         'reply_count',
         'reaction_count',
@@ -159,6 +162,7 @@ final class Comment extends Model implements HasMedia
         'visibility_hash',
         'idempotency_key',
         'idempotency_hash',
+        'document',
     ];
 
     /**
@@ -240,6 +244,7 @@ final class Comment extends Model implements HasMedia
             'visibility' => CommentVisibility::class,
             'tags' => 'array',
             'metadata' => 'array',
+            'document' => 'array',
             'revision' => 'integer',
             'reply_count' => 'integer',
             'reaction_count' => 'integer',
@@ -356,6 +361,16 @@ final class Comment extends Model implements HasMedia
     public function metadataValues(): HasMany
     {
         return $this->hasMany(CommentMetadataValue::class);
+    }
+
+    /**
+     * Return current normalized mention references in document order.
+     *
+     * @return HasMany<CommentMention, $this>
+     */
+    public function mentions(): HasMany
+    {
+        return $this->hasMany(CommentMention::class)->orderBy('position');
     }
 
     /**

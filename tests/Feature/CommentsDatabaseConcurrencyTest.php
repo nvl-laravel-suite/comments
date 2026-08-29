@@ -12,21 +12,26 @@ use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Actions\DeleteCommentAction;
 use Nvl\Comments\Actions\ReportCommentAction;
 use Nvl\Comments\Actions\RestoreCommentAction;
+use Nvl\Comments\Actions\UpdateRichCommentAction;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
+use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
 use Nvl\Comments\Data\Mutations\RestoreCommentData;
+use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
 use Nvl\Comments\Exceptions\CommentIdempotencyConflictException;
 use Nvl\Comments\Exceptions\CommentMutationBusyException;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentStateReconciler;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Tests\Fixtures\ConcurrentCommentTarget;
+use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 
@@ -832,6 +837,107 @@ it('counts distinct concurrent reporters exactly once each', function (): void {
                 ->table(CommentsConfiguration::table('comment_reports'))
                 ->where('comment_id', $commentId)
                 ->count())->toBe(2);
+    } finally {
+        commentsConcurrencyCleanup($targetId);
+    }
+})->skip(
+    fn (): bool => commentsConcurrencySkipReason() !== null,
+    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+);
+
+it('allows exactly one concurrent rich update for an expected revision', function (): void {
+    $connectionName = commentsConcurrencyPrepareConnection();
+    config()->set('comments.mentions.enabled', true);
+    app(CommentMentionResourceRegistry::class)->register(
+        'organization',
+        TestCommentMentionResourceResolver::class,
+    );
+    $targetId = Str::uuid()->toString();
+    $commentId = Str::uuid()->toString();
+    $initialToken = Str::uuid()->toString();
+    $initialDocument = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'children' => [[
+                'type' => 'mention',
+                'tokenId' => $initialToken,
+                'resource' => 'organization',
+                'id' => 'org-1',
+                'labelSnapshot' => 'Организация',
+            ]],
+        ]],
+    ];
+
+    try {
+        commentsConcurrencyInsertTarget($targetId);
+        commentsConcurrencyInsertComment($commentId, $targetId, [
+            'body' => '@Организация',
+            'format' => 'rich_text',
+            'document' => json_encode($initialDocument, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        ]);
+        $now = now();
+        DB::connection('comments_concurrency_target')
+            ->table(CommentsConfiguration::table('comment_mentions'))
+            ->insert([
+                'id' => Str::uuid()->toString(),
+                'comment_id' => $commentId,
+                'token_id' => $initialToken,
+                'resource_alias' => 'organization',
+                'resource_id' => 'org-1',
+                'resource_identity_hash' => hash('sha256', 'organization:org-1'),
+                'label_snapshot' => 'Организация',
+                'position' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        $worker = static function (string $text) use ($commentId): array {
+            $document = new CommentDocumentData(1, [[
+                'type' => 'paragraph',
+                'children' => [
+                    ['type' => 'text', 'text' => $text],
+                    [
+                        'type' => 'mention',
+                        'tokenId' => Str::uuid()->toString(),
+                        'resource' => 'organization',
+                        'id' => 'org-2',
+                    ],
+                ],
+            ]]);
+            $updated = app(UpdateRichCommentAction::class)->execute(
+                $commentId,
+                new UpdateRichCommentData($document, expectedRevision: 1),
+                new CommentActorData('member', 'concurrent-author'),
+            );
+
+            return ['revision' => $updated->revision];
+        };
+        $results = commentsConcurrencyRunWorkers($connectionName, [
+            static fn (): array => $worker('First '),
+            static fn (): array => $worker('Second '),
+        ]);
+        $successful = array_filter(
+            $results,
+            static fn (array $result): bool => $result['ok'] === true,
+        );
+        $stale = array_filter(
+            $results,
+            static fn (array $result): bool => ($result['error'] ?? null)
+                === StaleCommentException::class,
+        );
+        $connection = DB::connection('comments_concurrency_target');
+
+        expect($successful)->toHaveCount(1)
+            ->and($stale)->toHaveCount(1)
+            ->and($connection->table(CommentsConfiguration::table('comments'))
+                ->where('id', $commentId)
+                ->value('revision'))->toBe(2)
+            ->and($connection->table(CommentsConfiguration::table('comment_revisions'))
+                ->where('comment_id', $commentId)
+                ->count())->toBe(1)
+            ->and($connection->table(CommentsConfiguration::table('comment_mentions'))
+                ->where('comment_id', $commentId)
+                ->count())->toBe(1);
     } finally {
         commentsConcurrencyCleanup($targetId);
     }

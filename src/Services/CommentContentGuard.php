@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Nvl\Comments\Data\Mutations\CreateCommentData;
+use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
+use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Spatie\LaravelData\Optional;
@@ -64,6 +66,48 @@ final class CommentContentGuard
         return $existingMetadata ?? [];
     }
 
+    /**
+     * Validate rich create fields and return normalized metadata for persistence.
+     *
+     * @return array<string, mixed>
+     */
+    public function createRich(CreateRichCommentData $data, string $body): array
+    {
+        $this->assertDerivedBody($body);
+        $this->assertLocale($data->locale);
+        $this->assertTags($data->tags);
+
+        return $this->metadata->normalize($data->metadata);
+    }
+
+    /**
+     * Validate rich update fields and return presence-aware normalized metadata.
+     *
+     * @param  array<string, mixed>|null  $existingMetadata
+     * @return array<string, mixed>
+     */
+    public function updateRich(
+        UpdateRichCommentData $data,
+        string $body,
+        ?array $existingMetadata = null,
+    ): array {
+        $this->assertDerivedBody($body);
+
+        if (! $data->locale instanceof Optional) {
+            $this->assertLocale($data->locale);
+        }
+
+        if (! $data->tags instanceof Optional) {
+            $this->assertTags($data->tags);
+        }
+
+        if (! $data->metadata instanceof Optional) {
+            return $this->metadata->normalize($data->metadata, $existingMetadata);
+        }
+
+        return $existingMetadata ?? [];
+    }
+
     private function assertBody(string $body): void
     {
         if (! mb_check_encoding($body, 'UTF-8') || preg_match('/\S/u', $body) !== 1) {
@@ -80,6 +124,18 @@ final class CommentContentGuard
         if (strlen($body) > $maximumBytes) {
             throw new InvalidCommentMutationException(
                 "Comment content exceeds {$maximumBytes} bytes.",
+            );
+        }
+    }
+
+    /**
+     * Require a valid non-blank server-derived rich-text compatibility body.
+     */
+    private function assertDerivedBody(string $body): void
+    {
+        if (! mb_check_encoding($body, 'UTF-8') || preg_match('/\S/u', $body) !== 1) {
+            throw new InvalidCommentMutationException(
+                'Derived rich comment content must contain valid, non-blank UTF-8 text.',
             );
         }
     }

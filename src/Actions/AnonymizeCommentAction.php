@@ -22,6 +22,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentLifecycleGuard;
+use Nvl\Comments\Services\CommentMentionWriter;
 use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
@@ -48,6 +49,7 @@ final readonly class AnonymizeCommentAction
         private MediaMutationLock $mediaLock,
         private CommentMutationLock $mutationLock,
         private CommentMetadataIndexWriter $metadataIndex,
+        private CommentMentionWriter $mentions,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
     ) {}
@@ -224,6 +226,7 @@ final readonly class AnonymizeCommentAction
 
                         $comment->revisions()->delete();
                         $this->metadataIndex->delete($comment);
+                        $this->mentions->delete($comment);
                         $comment->reports()->update([
                             'details' => null,
                             'resolution' => null,
@@ -247,6 +250,7 @@ final readonly class AnonymizeCommentAction
                             'locale' => null,
                             'tags' => null,
                             'metadata' => null,
+                            'document' => null,
                             'revision' => $comment->revision + 1,
                             'reaction_count' => $reactionCount,
                             'report_count' => $reportCount,

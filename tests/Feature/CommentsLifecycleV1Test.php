@@ -144,6 +144,39 @@ it('delivers every user event after the root commit and discards rollback events
         ->and(Comment::query()->whereKey($rolledBack->id)->exists())->toBeFalse();
 });
 
+it('keeps legacy revisions document-free through plain updates and restores', function (): void {
+    $target = TestCommentTarget::query()->create(['name' => 'Legacy revision document']);
+    $actor = new CommentActorData('member', 'legacy-revision-author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Before plain edit', format: CommentFormat::Markdown),
+        $actor,
+    );
+    $updated = app(UpdateCommentAction::class)->execute(
+        $comment,
+        new UpdateCommentData('After plain edit', expectedRevision: 1),
+        $actor,
+    );
+    $revision = CommentRevision::query()
+        ->where('comment_id', $comment->id)
+        ->where('revision', 1)
+        ->sole();
+
+    expect($revision->document)->toBeNull()
+        ->and($revision->toArray())->not->toHaveKey('document');
+
+    $restored = app(RestoreCommentRevisionAction::class)->execute(
+        $updated,
+        $revision,
+        new RestoreCommentRevisionData(expectedRevision: 2),
+        $actor,
+    );
+
+    expect($restored->body)->toBe('Before plain edit')
+        ->and($restored->format)->toBe(CommentFormat::Markdown)
+        ->and($restored->document)->toBeNull();
+});
+
 it('rolls anonymization back when a model observer vetoes the required soft delete', function (): void {
     $target = TestCommentTarget::query()->create(['name' => 'Delete-veto article']);
     $comment = app(CreateCommentAction::class)->execute(
