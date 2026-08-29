@@ -205,7 +205,7 @@ final class CommentMetadataRegistry
             }
 
             $value = $this->normalizeFieldValue($field, $metadata[$field->storageKey]);
-            [$namespace, $fieldName] = explode('.', $alias, 2);
+            [$namespace, $fieldName] = $this->splitAlias($alias);
             $rows[] = [
                 'schema_namespace' => $namespace,
                 'field_name' => $fieldName,
@@ -237,7 +237,7 @@ final class CommentMetadataRegistry
             }
 
             $normalized = $this->normalizeFieldValue($field, $value);
-            [$namespace, $fieldName] = explode('.', $alias, 2);
+            [$namespace, $fieldName] = $this->splitAlias($alias);
             $rows[] = [
                 'schema_namespace' => $namespace,
                 'field_name' => $fieldName,
@@ -307,7 +307,8 @@ final class CommentMetadataRegistry
 
             $namespace = $schema->namespace();
 
-            if (preg_match('/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/', $namespace) !== 1) {
+            if (strlen($namespace) > 100
+                || preg_match('/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/', $namespace) !== 1) {
                 throw new InvalidArgumentException(
                     'Comment metadata schema namespaces must use snake case and dots.',
                 );
@@ -354,6 +355,22 @@ final class CommentMetadataRegistry
     private function schemaFields(CommentMetadataSchema $schema): mixed
     {
         return $schema->fields();
+    }
+
+    /**
+     * Split one public alias after its complete dotted namespace.
+     *
+     * @return array{string, string}
+     */
+    private function splitAlias(string $alias): array
+    {
+        $separator = strrpos($alias, '.');
+
+        if ($separator === false) {
+            throw new LogicException('A registered metadata alias is invalid.');
+        }
+
+        return [substr($alias, 0, $separator), substr($alias, $separator + 1)];
     }
 
     /**

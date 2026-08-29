@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nvl\Comments\Actions\AnonymizeCommentAction;
@@ -19,13 +23,18 @@ use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Data\Mutations\RestoreCommentRevisionData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Data\Queries\CommentSelectorData;
+use Nvl\Comments\Definitions\CommentMetadataField;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentMetadataValueType;
+use Nvl\Comments\Events\CommentChanged;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentProjectionFactory;
+use Nvl\Comments\Tests\Fixtures\DottedCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\DuplicateCommentMetadataSchema;
+use Nvl\Comments\Tests\Fixtures\OverlongCommentMetadataNamespaceSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 
@@ -110,6 +119,65 @@ it('adds metadata storage to an existing released schema and refuses application
     config()->set('database.default', $defaultConnection);
 });
 
+it('uses actual application-owned metadata storage for every write and selector lifecycle', function (): void {
+    $table = 'tenant_comment_metadata_values';
+    Schema::create($table, function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+        $table->uuid('comment_id');
+        $table->string('schema_namespace', 100);
+        $table->string('field_name', 64);
+        $table->string('value_type', 16);
+        $table->char('value_hash', 64);
+        $table->timestamps();
+        $table->foreign('comment_id')->references('id')->on('comments')->cascadeOnDelete();
+        $table->unique(['comment_id', 'schema_namespace', 'field_name']);
+        $table->index(['schema_namespace', 'field_name', 'value_hash']);
+    });
+    config()->set('comments.tables.comment_metadata_values', $table);
+    commentsMetadataConfigure([TestCommentMetadataSchema::class]);
+    $target = TestCommentTarget::query()->create(['name' => 'Application-owned metadata']);
+    $actor = new CommentActorData('member', 'application-storage-author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Custom storage', metadata: ['workflow_event' => 'created']),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect(DB::table($table)->where('comment_id', $comment->id)->count())->toBe(1)
+        ->and(app(FindLatestTargetCommentAction::class)->execute(
+            $target,
+            $actor,
+            new CommentSelectorData(metadataEquals: ['workflow.event' => 'created']),
+            CommentAudience::Member,
+        )?->id)->toBe($comment->id);
+
+    $updated = app(UpdateCommentAction::class)->execute(
+        $comment,
+        new UpdateCommentData(
+            body: 'Custom storage updated',
+            expectedRevision: 1,
+            metadata: ['workflow_event' => 'updated'],
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect(app(FindLatestTargetCommentAction::class)->execute(
+        $target,
+        $actor,
+        new CommentSelectorData(metadataEquals: ['workflow.event' => 'updated']),
+        CommentAudience::Member,
+    )?->id)->toBe($updated->id)
+        ->and(app(DeleteCommentAction::class)->execute(
+            $updated,
+            new DeleteCommentData(expectedRevision: 2),
+            $actor,
+            CommentAudience::Member,
+        ))->toBeTrue()
+        ->and(DB::table($table)->where('comment_id', $comment->id)->exists())->toBeFalse();
+});
+
 it('validates registered values while retaining compatible legacy metadata internally', function (): void {
     commentsMetadataConfigure([TestCommentMetadataSchema::class]);
     $target = TestCommentTarget::query()->create(['name' => 'Metadata validation']);
@@ -159,6 +227,114 @@ it('validates registered values while retaining compatible legacy metadata inter
             $actor,
             CommentAudience::Member,
         ))->toThrow(InvalidCommentMutationException::class);
+});
+
+it('keeps raw metadata out of mutation events log contexts and exceptions', function (): void {
+    commentsMetadataConfigure([TestCommentMetadataSchema::class]);
+    $target = TestCommentTarget::query()->create(['name' => 'Metadata privacy outputs']);
+    $actor = new CommentActorData('member', 'privacy-output-author');
+    Event::fake([CommentChanged::class]);
+    app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Privacy outputs', metadata: [
+            'legacy_private' => 'raw-private-value',
+            'workflow_event' => 'registered-private-value',
+        ]),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    Event::assertDispatched(CommentChanged::class, function (CommentChanged $event): bool {
+        $serialized = serialize($event);
+        $context = json_encode(['event' => $event], JSON_THROW_ON_ERROR);
+        $path = storage_path('logs/comment-metadata-privacy.log');
+        @unlink($path);
+        Log::build(['driver' => 'single', 'path' => $path])
+            ->info('Comment changed', ['event' => $event]);
+        $logged = (string) file_get_contents($path);
+        @unlink($path);
+
+        expect($serialized)->not->toContain(
+            'legacy_private',
+            'raw-private-value',
+            'registered-private-value',
+        )->and($context)->not->toContain(
+            'legacy_private',
+            'raw-private-value',
+            'registered-private-value',
+        )->and($logged)->not->toContain(
+            'legacy_private',
+            'raw-private-value',
+            'registered-private-value',
+        );
+
+        return true;
+    });
+
+    commentsMetadataConfigure([TestCommentMetadataSchema::class], strict: true);
+
+    try {
+        app(CreateCommentAction::class)->execute(
+            $target,
+            new CreateCommentData('Private rejection', metadata: [
+                'raw_private_key' => 'raw-private-exception-value',
+            ]),
+            $actor,
+            CommentAudience::Member,
+        );
+    } catch (InvalidCommentMutationException $exception) {
+        expect((string) $exception)->not->toContain(
+            'raw_private_key',
+            'raw-private-exception-value',
+        );
+
+        return;
+    }
+
+    $this->fail('Strict metadata accepted a private unregistered key.');
+});
+
+it('round-trips dotted namespaces and enforces metadata index storage widths', function (): void {
+    commentsMetadataConfigure([DottedCommentMetadataSchema::class]);
+    $target = TestCommentTarget::query()->create(['name' => 'Dotted metadata namespace']);
+    $actor = new CommentActorData('member', 'dotted-author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Dotted namespace', metadata: [
+            'sales_workflow_event' => 'submitted',
+        ]),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect(CommentMetadataValue::query()->where('comment_id', $comment->id)->sole()->only([
+        'schema_namespace',
+        'field_name',
+    ]))->toBe([
+        'schema_namespace' => 'sales.workflow',
+        'field_name' => 'event',
+    ])->and(app(FindLatestTargetCommentAction::class)->execute(
+        $target,
+        $actor,
+        new CommentSelectorData(metadataEquals: ['sales.workflow.event' => 'submitted']),
+        CommentAudience::Member,
+    )?->id)->toBe($comment->id);
+
+    config()->set('comments.metadata.schemas', [OverlongCommentMetadataNamespaceSchema::class]);
+    app()->forgetInstance(CommentMetadataRegistry::class);
+
+    expect(fn () => app(CommentMetadataRegistry::class))->toThrow(
+        InvalidArgumentException::class,
+        'namespace',
+    )->and(fn () => new CommentMetadataField(
+        name: str_repeat('a', 65),
+        storageKey: 'long_field',
+        type: CommentMetadataValueType::String,
+        nullable: false,
+        mutable: true,
+        queryable: true,
+        visibleTo: [CommentAudience::Member],
+    ))->toThrow(InvalidArgumentException::class, 'field');
 });
 
 it('rejects unknown keys in strict mode without disclosing their names or values', function (): void {
@@ -285,6 +461,8 @@ it('matches queryable string integer boolean and null metadata selectors', funct
         $actor,
         CommentAudience::Member,
     );
+
+    expect(DB::connection()->getDriverName())->toBeIn(['sqlite', 'mysql', 'mariadb', 'pgsql']);
 
     foreach ([
         'workflow.event' => 'submitted',

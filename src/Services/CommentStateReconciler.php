@@ -1043,7 +1043,9 @@ final readonly class CommentStateReconciler
     {
         try {
             $expectedRows = $this->metadataRegistry->indexRows(
-                $comment->anonymized_at === null ? $comment->metadata : null,
+                $comment->anonymized_at === null && ! $comment->trashed()
+                    ? $comment->metadata
+                    : null,
             );
         } catch (InvalidCommentMutationException) {
             return [0, max(1, $comment->metadataValues->count())];
@@ -1098,7 +1100,9 @@ final readonly class CommentStateReconciler
     {
         try {
             $this->metadataRegistry->indexRows(
-                $comment->anonymized_at === null ? $comment->metadata : null,
+                $comment->anonymized_at === null && ! $comment->trashed()
+                    ? $comment->metadata
+                    : null,
             );
 
             return $this->mutationLock->execute(
@@ -1117,7 +1121,9 @@ final readonly class CommentStateReconciler
 
                         $this->metadataIndex->synchronize(
                             $locked,
-                            $locked->anonymized_at === null ? $locked->metadata : null,
+                            $locked->anonymized_at === null && ! $locked->trashed()
+                                ? $locked->metadata
+                                : null,
                         );
 
                         return true;

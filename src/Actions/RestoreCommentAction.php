@@ -18,6 +18,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentLifecycleGuard;
+use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -34,6 +35,7 @@ final readonly class RestoreCommentAction
     public function __construct(
         private CommentAccessService $access,
         private CommentLifecycleGuard $guard,
+        private CommentMetadataIndexWriter $metadataIndex,
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
@@ -151,6 +153,8 @@ final readonly class RestoreCommentAction
                                 'The comment could not be restored.',
                             );
                         }
+
+                        $this->metadataIndex->synchronize($comment, $comment->metadata);
 
                         if ($parent instanceof Comment
                             && $parent->increment('reply_count') !== 1) {

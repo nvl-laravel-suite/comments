@@ -27,7 +27,10 @@ use Nvl\Comments\Events\CommentChanged;
 use Nvl\Comments\Events\CommentReported;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Models\CommentReport;
+use Nvl\Comments\Services\CommentMetadataRegistry;
+use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Filterable\Data\FilterCriterion;
 use Nvl\Filterable\Data\FilterSet;
@@ -53,6 +56,39 @@ function runCommentsV1Reconciliation(array $options = []): array
 
     return [$exitCode, $result];
 }
+
+it('keeps deleted metadata indexes absent during reconciliation repair', function (): void {
+    config()->set([
+        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'comments.metadata.digest_key' => 'reconcile-deleted-metadata-key',
+    ]);
+    app()->forgetInstance(CommentMetadataRegistry::class);
+    $target = TestCommentTarget::query()->create(['name' => 'Deleted metadata reconciliation']);
+    $actor = new CommentActorData('member', 'deleted-metadata-author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Deleted metadata', metadata: ['workflow_event' => 'deleted']),
+        $actor,
+    );
+    app(DeleteCommentAction::class)->execute(
+        $comment,
+        new DeleteCommentData(expectedRevision: 1),
+        $actor,
+    );
+
+    [$exitCode, $result] = runCommentsV1Reconciliation([
+        '--repair' => true,
+        '--strict' => true,
+        '--target' => "article:{$target->id}",
+    ]);
+
+    expect($exitCode)->toBe(0)
+        ->and($result['missingMetadataIndexValues'])->toBe(0)
+        ->and($result['staleMetadataIndexValues'])->toBe(0)
+        ->and($result['healthy'])->toBeTrue()
+        ->and(CommentMetadataValue::query()->where('comment_id', $comment->id)->exists())
+        ->toBeFalse();
+});
 
 it('keeps moderation queues actionable target-bound filterable and deleted-aware', function (): void {
     $this->travelTo(Carbon::parse('2026-07-30 08:00:00 UTC'));

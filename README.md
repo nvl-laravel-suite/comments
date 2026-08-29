@@ -603,6 +603,11 @@ is a list of `CommentMetadataProjectionData` records containing a namespace and
 an allowlisted scalar `values` record. When no schema value is visible, the
 optional property is omitted to preserve existing serialized shapes.
 
+The local package configuration runs this selector contract on SQLite. The
+release workflow runs the same `CommentMetadataContractsTest.php` suite on
+PostgreSQL 17, MySQL 8.4, and MariaDB 12.3; those drivers are matrix-only unless
+the corresponding `DB_CONNECTION` service is configured locally.
+
 Metadata is categorical workflow context, not a secret store or rich reference
 system. Do not place credentials, private tokens, personal secrets, model
 payloads, or mentions in metadata. Mentions require server-side resolution and
@@ -749,7 +754,7 @@ composer audit --locked --no-interaction
 ```
 
 The release matrix additionally runs package and integration Pest suites on
-SQLite, MySQL 8.4, MariaDB 12.1, and PostgreSQL 17; concurrency coverage;
+SQLite, MySQL 8.4, MariaDB 12.3, and PostgreSQL 17; concurrency coverage;
 strict Doctor; TypeScript and public-contract checks; clean source and
 relocated-artifact consumers on Laravel 12–13; and every supported PHP version.
 

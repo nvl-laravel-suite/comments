@@ -31,7 +31,8 @@ final readonly class CommentMetadataField
         array $visibleTo,
         public ?int $maximumStringLength = null,
     ) {
-        if (preg_match('/^[a-z][a-z0-9_]*$/', $this->name) !== 1) {
+        if (strlen($this->name) > 64
+            || preg_match('/^[a-z][a-z0-9_]*$/', $this->name) !== 1) {
             throw new InvalidArgumentException('Comment metadata field names must use snake case.');
         }
 

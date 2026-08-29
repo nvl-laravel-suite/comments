@@ -867,7 +867,10 @@ final class CommentsDoctorCommand extends Command
         }
 
         $metadataDigestReady = $metadata->hasStableDigestKey();
-        $metadataStrictCompatible = $this->strictMetadataCompatible($metadata);
+        $metadataStrictCompatible = $this->strictMetadataCompatible(
+            $metadata,
+            $checks['table.comments'] === true,
+        );
         $checks['metadata.schemas_ready'] = true;
         $checks['metadata.digest_key_ready'] = $metadataDigestReady;
         $checks['metadata.strict_compatible'] = $metadataStrictCompatible;
@@ -1286,10 +1289,12 @@ final class CommentsDoctorCommand extends Command
     /**
      * Determine whether strict mode can accept every existing metadata key.
      */
-    private function strictMetadataCompatible(CommentMetadataRegistry $metadata): bool
-    {
-        if (config('comments.metadata.strict', false) !== true) {
-            return true;
+    private function strictMetadataCompatible(
+        CommentMetadataRegistry $metadata,
+        bool $commentsTableReady,
+    ): bool {
+        if (! $commentsTableReady) {
+            return false;
         }
 
         $compatible = true;

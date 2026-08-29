@@ -11,17 +11,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Providers\CommentsServiceProvider;
+use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentMutationLockStore;
+use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
+use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\Tests\Fixtures\TestCommentTargetResolver;
 use Nvl\Media\Models\MediaAssociation;
 
@@ -79,6 +84,30 @@ it('reports complete schema and dependency readiness by default', function (): v
         ->and(array_key_exists('policy.public_ready', $report))->toBeFalse()
         ->and(array_key_exists('routes.management_ready', $report))->toBeFalse()
         ->and(array_key_exists('policy.management_ready', $report))->toBeFalse();
+});
+
+it('reports legacy metadata as strict incompatible before strict mode is enabled', function (): void {
+    config()->set([
+        'comments.metadata.strict' => false,
+        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'comments.metadata.digest_key' => 'doctor-metadata-test-key',
+    ]);
+    app()->forgetInstance(CommentMetadataRegistry::class);
+    $target = TestCommentTarget::query()->create(['name' => 'Doctor strict compatibility']);
+    app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Legacy metadata', metadata: [
+            'unknown_legacy_key' => 'private-legacy-value',
+        ]),
+        new CommentActorData('member', 'doctor-metadata-author'),
+    );
+
+    [$exitCode, $report] = runCommentsDoctor();
+
+    expect($exitCode)->toBe(1)
+        ->and($report['metadata.strict_compatible'])->toBeFalse()
+        ->and(json_encode($report, JSON_THROW_ON_ERROR))
+        ->not->toContain('unknown_legacy_key', 'private-legacy-value');
 });
 
 it('registers timestamp-aware migration publishing and warns about duplicate ownership', function (): void {
