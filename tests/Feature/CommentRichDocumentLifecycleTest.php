@@ -261,7 +261,10 @@ it('writes every mention field to application-owned compatible storage', functio
         $table->timestamps();
         $table->foreign('comment_id')->references('id')->on('comments')->cascadeOnDelete();
         $table->unique(['comment_id', 'token_id']);
-        $table->index(['resource_alias', 'resource_identity_hash']);
+        $table->index(
+            ['resource_alias', 'resource_identity_hash'],
+            'tenant_comment_mentions_resource_index',
+        );
         $table->index(['comment_id', 'position']);
     });
     config()->set('comments.tables.comment_mentions', $table);
@@ -624,6 +627,22 @@ it('treats an exact rich update as a no-op without creating history', function (
         $actor,
         CommentAudience::Member,
     );
+    $storedDocument = $comment->document;
+    $storedMention = $storedDocument['blocks'][0]['children'][1];
+    $storedDocument['blocks'][0]['children'][1] = [
+        'id' => $storedMention['id'],
+        'labelSnapshot' => $storedMention['labelSnapshot'],
+        'resource' => $storedMention['resource'],
+        'tokenId' => $storedMention['tokenId'],
+        'type' => $storedMention['type'],
+    ];
+    DB::table($comment->getTable())->where('id', $comment->id)->update([
+        'document' => json_encode([
+            'blocks' => $storedDocument['blocks'],
+            'version' => $storedDocument['version'],
+        ], JSON_THROW_ON_ERROR),
+    ]);
+    $comment->refresh();
 
     $unchanged = app(UpdateRichCommentAction::class)->execute(
         $comment,

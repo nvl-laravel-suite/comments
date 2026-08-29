@@ -184,8 +184,14 @@ it('uses actual application-owned metadata storage for every write and selector 
         $table->char('value_hash', 64);
         $table->timestamps();
         $table->foreign('comment_id')->references('id')->on('comments')->cascadeOnDelete();
-        $table->unique(['comment_id', 'schema_namespace', 'field_name']);
-        $table->index(['schema_namespace', 'field_name', 'value_hash']);
+        $table->unique(
+            ['comment_id', 'schema_namespace', 'field_name'],
+            'tenant_comment_metadata_identity_unique',
+        );
+        $table->index(
+            ['schema_namespace', 'field_name', 'value_hash'],
+            'tenant_comment_metadata_lookup_index',
+        );
     });
     config()->set('comments.tables.comment_metadata_values', $table);
     commentsMetadataConfigure([TestCommentMetadataSchema::class]);

@@ -638,7 +638,7 @@ it('reports invalid rich snapshots without rewriting current or historical docum
         ->and($result['repaired'])->toBe(0)
         ->and($result['remaining'])->toBe(1)
         ->and(Comment::query()->findOrFail($comment->id)->document)
-        ->toBe($invalidDocument)
+        ->toEqual($invalidDocument)
         ->and($comment->revisions()->count())->toBe(0);
 });
 

@@ -116,10 +116,13 @@ final readonly class UpdateRichCommentAction
                         ? $comment->metadata
                         : $normalizedMetadata;
                     $documentArray = $this->documents->toArray($document);
+                    $previousDocumentArray = $previousDocument === null
+                        ? null
+                        : $this->documents->toArray($previousDocument);
 
                     if ($comment->body === $body
                         && $comment->format === CommentFormat::RichText
-                        && $comment->document === $documentArray
+                        && $previousDocumentArray === $documentArray
                         && $comment->locale === $locale
                         && $comment->tags === $tags
                         && $comment->metadata === $metadata) {
