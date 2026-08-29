@@ -19,6 +19,7 @@ use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLockStore;
@@ -861,6 +862,9 @@ final class CommentsDoctorCommand extends Command
         $configurationValuesReady = $this->configurationValuesReady();
         $checks['configuration.values'] = $configurationValuesReady;
         $requiredChecks[] = $configurationValuesReady;
+        $richTextBoundsReady = $this->richTextBoundsReady();
+        $checks['rich_text.bounds_ready'] = $richTextBoundsReady;
+        $requiredChecks[] = $richTextBoundsReady;
         $migrationDuplicates = config('comments.migrations.enabled') === true
             ? $this->publishedMigrationDuplicates(dirname(__DIR__, 2).'/database/migrations')
             : [];
@@ -950,13 +954,16 @@ final class CommentsDoctorCommand extends Command
         }
 
         $metadataDigestReady = $metadata->hasStableDigestKey();
-        $metadataStrictCompatible = $this->strictMetadataCompatible(
-            $metadata,
-            ($checks['column.comments.metadata'] ?? false) === true,
-        );
+        [$metadataStrictCompatible, $metadataStrictIncompatibleRecords] =
+            $this->strictMetadataCompatibility(
+                $metadata,
+                ($checks['column.comments.metadata'] ?? false) === true,
+                ($checks['column.comment_revisions.metadata'] ?? false) === true,
+            );
         $checks['metadata.schemas_ready'] = true;
         $checks['metadata.digest_key_ready'] = $metadataDigestReady;
         $checks['metadata.strict_compatible'] = $metadataStrictCompatible;
+        $checks['metadata.strict_incompatible_records'] = $metadataStrictIncompatibleRecords;
         $requiredChecks[] = $metadataDigestReady;
         $requiredChecks[] = $metadataStrictCompatible;
 
@@ -1268,6 +1275,10 @@ final class CommentsDoctorCommand extends Command
      */
     private function configurationValuesReady(): bool
     {
+        if (! $this->richTextBoundsReady()) {
+            return false;
+        }
+
         $booleanKeys = [
             'comments.migrations.enabled',
             'comments.routes.public.enabled',
@@ -1381,6 +1392,26 @@ final class CommentsDoctorCommand extends Command
     }
 
     /**
+     * Validate every rich-document limit against its runtime hard cap.
+     */
+    private function richTextBoundsReady(): bool
+    {
+        foreach ([
+            'comments.rich_text.maximum_bytes' => 131_072,
+            'comments.rich_text.maximum_blocks' => 250,
+            'comments.rich_text.maximum_nodes' => 1_000,
+        ] as $key => $hardMaximum) {
+            $value = config($key);
+
+            if (! is_int($value) || $value < 1 || $value > $hardMaximum) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Validate hard mention caps and every server-owned resource definition.
      *
      * @return array{bool, bool, array{aliases: list<string>, ready: bool, registered: int, truncated: bool}}
@@ -1419,33 +1450,56 @@ final class CommentsDoctorCommand extends Command
 
     /**
      * Determine whether strict mode can accept every existing metadata key.
+     *
+     * @return array{bool, int}
      */
-    private function strictMetadataCompatible(
+    private function strictMetadataCompatibility(
         CommentMetadataRegistry $metadata,
         bool $commentsTableReady,
-    ): bool {
-        if (! $commentsTableReady) {
-            return false;
+        bool $revisionsTableReady,
+    ): array {
+        if (! $commentsTableReady || ! $revisionsTableReady) {
+            return [false, 0];
         }
 
-        $compatible = true;
+        $incompatibleRecords = 0;
 
         Comment::query()
             ->withTrashed()
             ->select(['id', 'metadata'])
-            ->chunkById(500, function ($comments) use ($metadata, &$compatible): void {
+            ->chunkById(500, function ($comments) use (
+                $metadata,
+                &$incompatibleRecords,
+            ): void {
                 foreach ($comments as $comment) {
                     foreach (array_keys($comment->metadata ?? []) as $storageKey) {
                         if (! $metadata->ownsStorageKey($storageKey)) {
-                            $compatible = false;
+                            $incompatibleRecords++;
 
-                            return;
+                            break;
                         }
                     }
                 }
             });
 
-        return $compatible;
+        CommentRevision::query()
+            ->select(['id', 'metadata'])
+            ->chunkById(500, function ($revisions) use (
+                $metadata,
+                &$incompatibleRecords,
+            ): void {
+                foreach ($revisions as $revision) {
+                    foreach (array_keys($revision->metadata ?? []) as $storageKey) {
+                        if (! $metadata->ownsStorageKey($storageKey)) {
+                            $incompatibleRecords++;
+
+                            break;
+                        }
+                    }
+                }
+            });
+
+        return [$incompatibleRecords === 0, $incompatibleRecords];
     }
 
     /**

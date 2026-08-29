@@ -30,7 +30,6 @@ final class PublicCommentData extends Data
      * @param  list<string>|Optional  $tags
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<CommentReactionSummaryData>|Optional  $reactions
-     * @param  array<string, mixed>|Optional  $document
      * @param  list<CommentMentionData>|Optional  $mentions
      */
     public function __construct(
@@ -57,8 +56,7 @@ final class PublicCommentData extends Data
         public readonly array|Optional $reactions,
         public readonly string $createdAt,
         public readonly string $updatedAt,
-        #[LiteralTypeScriptType('Record<string, unknown>')]
-        public readonly array|Optional $document = new Optional,
+        public readonly CommentViewerDocumentData|Optional $document = new Optional,
         #[DataCollectionOf(CommentMentionData::class)]
         public readonly array|Optional $mentions = new Optional,
     ) {}
@@ -68,7 +66,6 @@ final class PublicCommentData extends Data
      *
      * @param  list<CommentReactionSummaryData>  $reactions
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
-     * @param  array<string, mixed>|Optional  $document
      * @param  list<CommentMentionData>|Optional  $mentions
      */
     public static function fromModel(
@@ -78,7 +75,7 @@ final class PublicCommentData extends Data
         array $reactions,
         int $attachmentCount = 0,
         array|Optional $metadata = new Optional,
-        array|Optional $document = new Optional,
+        CommentViewerDocumentData|Optional $document = new Optional,
         array|Optional $mentions = new Optional,
     ): self {
         $tombstone = self::isTombstone($comment);

@@ -26,6 +26,10 @@ final class CommentMentionResourceRegistry
 {
     private const int MAXIMUM_DIAGNOSTIC_ALIASES = 100;
 
+    private const int MAXIMUM_DECLARATIVE_FIELDS = 25;
+
+    private const int MAXIMUM_DECLARATIVE_FIELD_NAME_BYTES = 64;
+
     /**
      * @var array<string, array{resolver: class-string<CommentMentionResourceResolver>|CommentMentionResourceResolver, public: bool}>
      */
@@ -124,10 +128,9 @@ final class CommentMentionResourceRegistry
         if (is_string($resolver)) {
             try {
                 $resolved = $this->container->make($resolver);
-            } catch (Throwable $exception) {
+            } catch (Throwable) {
                 throw new InvalidArgumentException(
                     'Comment mention resource resolvers must be container-resolvable.',
-                    previous: $exception,
                 );
             }
 
@@ -185,8 +188,8 @@ final class CommentMentionResourceRegistry
             );
         }
 
-        $searchable = $this->fields($searchableFields);
-        $exposed = $this->fields($exposedFields);
+        $searchable = $this->fields($searchableFields, 'searchable');
+        $exposed = $this->fields($exposedFields, 'exposed');
 
         if ($searchable === []
             || $exposed === []
@@ -213,10 +216,13 @@ final class CommentMentionResourceRegistry
             );
         }
 
-        $sensitive = array_unique([...$model->getHidden(), ...$model->getGuarded()]);
+        $explicitlyGuarded = array_values(array_filter(
+            $model->getGuarded(),
+            static fn (string $field): bool => $field !== '*',
+        ));
+        $sensitive = array_unique([...$model->getHidden(), ...$explicitlyGuarded]);
 
-        if (in_array('*', $model->getGuarded(), true)
-            || array_intersect($requiredColumns, $sensitive) !== []) {
+        if (array_intersect($requiredColumns, $sensitive) !== []) {
             throw new InvalidArgumentException(
                 'Declarative comment mention fields must not expose hidden or guarded attributes.',
             );
@@ -351,10 +357,9 @@ final class CommentMentionResourceRegistry
 
         try {
             $resolved = $resolver->suggest($context, $query, $limit);
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             throw new InvalidCommentMutationException(
                 'Comment mention resolution returned an invalid suggestion batch.',
-                previous: $exception,
             );
         }
 
@@ -448,10 +453,9 @@ final class CommentMentionResourceRegistry
             $resolver = is_string($registered)
                 ? $this->container->make($registered)
                 : $registered;
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             throw new InvalidArgumentException(
                 'The configured comment mention resource resolver is invalid.',
-                previous: $exception,
             );
         }
 
@@ -479,10 +483,9 @@ final class CommentMentionResourceRegistry
 
         try {
             return $resolver->resolve($context, $ids);
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             throw new InvalidCommentMutationException(
                 'Comment mention resolution returned an invalid resource batch.',
-                previous: $exception,
             );
         }
     }
@@ -581,7 +584,7 @@ final class CommentMentionResourceRegistry
      * @param  array<array-key, mixed>  $fields
      * @return list<string>
      */
-    private function fields(array $fields): array
+    private function fields(array $fields, string $kind): array
     {
         if (! array_is_list($fields)) {
             throw new InvalidArgumentException(
@@ -589,10 +592,17 @@ final class CommentMentionResourceRegistry
             );
         }
 
+        if (count($fields) > self::MAXIMUM_DECLARATIVE_FIELDS) {
+            throw new InvalidArgumentException(
+                "Declarative comment mention {$kind} fields exceed the package boundary.",
+            );
+        }
+
         $validated = [];
 
         foreach ($fields as $field) {
             if (! is_string($field)
+                || strlen($field) > self::MAXIMUM_DECLARATIVE_FIELD_NAME_BYTES
                 || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field) !== 1
                 || in_array($field, $validated, true)) {
                 throw new InvalidArgumentException(

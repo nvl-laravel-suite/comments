@@ -32,11 +32,14 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
+use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentCreationWriter;
 use Nvl\Comments\Services\CommentDocumentNormalizer;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
+use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
+use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 
@@ -974,3 +977,86 @@ it('rolls back revision restore when its stored rich snapshot is malformed', fun
         ->and($updated->mentions()->sole()->token_id)->toBe($currentToken)
         ->and($updated->revisions()->count())->toBe(1);
 });
+
+it('rejects changed or removed immutable metadata from historical rich snapshots atomically', function (
+    array $historicalMetadata,
+): void {
+    commentsRichRegisterResolver();
+    config()->set([
+        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'comments.metadata.digest_key' => 'immutable-rich-restore-test-key',
+    ]);
+    app()->forgetInstance(CommentMetadataRegistry::class);
+    $target = TestCommentTarget::query()->create(['name' => 'Immutable rich restore']);
+    $actor = new CommentActorData('member', 'immutable-rich-author');
+    $recipient = (string) Str::uuid();
+    $comment = app(CreateRichCommentAction::class)->execute(
+        $target,
+        new CreateRichCommentData(
+            document: new CommentDocumentData(...commentsRichDocument()),
+            metadata: ['recipient_user_id' => $recipient],
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+    $updated = app(UpdateRichCommentAction::class)->execute(
+        $comment,
+        new UpdateRichCommentData(
+            document: new CommentDocumentData(...commentsRichDocument()),
+            expectedRevision: 1,
+            metadata: ['recipient_user_id' => $recipient],
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+    $historical = $updated->revisions()->where('revision', 1)->sole();
+    $historical->forceFill(['metadata' => $historicalMetadata])->saveQuietly();
+    $before = [
+        'comment' => $updated->fresh()?->getAttributes(),
+        'metadata_indexes' => CommentMetadataValue::query()
+            ->where('comment_id', $updated->id)
+            ->orderBy('field_name')
+            ->get()
+            ->toArray(),
+        'mentions' => CommentMention::query()
+            ->where('comment_id', $updated->id)
+            ->orderBy('position')
+            ->get()
+            ->toArray(),
+        'revisions' => CommentRevision::query()
+            ->where('comment_id', $updated->id)
+            ->orderBy('revision')
+            ->get()
+            ->toArray(),
+    ];
+
+    expect(fn () => app(RestoreCommentRevisionAction::class)->execute(
+        $updated,
+        $historical,
+        new RestoreCommentRevisionData(expectedRevision: 2),
+        $actor,
+        CommentAudience::Member,
+    ))->toThrow(InvalidCommentMutationException::class, 'immutable field change');
+
+    expect($updated->fresh()?->getAttributes())->toBe($before['comment'])
+        ->and(CommentMetadataValue::query()
+            ->where('comment_id', $updated->id)
+            ->orderBy('field_name')
+            ->get()
+            ->toArray())->toBe($before['metadata_indexes'])
+        ->and(CommentMention::query()
+            ->where('comment_id', $updated->id)
+            ->orderBy('position')
+            ->get()
+            ->toArray())->toBe($before['mentions'])
+        ->and(CommentRevision::query()
+            ->where('comment_id', $updated->id)
+            ->orderBy('revision')
+            ->get()
+            ->toArray())->toBe($before['revisions']);
+})->with([
+    'changed immutable field' => [[
+        'recipient_user_id' => '0198ef65-9f91-72a5-a1f0-1d8aa20a8631',
+    ]],
+    'removed immutable field' => [[]],
+]);

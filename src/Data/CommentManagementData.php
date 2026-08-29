@@ -26,7 +26,6 @@ final class CommentManagementData extends Data
     /**
      * @param  list<string>|Optional  $tags
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
-     * @param  array<string, mixed>|Optional  $document
      * @param  list<CommentMentionData>|Optional  $mentions
      */
     public function __construct(
@@ -69,8 +68,7 @@ final class CommentManagementData extends Data
         public readonly ?string $anonymizationReason,
         public readonly string $createdAt,
         public readonly string $updatedAt,
-        #[LiteralTypeScriptType('Record<string, unknown>')]
-        public readonly array|Optional $document = new Optional,
+        public readonly CommentViewerDocumentData|Optional $document = new Optional,
         #[DataCollectionOf(CommentMentionData::class)]
         public readonly array|Optional $mentions = new Optional,
     ) {}
@@ -79,7 +77,6 @@ final class CommentManagementData extends Data
      * Build a privileged comment projection with lifetime and actionable report counts.
      *
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
-     * @param  array<string, mixed>|Optional  $document
      * @param  list<CommentMentionData>|Optional  $mentions
      */
     public static function fromModel(
@@ -87,7 +84,7 @@ final class CommentManagementData extends Data
         int $replyCount,
         bool $includeActorIdentity = false,
         array|Optional $metadata = new Optional,
-        array|Optional $document = new Optional,
+        CommentViewerDocumentData|Optional $document = new Optional,
         array|Optional $mentions = new Optional,
     ): self {
         $tombstone = $comment->trashed() || $comment->anonymized_at !== null;

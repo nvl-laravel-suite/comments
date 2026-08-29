@@ -129,6 +129,7 @@ final readonly class RestoreCommentRevisionAction
                                 : null;
                         $restoredMetadata = $this->metadataGuard->normalize(
                             $revision->metadata ?? [],
+                            $currentMetadata,
                         );
 
                         $currentRevision = CommentRevision::query()->create([

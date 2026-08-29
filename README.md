@@ -265,7 +265,11 @@ ownership of sensitive domain authorization:
 Aliases, searchable/exposed columns, labels, URLs, and authorization are always
 server-owned. Declarative queries select only the model key, label, and exposed
 fields; escape SQL wildcards; apply the configured authorization scope; order
-deterministically; and use bounded parameterized queries. Custom resolvers
+deterministically; and use bounded parameterized queries. Searchable and exposed
+lists each accept at most 25 unique ASCII column names of at most 64 bytes.
+Laravel's default `guarded = ['*']` sentinel remains compatible with this
+explicit mention allowlist, while explicitly guarded and hidden columns remain
+forbidden. Custom resolvers
 implement `CommentMentionResourceResolver`. A custom public resolver must also
 implement `ViewerIndependentCommentMentionResource`; otherwise public shared
 projections use only immutable label snapshots and never call it.

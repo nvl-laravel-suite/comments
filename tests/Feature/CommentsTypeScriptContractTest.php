@@ -84,3 +84,21 @@ it('exports every viewer and event mention contract to generated TypeScript', fu
         ->and((new ReflectionProperty(CommentMentionData::class, 'currentLabel'))->getType())
         ->not->toBeNull();
 });
+
+it('generates exact named input and viewer rich-document unions', function (): void {
+    $declarations = (string) file_get_contents(
+        dirname(__DIR__, 5).'/resources/js/types/generated/comments.d.ts',
+    );
+
+    expect($declarations)->toContain(
+        "export type CommentDocumentNodeData = { type: 'text'; text: string } | { type: 'hard_break' } | { type: 'mention'; tokenId: string; resource: string; id: string | number };",
+        "export type CommentViewerDocumentNodeData = { type: 'text'; text: string } | { type: 'hard_break' } | { type: 'mention'; tokenId: string; resource: string; state: Nvl.Comments.Enums.CommentMentionState; label: string };",
+        'version: 1,',
+        'blocks: Array<Nvl.Comments.Data.Mutations.CommentDocumentBlockData>,',
+        'blocks: Array<Nvl.Comments.Data.CommentViewerDocumentBlockData>,',
+        'document?: Nvl.Comments.Data.CommentViewerDocumentData,',
+    )->and(substr_count(
+        $declarations,
+        'document?: Nvl.Comments.Data.CommentViewerDocumentData,',
+    ))->toBe(3);
+});

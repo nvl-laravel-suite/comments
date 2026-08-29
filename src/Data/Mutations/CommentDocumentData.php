@@ -28,8 +28,9 @@ final class CommentDocumentData extends Data
      * @param  array<array-key, mixed>  $blocks
      */
     public function __construct(
+        #[LiteralTypeScriptType('1')]
         public readonly int $version,
-        #[LiteralTypeScriptType('Array<Record<string, unknown>>')]
+        #[LiteralTypeScriptType('Array<Nvl.Comments.Data.Mutations.CommentDocumentBlockData>')]
         public readonly array $blocks,
     ) {}
 

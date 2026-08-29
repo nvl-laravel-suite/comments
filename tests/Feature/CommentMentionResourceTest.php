@@ -12,6 +12,7 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
+use Nvl\Comments\Tests\Fixtures\DefaultGuardedCommentMentionResource;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionAuthorization;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResource;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
@@ -126,6 +127,27 @@ it('resolves declarative Eloquent resources through authorization and allowliste
         ->and($resolved[1]->label)->toBeNull()
         ->and($resolved[2]->state)->toBe(CommentMentionState::Missing)
         ->and($resolved[3]->state)->toBe(CommentMentionState::Missing);
+});
+
+it('registers explicitly allowlisted models that retain Laravel default wildcard guarding', function (): void {
+    $registry = app(CommentMentionResourceRegistry::class);
+    $registered = true;
+
+    try {
+        $registry->registerEloquent('default-guarded', [
+            'model' => DefaultGuardedCommentMentionResource::class,
+            'searchable_fields' => ['name', 'registration_number'],
+            'exposed_fields' => ['name', 'registration_number'],
+            'label_field' => 'name',
+            'authorization' => TestCommentMentionAuthorization::class,
+            'public' => false,
+        ]);
+    } catch (InvalidArgumentException) {
+        $registered = false;
+    }
+
+    expect($registered)->toBeTrue()
+        ->and($registry->has('default-guarded'))->toBeTrue();
 });
 
 it('returns deterministic bounded suggestions and escapes SQL wildcard input', function (): void {
@@ -283,6 +305,46 @@ it('rejects alias collisions invalid classes and unsafe declarative fields', fun
             'url_resolver' => stdClass::class,
             'public' => false,
         ]))->toThrow(InvalidArgumentException::class, 'URL resolver');
+});
+
+it('rejects declarative field lists beyond the result boundary before querying schema', function (
+    string $list,
+): void {
+    $fields = array_map(
+        static fn (int $field): string => "field_{$field}",
+        range(1, 26),
+    );
+    $definition = [
+        'model' => TestCommentMentionResource::class,
+        'searchable_fields' => ['name'],
+        'exposed_fields' => ['name'],
+        'label_field' => 'name',
+        'authorization' => TestCommentMentionAuthorization::class,
+        'public' => false,
+    ];
+    $definition[$list] = $fields;
+
+    expect(fn () => app(CommentMentionResourceRegistry::class)->registerEloquent(
+        "bounded-{$list}",
+        $definition,
+    ))->toThrow(InvalidArgumentException::class, 'exceed the package boundary');
+})->with([
+    'searchable fields' => ['searchable_fields'],
+    'exposed fields' => ['exposed_fields'],
+]);
+
+it('rejects declarative field names beyond the DTO key byte boundary', function (): void {
+    expect(fn () => app(CommentMentionResourceRegistry::class)->registerEloquent(
+        'overlong-field',
+        [
+            'model' => TestCommentMentionResource::class,
+            'searchable_fields' => [str_repeat('a', 65)],
+            'exposed_fields' => ['name'],
+            'label_field' => 'name',
+            'authorization' => TestCommentMentionAuthorization::class,
+            'public' => false,
+        ],
+    ))->toThrow(InvalidArgumentException::class, 'fields are invalid');
 });
 
 it('enforces hard query suggestion and batch bounds', function (): void {

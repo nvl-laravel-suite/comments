@@ -12,15 +12,18 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Nvl\Comments\Actions\CreateCommentAction;
+use Nvl\Comments\Actions\UpdateCommentAction;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
+use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
@@ -51,6 +54,11 @@ function runCommentsDoctor(): array
 
 it('reports complete schema and dependency readiness by default', function (): void {
     [$exitCode, $report] = runCommentsDoctor();
+
+    expect($report)->toHaveKeys([
+        'rich_text.bounds_ready',
+        'metadata.strict_incompatible_records',
+    ]);
 
     expect($exitCode)->toBe(0)
         ->and($report['table.comments'])->toBeTrue()
@@ -84,9 +92,11 @@ it('reports complete schema and dependency readiness by default', function (): v
         ->and($report['mentions.aliases'])->toBe([])
         ->and($report['mentions.registered'])->toBe(0)
         ->and($report['mentions.aliases_truncated'])->toBeFalse()
+        ->and($report['rich_text.bounds_ready'])->toBeTrue()
         ->and($report['metadata.schemas_ready'])->toBeTrue()
         ->and($report['metadata.digest_key_ready'])->toBeTrue()
         ->and($report['metadata.strict_compatible'])->toBeTrue()
+        ->and($report['metadata.strict_incompatible_records'])->toBe(0)
         ->and($report['targets'])->toBe(['article'])
         ->and($report['targets.ready'])->toBeTrue()
         ->and($report['attachments.connection_ready'])->toBeTrue()
@@ -176,11 +186,98 @@ it('reports legacy metadata as strict incompatible before strict mode is enabled
 
     [$exitCode, $report] = runCommentsDoctor();
 
+    expect($report)->toHaveKey('metadata.strict_incompatible_records');
+
     expect($exitCode)->toBe(1)
         ->and($report['metadata.strict_compatible'])->toBeFalse()
+        ->and($report['metadata.strict_incompatible_records'])->toBe(1)
         ->and(json_encode($report, JSON_THROW_ON_ERROR))
         ->not->toContain('unknown_legacy_key', 'private-legacy-value');
 });
+
+it('reports revision-only legacy metadata without exposing historical keys or values', function (): void {
+    config()->set([
+        'comments.metadata.strict' => false,
+        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'comments.metadata.digest_key' => 'doctor-revision-metadata-test-key',
+    ]);
+    app()->forgetInstance(CommentMetadataRegistry::class);
+    $target = TestCommentTarget::query()->create(['name' => 'Doctor revision compatibility']);
+    $actor = new CommentActorData('member', 'doctor-revision-author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Original', metadata: ['workflow_event' => 'created']),
+        $actor,
+    );
+    app(UpdateCommentAction::class)->execute(
+        $comment,
+        new UpdateCommentData(
+            body: 'Updated',
+            expectedRevision: 1,
+            metadata: ['workflow_event' => 'created'],
+        ),
+        $actor,
+    );
+    CommentRevision::query()->where('comment_id', $comment->id)->sole()->forceFill([
+        'metadata' => [
+            'revision_only_secret_key' => 'revision-only-secret-value',
+        ],
+    ])->saveQuietly();
+
+    [$exitCode, $report] = runCommentsDoctor();
+    $serialized = json_encode($report, JSON_THROW_ON_ERROR);
+
+    expect($report)->toHaveKey('metadata.strict_incompatible_records');
+
+    expect($exitCode)->toBe(1)
+        ->and($report['metadata.strict_compatible'])->toBeFalse()
+        ->and($report['metadata.strict_incompatible_records'])->toBe(1)
+        ->and($serialized)->not->toContain(
+            'revision_only_secret_key',
+            'revision-only-secret-value',
+        );
+});
+
+it('accepts valid configured rich-document lows', function (): void {
+    config()->set([
+        'comments.rich_text.maximum_bytes' => 1,
+        'comments.rich_text.maximum_blocks' => 1,
+        'comments.rich_text.maximum_nodes' => 1,
+    ]);
+
+    [$exitCode, $report] = runCommentsDoctor();
+
+    expect($report)->toHaveKey('rich_text.bounds_ready');
+
+    expect($exitCode)->toBe(0)
+        ->and($report['configuration.values'])->toBeTrue()
+        ->and($report['rich_text.bounds_ready'])->toBeTrue()
+        ->and($report['healthy'])->toBeTrue();
+});
+
+it('rejects invalid rich-document configuration bounds', function (
+    string $key,
+    mixed $value,
+): void {
+    config()->set($key, $value);
+
+    [$exitCode, $report] = runCommentsDoctor();
+
+    expect($exitCode)->toBe(1)
+        ->and($report['configuration.values'])->toBeFalse()
+        ->and($report['rich_text.bounds_ready'])->toBeFalse()
+        ->and($report['healthy'])->toBeFalse();
+})->with([
+    'bytes invalid type' => ['comments.rich_text.maximum_bytes', '32768'],
+    'bytes zero' => ['comments.rich_text.maximum_bytes', 0],
+    'bytes above hard cap' => ['comments.rich_text.maximum_bytes', 131_073],
+    'blocks invalid type' => ['comments.rich_text.maximum_blocks', '100'],
+    'blocks zero' => ['comments.rich_text.maximum_blocks', 0],
+    'blocks above hard cap' => ['comments.rich_text.maximum_blocks', 251],
+    'nodes invalid type' => ['comments.rich_text.maximum_nodes', '500'],
+    'nodes zero' => ['comments.rich_text.maximum_nodes', 0],
+    'nodes above hard cap' => ['comments.rich_text.maximum_nodes', 1_001],
+]);
 
 it('registers timestamp-aware migration publishing and warns about duplicate ownership', function (): void {
     $migrationPath = realpath(dirname(__DIR__, 2).'/database/migrations');

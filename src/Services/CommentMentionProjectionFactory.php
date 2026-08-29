@@ -10,6 +10,8 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentMentionData;
 use Nvl\Comments\Data\CommentMentionReferenceData;
 use Nvl\Comments\Data\CommentMentionResourceData;
+use Nvl\Comments\Data\CommentViewerDocumentBlockData;
+use Nvl\Comments\Data\CommentViewerDocumentData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
@@ -36,7 +38,7 @@ final readonly class CommentMentionProjectionFactory
      * Project one authorized comment batch with one bounded lookup per resource alias.
      *
      * @param  Collection<int, Comment>  $comments
-     * @return array<string, array{document: array<string, mixed>|Optional, mentions: list<CommentMentionData>|Optional}>
+     * @return array<string, array{document: CommentViewerDocumentData|Optional, mentions: list<CommentMentionData>|Optional}>
      */
     public function project(
         Collection $comments,
@@ -135,12 +137,11 @@ final readonly class CommentMentionProjectionFactory
      * Build a viewer-shaped document that omits every stored opaque resource identifier.
      *
      * @param  list<CommentMentionData>  $mentions
-     * @return array{version: int, blocks: list<array{type: string, children: list<array<string, mixed>>}>}
      */
     private function viewerDocument(
         CommentDocumentData $document,
         array $mentions,
-    ): array {
+    ): CommentViewerDocumentData {
         $byToken = [];
 
         foreach ($mentions as $mention) {
@@ -169,10 +170,13 @@ final readonly class CommentMentionProjectionFactory
                 ];
             }
 
-            $blocks[] = ['type' => 'paragraph', 'children' => $children];
+            $blocks[] = new CommentViewerDocumentBlockData(
+                type: 'paragraph',
+                children: $children,
+            );
         }
 
-        return ['version' => 1, 'blocks' => $blocks];
+        return new CommentViewerDocumentData(version: 1, blocks: $blocks);
     }
 
     /**

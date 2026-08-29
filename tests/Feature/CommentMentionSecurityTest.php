@@ -6,6 +6,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Nvl\Comments\Actions\CreateRichCommentAction;
 use Nvl\Comments\Actions\ResolveCommentMentionsAction;
@@ -149,6 +150,74 @@ function commentsMentionSecurityMalformedResource(string $case): CommentMentionR
         ),
     };
 }
+
+it('redacts secret-bearing resolver failures from exception and log serialization', function (): void {
+    $secret = 'tenant=acme resource=org-private sql=select-secret-label';
+    $resolver = new class($secret) implements CommentMentionResourceResolver
+    {
+        /**
+         * Create the secret-bearing failing resolver.
+         */
+        public function __construct(private readonly string $secret) {}
+
+        /**
+         * Fail resource resolution with host-owned sensitive diagnostics.
+         *
+         * @param  list<string>  $ids
+         * @return SupportCollection<int, CommentMentionResourceData>
+         */
+        public function resolve(
+            CommentMentionContext $context,
+            array $ids,
+        ): SupportCollection {
+            throw new RuntimeException($this->secret);
+        }
+
+        /**
+         * Fail suggestions with host-owned sensitive diagnostics.
+         *
+         * @return SupportCollection<int, CommentMentionResourceData>
+         */
+        public function suggest(
+            CommentMentionContext $context,
+            string $query,
+            int $limit,
+        ): SupportCollection {
+            throw new RuntimeException($this->secret);
+        }
+    };
+    $registry = app(CommentMentionResourceRegistry::class);
+    $registry->register('failing', $resolver);
+    $context = new CommentMentionContext(
+        target: TestCommentTarget::query()->create(['name' => 'Resolver privacy']),
+        actor: new CommentActorData('member', 'tenant-a'),
+        audience: CommentAudience::Member,
+    );
+
+    foreach ([
+        fn () => $registry->resolve('failing', $context, ['org-private']),
+        fn () => $registry->suggest('failing', $context, 'private', 10),
+    ] as $operation) {
+        try {
+            $operation();
+        } catch (InvalidCommentMutationException $exception) {
+            $path = storage_path('logs/comment-mention-resolver-privacy.log');
+            @unlink($path);
+            Log::build(['driver' => 'single', 'path' => $path])
+                ->error('Comment mention resolution failed', ['exception' => $exception]);
+            $logged = (string) file_get_contents($path);
+            @unlink($path);
+
+            expect($exception->getPrevious())->toBeNull()
+                ->and((string) $exception)->not->toContain($secret)
+                ->and($logged)->not->toContain($secret);
+
+            continue;
+        }
+
+        $this->fail('The failing resolver did not raise a package domain exception.');
+    }
+});
 
 it('projects member rich documents without serializing stored opaque IDs', function (): void {
     commentsMentionSecurityRegisterCustom();
