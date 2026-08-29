@@ -25,6 +25,7 @@ final class TestCommentMentionResourceResolver implements CommentMentionResource
         $labels = [
             'org-1' => 'Организация',
             'org-2' => 'Second Organization',
+            'org-long' => str_repeat('界', 255),
         ];
 
         return collect($ids)

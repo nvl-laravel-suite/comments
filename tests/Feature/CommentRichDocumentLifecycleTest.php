@@ -9,16 +9,20 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Nvl\Comments\Actions\AnonymizeCommentAction;
+use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Actions\CreateRichCommentAction;
 use Nvl\Comments\Actions\DeleteCommentAction;
 use Nvl\Comments\Actions\RestoreCommentRevisionAction;
+use Nvl\Comments\Actions\UpdateCommentAction;
 use Nvl\Comments\Actions\UpdateRichCommentAction;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
+use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Data\Mutations\RestoreCommentRevisionData;
+use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAudience;
@@ -29,6 +33,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
 use Nvl\Comments\Models\CommentRevision;
+use Nvl\Comments\Services\CommentCreationWriter;
 use Nvl\Comments\Services\CommentDocumentNormalizer;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
@@ -72,6 +77,85 @@ function commentsRichDocument(?string $tokenId = null): array
         ]],
     ];
 }
+
+/**
+ * Create the minimal application-owned rich comment storage contract.
+ */
+function commentsRichCreateApplicationOwnedTables(): void
+{
+    Schema::create('tenant_comments', function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+        $table->string('commentable_type', 100);
+        $table->string('commentable_id', 255);
+        $table->char('commentable_identity_hash', 64);
+        $table->uuid('root_id')->nullable();
+        $table->uuid('parent_id')->nullable();
+        $table->unsignedSmallInteger('depth')->default(0);
+        $table->string('actor_type', 100)->nullable();
+        $table->string('actor_id', 255)->nullable();
+        $table->char('actor_identity_hash', 64)->nullable();
+        $table->uuid('idempotency_key')->nullable()->unique();
+        $table->char('idempotency_hash', 64)->nullable();
+        $table->text('body');
+        $table->string('format', 32)->default('plain');
+        $table->string('locale', 35)->nullable();
+        $table->string('status', 32)->default('pending');
+        $table->char('status_hash', 64);
+        $table->string('visibility', 32)->default('public');
+        $table->char('visibility_hash', 64);
+        $table->json('tags')->nullable();
+        $table->json('metadata')->nullable();
+        $table->json('document')->nullable();
+        $table->unsignedBigInteger('revision')->default(1);
+        $table->unsignedInteger('reply_count')->default(0);
+        $table->unsignedInteger('reaction_count')->default(0);
+        $table->unsignedInteger('report_count')->default(0);
+        $table->unsignedInteger('open_report_count')->default(0);
+        $table->boolean('is_pinned')->default(false);
+        $table->timestamp('edited_at')->nullable();
+        $table->timestamp('anonymized_at')->nullable();
+        $table->timestamps();
+        $table->softDeletes();
+    });
+    Schema::create('tenant_comment_revisions', function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+        $table->uuid('comment_id');
+        $table->unsignedBigInteger('revision');
+        $table->text('body');
+        $table->string('format', 32);
+        $table->string('locale', 35)->nullable();
+        $table->json('tags')->nullable();
+        $table->json('metadata')->nullable();
+        $table->json('document')->nullable();
+        $table->string('edited_by_type', 100)->nullable();
+        $table->string('edited_by', 255)->nullable();
+        $table->timestamp('created_at')->useCurrent();
+        $table->foreign('comment_id')->references('id')->on('tenant_comments')->cascadeOnDelete();
+        $table->unique(['comment_id', 'revision']);
+    });
+    Schema::create('tenant_comment_mentions', function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+        $table->uuid('comment_id');
+        $table->uuid('token_id');
+        $table->string('resource_alias', 100);
+        $table->string('resource_id', 255);
+        $table->char('resource_identity_hash', 64);
+        $table->string('label_snapshot', 255);
+        $table->unsignedSmallInteger('position');
+        $table->timestamps();
+        $table->foreign('comment_id')->references('id')->on('tenant_comments')->cascadeOnDelete();
+        $table->unique(['comment_id', 'token_id']);
+    });
+}
+
+it('keeps both public creation actions as thin dedicated entrypoints', function (): void {
+    foreach ([CreateCommentAction::class, CreateRichCommentAction::class] as $actionClass) {
+        $parameters = (new ReflectionClass($actionClass))->getConstructor()?->getParameters();
+
+        expect($parameters)->toHaveCount(1)
+            ->and($parameters[0]->getType()?->getName())->toBe(CommentCreationWriter::class);
+    }
+});
 
 it('creates forward-only rich document and normalized mention storage', function (): void {
     expect(Schema::hasColumns(CommentsTables::Comments, ['document']))->toBeTrue()
@@ -187,6 +271,43 @@ it('writes every mention field to application-owned compatible storage', functio
         'created_at',
         'updated_at',
     ]);
+});
+
+it('writes rich comments revision documents and mentions to application-owned storage', function (): void {
+    commentsRichCreateApplicationOwnedTables();
+    config()->set('comments.tables.comments', 'tenant_comments');
+    config()->set('comments.tables.comment_revisions', 'tenant_comment_revisions');
+    config()->set('comments.tables.comment_mentions', 'tenant_comment_mentions');
+    commentsRichRegisterResolver();
+    $target = TestCommentTarget::query()->create(['name' => 'Application owned rich lifecycle']);
+    $actor = new CommentActorData('member', 'application-owned-rich-author');
+    $comment = app(CreateRichCommentAction::class)->execute(
+        $target,
+        new CreateRichCommentData(new CommentDocumentData(...commentsRichDocument())),
+        $actor,
+        CommentAudience::Member,
+    );
+    $updated = app(UpdateRichCommentAction::class)->execute(
+        $comment,
+        new UpdateRichCommentData(
+            new CommentDocumentData(...commentsRichDocument()),
+            expectedRevision: 1,
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect(DB::table('tenant_comments')->where('id', $comment->id)->value('document'))
+        ->not->toBeNull()
+        ->and(DB::table('tenant_comment_revisions')->where('comment_id', $comment->id)->value('document'))
+        ->not->toBeNull()
+        ->and(DB::table('tenant_comment_mentions')->where('comment_id', $comment->id)->count())
+        ->toBe(1)
+        ->and(DB::table(CommentsTables::Comments)->where('id', $comment->id)->exists())
+        ->toBeFalse()
+        ->and($updated->getTable())->toBe('tenant_comments')
+        ->and($updated->revisions()->sole()->getTable())->toBe('tenant_comment_revisions')
+        ->and($updated->mentions()->sole()->getTable())->toBe('tenant_comment_mentions');
 });
 
 it('normalizes strict version one documents and derives unicode plain text', function (): void {
@@ -323,6 +444,61 @@ it('rejects duplicate tokens and unknown resource aliases', function (): void {
             new CommentDocumentData(...$unknown),
             $context,
         ))->toThrow(InvalidCommentMutationException::class);
+});
+
+it('rejects case-variant duplicate mention tokens before persistence', function (): void {
+    commentsRichRegisterResolver();
+    $target = TestCommentTarget::query()->create(['name' => 'Case duplicate token target']);
+    $token = (string) Str::uuid();
+    $document = commentsRichDocument(strtoupper($token));
+    $document['blocks'][0]['children'][] = [
+        'type' => 'mention',
+        'tokenId' => strtolower($token),
+        'resource' => 'organization',
+        'id' => 'org-2',
+    ];
+
+    expect(fn () => app(CommentDocumentNormalizer::class)->normalizeUnresolved(
+        new CommentDocumentData(...$document),
+    ))->toThrow(
+        InvalidCommentMutationException::class,
+        'invalid or duplicate mention token',
+    );
+});
+
+it('rejects rich format mutations through both legacy actions', function (): void {
+    config()->set('comments.content.allowed_formats', ['plain', 'markdown', 'rich_text']);
+    $target = TestCommentTarget::query()->create(['name' => 'Legacy rich action target']);
+    $actor = new CommentActorData('member', 'legacy-rich-author');
+
+    expect(fn () => app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Bypass', format: CommentFormat::RichText),
+        $actor,
+        CommentAudience::Member,
+    ))->toThrow(InvalidCommentMutationException::class)
+        ->and(Comment::query()->where('commentable_id', $target->getKey())->count())->toBe(0);
+
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Plain'),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect(fn () => app(UpdateCommentAction::class)->execute(
+        $comment,
+        new UpdateCommentData(
+            body: 'Bypass update',
+            expectedRevision: 1,
+            format: CommentFormat::RichText,
+        ),
+        $actor,
+        CommentAudience::Member,
+    ))->toThrow(InvalidCommentMutationException::class)
+        ->and($comment->refresh()->format)->toBe(CommentFormat::Plain)
+        ->and($comment->document)->toBeNull()
+        ->and($comment->mentions()->count())->toBe(0);
 });
 
 it('updates and restores rich revisions with exact current mention rows', function (): void {
@@ -603,4 +779,198 @@ it('enforces configured block node byte mention and resource bounds', function (
         new CommentDocumentData(...$tooManyResources),
         $context,
     ))->toThrow(InvalidCommentMutationException::class);
+});
+
+it('rejects documents that exceed the byte ceiling after server labels are added', function (): void {
+    commentsRichRegisterResolver();
+    config()->set('comments.rich_text.maximum_bytes', 400);
+    $target = TestCommentTarget::query()->create(['name' => 'Resolved byte bound target']);
+    $document = commentsRichDocument();
+    $document['blocks'][0]['children'][1]['id'] = 'org-long';
+    $context = new CommentMentionContext(
+        $target,
+        new CommentActorData('member', 'resolved-byte-author'),
+        CommentAudience::Member,
+    );
+
+    expect(strlen(json_encode($document, JSON_THROW_ON_ERROR)))->toBeLessThan(400)
+        ->and(fn () => app(CommentDocumentNormalizer::class)->normalizeInput(
+            new CommentDocumentData(...$document),
+            $context,
+        ))->toThrow(InvalidCommentMutationException::class);
+});
+
+it('enforces every hard rich document and mention ceiling above host configuration', function (): void {
+    commentsRichRegisterResolver();
+    $target = TestCommentTarget::query()->create(['name' => 'Hard rich bounds target']);
+    $context = new CommentMentionContext(
+        $target,
+        new CommentActorData('member', 'hard-bounds-author'),
+        CommentAudience::Member,
+    );
+    $normalizer = app(CommentDocumentNormalizer::class);
+
+    config()->set('comments.rich_text.maximum_blocks', 10_000);
+    config()->set('comments.rich_text.maximum_nodes', 10_000);
+    config()->set('comments.rich_text.maximum_bytes', 1_000_000);
+    config()->set('comments.mentions.maximum_per_comment', 10_000);
+    config()->set('comments.mentions.maximum_resource_types_per_comment', 10_000);
+    config()->set('comments.mentions.maximum_batch_size', 10_000);
+
+    $blockOverflow = [
+        'version' => 1,
+        'blocks' => array_fill(0, 251, [
+            'type' => 'paragraph',
+            'children' => [['type' => 'text', 'text' => 'x']],
+        ]),
+    ];
+    $nodeOverflow = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'children' => array_fill(0, 1_001, ['type' => 'text', 'text' => 'x']),
+        ]],
+    ];
+    $byteOverflow = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'children' => [['type' => 'text', 'text' => str_repeat('x', 131_073)]],
+        ]],
+    ];
+    $mentionOverflow = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'children' => array_map(
+                static fn (int $position): array => [
+                    'type' => 'mention',
+                    'tokenId' => (string) Str::uuid(),
+                    'resource' => 'organization',
+                    'id' => "org-{$position}",
+                ],
+                range(1, 101),
+            ),
+        ]],
+    ];
+    $resourceOverflow = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'children' => array_map(
+                static fn (int $position): array => [
+                    'type' => 'mention',
+                    'tokenId' => (string) Str::uuid(),
+                    'resource' => "resource{$position}",
+                    'id' => 'one',
+                ],
+                range(1, 21),
+            ),
+        ]],
+    ];
+
+    foreach ([$blockOverflow, $nodeOverflow, $byteOverflow, $mentionOverflow, $resourceOverflow] as $document) {
+        expect(fn () => $normalizer->normalizeInput(
+            new CommentDocumentData(...$document),
+            $context,
+        ))->toThrow(InvalidCommentMutationException::class);
+    }
+
+    expect(fn () => app(CommentMentionResourceRegistry::class)->resolve(
+        'organization',
+        $context,
+        array_map(static fn (int $position): string => "org-{$position}", range(1, 101)),
+    ))->toThrow(InvalidCommentMutationException::class);
+});
+
+it('rejects malformed stored rich snapshots without live resolution', function (array $document): void {
+    expect(fn () => app(CommentDocumentNormalizer::class)->normalizeStored($document))
+        ->toThrow(InvalidCommentMutationException::class);
+})->with([
+    'wrong version' => [[
+        'version' => 2,
+        'blocks' => [['type' => 'paragraph', 'children' => [['type' => 'text', 'text' => 'x']]]],
+    ]],
+    'missing label snapshot' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'mention',
+            'tokenId' => '0198ef65-9f91-72a5-a1f0-1d8aa20a8631',
+            'resource' => 'organization',
+            'id' => 'org-1',
+        ]]]],
+    ]],
+    'blank label snapshot' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'mention',
+            'tokenId' => '0198ef65-9f91-72a5-a1f0-1d8aa20a8631',
+            'resource' => 'organization',
+            'id' => 'org-1',
+            'labelSnapshot' => '   ',
+        ]]]],
+    ]],
+    'oversized label snapshot' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'mention',
+            'tokenId' => '0198ef65-9f91-72a5-a1f0-1d8aa20a8631',
+            'resource' => 'organization',
+            'id' => 'org-1',
+            'labelSnapshot' => str_repeat('x', 256),
+        ]]]],
+    ]],
+    'unknown stored node key' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'text',
+            'text' => 'x',
+            'html' => '<b>x</b>',
+        ]]]],
+    ]],
+]);
+
+it('rolls back revision restore when its stored rich snapshot is malformed', function (): void {
+    commentsRichRegisterResolver();
+    $target = TestCommentTarget::query()->create(['name' => 'Malformed restore target']);
+    $actor = new CommentActorData('member', 'malformed-restore-author');
+    $comment = app(CreateRichCommentAction::class)->execute(
+        $target,
+        new CreateRichCommentData(new CommentDocumentData(...commentsRichDocument())),
+        $actor,
+        CommentAudience::Member,
+    );
+    $updated = app(UpdateRichCommentAction::class)->execute(
+        $comment,
+        new UpdateRichCommentData(
+            new CommentDocumentData(...commentsRichDocument()),
+            expectedRevision: 1,
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+    $revision = $updated->revisions()->where('revision', 1)->sole();
+    $currentToken = $updated->mentions()->sole()->token_id;
+    DB::table(CommentsTables::Revisions)->where('id', $revision->id)->update([
+        'document' => json_encode([
+            'version' => 1,
+            'blocks' => [['type' => 'paragraph', 'children' => [[
+                'type' => 'mention',
+                'tokenId' => (string) Str::uuid(),
+                'resource' => 'organization',
+                'id' => 'org-1',
+            ]]]],
+        ], JSON_THROW_ON_ERROR),
+    ]);
+
+    expect(fn () => app(RestoreCommentRevisionAction::class)->execute(
+        $updated,
+        CommentRevision::query()->findOrFail($revision->id),
+        new RestoreCommentRevisionData(expectedRevision: 2),
+        $actor,
+        CommentAudience::Member,
+    ))->toThrow(InvalidCommentMutationException::class)
+        ->and($updated->refresh()->revision)->toBe(2)
+        ->and($updated->mentions()->sole()->token_id)->toBe($currentToken)
+        ->and($updated->revisions()->count())->toBe(1);
 });

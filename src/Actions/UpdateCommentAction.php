@@ -72,7 +72,8 @@ final readonly class UpdateCommentAction
                         asNotFound: $audience !== CommentAudience::Management,
                     );
 
-                    if ($comment->format === CommentFormat::RichText) {
+                    if ($comment->format === CommentFormat::RichText
+                        || $data->format === CommentFormat::RichText) {
                         throw new InvalidCommentMutationException(
                             'Rich comments must be updated through UpdateRichCommentAction.',
                         );

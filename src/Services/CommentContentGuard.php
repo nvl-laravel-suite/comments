@@ -8,6 +8,7 @@ use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
+use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Spatie\LaravelData\Optional;
@@ -142,6 +143,12 @@ final class CommentContentGuard
 
     private function assertFormat(string $format): void
     {
+        if ($format === CommentFormat::RichText->value) {
+            throw new InvalidCommentMutationException(
+                'Rich comment content requires the dedicated rich mutation actions.',
+            );
+        }
+
         $allowedFormats = config('comments.content.allowed_formats', ['plain', 'markdown']);
 
         if (! is_array($allowedFormats) || ! in_array($format, $allowedFormats, true)) {

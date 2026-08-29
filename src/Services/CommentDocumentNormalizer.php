@@ -73,7 +73,13 @@ final readonly class CommentDocumentNormalizer
             $blocks[] = ['type' => 'paragraph', 'children' => $children];
         }
 
-        return new CommentDocumentData(version: 1, blocks: $blocks);
+        return new CommentDocumentData(
+            version: 1,
+            blocks: $this->validate(
+                new CommentDocumentData(version: 1, blocks: $blocks),
+                allowSnapshots: true,
+            ),
+        );
     }
 
     /**
@@ -324,23 +330,24 @@ final readonly class CommentDocumentNormalizer
 
                 $resource = $node['resource'];
                 $resourceId = (string) $node['id'];
+                $tokenId = strtolower($node['tokenId']);
 
                 if (preg_match('/^[a-z][a-z0-9_.-]{0,99}$/', $resource) !== 1
                     || ! mb_check_encoding($resourceId, 'UTF-8')
                     || preg_match('/\S/u', $resourceId) !== 1
                     || mb_strlen($resourceId) > 255
-                    || isset($tokenIds[$node['tokenId']])) {
+                    || isset($tokenIds[$tokenId])) {
                     throw new InvalidCommentMutationException(
                         'Comment documents contain an invalid or duplicate mention token.',
                     );
                 }
 
-                $tokenIds[$node['tokenId']] = true;
+                $tokenIds[$tokenId] = true;
                 $resourceAliases[$resource] = true;
                 $mentionCount++;
                 $normalizedMention = [
                     'type' => 'mention',
-                    'tokenId' => strtolower($node['tokenId']),
+                    'tokenId' => $tokenId,
                     'resource' => $resource,
                     'id' => $resourceId,
                 ];
