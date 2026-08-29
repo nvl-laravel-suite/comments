@@ -1,6 +1,6 @@
 ---
 name: nvl-comments
-description: Install, configure, implement, integrate, test, diagnose, or review nvl/comments in Laravel 12–13. Use for polymorphic targets, audience-scoped public/member/management reads, anonymous creation, idempotency, threads, revisions, restore/anonymization, reactions, reports, moderation queues, private Media attachments, reconciliation, privacy, authorization, target aliases, TypeScript contracts, or package architecture.
+description: Install, configure, implement, integrate, test, diagnose, or review nvl/comments in Laravel 13. Use for polymorphic targets, audience-scoped public/member/management reads, anonymous creation, idempotency, threads, revisions, restore/anonymization, reactions, reports, moderation queues, private Media attachments, reconciliation, privacy, authorization, target aliases, TypeScript contracts, or package architecture.
 ---
 
 # NVL Comments
@@ -15,7 +15,7 @@ Run the required install and only the publish commands for assets the consumer
 will own:
 
 ```bash
-composer require nvl/laravel-suite:^1.0
+composer require nvl/laravel-suite:^2.0
 php artisan vendor:publish --tag=comments-config
 php artisan vendor:publish --tag=comments-migrations
 php artisan vendor:publish --tag=comments-skills
@@ -270,7 +270,7 @@ Also run the Comments Pest package/integration suites, constant-query
 regressions, SQLite, MySQL, MariaDB, and PostgreSQL coverage, Pint, PHPStan at
 maximum level, TypeScript/contract checks, package-family validation, Composer
 validation, dependency audit, and the clean source and relocated-artifact
-consumer proofs on Laravel 12–13.
+consumer proofs on Laravel 13.
 
 Use the bundled migrations only on the default connection with canonical table
 names. Custom connections or names require disabled bundled migrations and an

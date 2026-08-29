@@ -1,7 +1,7 @@
 # Security Policy
 
-Coordinated security fixes are provided for the current `1.x` release line on
-PHP 8.3–8.4 and Laravel 12–13. Comments also supports PHP 8.5 at runtime and
+Coordinated security fixes are provided for the current `2.x` release line on
+PHP 8.3–8.4 and Laravel 13. Comments also supports PHP 8.5 at runtime and
 tests it in CI, but PHP 8.5 is not yet in the coordinated package-family
 security promise because the mandatory Media and Filterable dependencies
 currently publish security support through PHP 8.4. Promote the promise after

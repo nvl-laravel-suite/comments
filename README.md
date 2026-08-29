@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/laravel-suite:^1.0` |
+| Installed through | `composer require nvl/laravel-suite:^2.0` |
 | Module identifier | `nvl/comments` |
 | PHP namespace | `Nvl\Comments` |
 | Service provider | `Nvl\Comments\Providers\CommentsServiceProvider` |
@@ -52,7 +52,7 @@ support is a first-class integration.
 ## Install
 
 ```bash
-composer require nvl/laravel-suite:^1.0
+composer require nvl/laravel-suite:^2.0
 php artisan migrate
 ```
 
@@ -860,7 +860,7 @@ composer audit --locked --no-interaction
 The release matrix additionally runs package and integration Pest suites on
 SQLite, MySQL 8.4, MariaDB 12.3, and PostgreSQL 17; concurrency coverage;
 strict Doctor; TypeScript and public-contract checks; clean source and
-relocated-artifact consumers on Laravel 12–13; and every supported PHP version.
+relocated-artifact consumers on Laravel 13; and every supported PHP version.
 
 From the suite root:
 
