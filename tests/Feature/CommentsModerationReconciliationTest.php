@@ -425,6 +425,8 @@ it('audits without mutation then repairs safe drift once without replaying user 
         ->and($dryRun['reportCountMismatches'])->toBe(1)
         ->and($dryRun['openReportCountMismatches'])->toBe(1)
         ->and($dryRun['threadMismatches'])->toBe(1)
+        ->and($dryRun['missingMetadataIndexValues'])->toBe(0)
+        ->and($dryRun['staleMetadataIndexValues'])->toBe(0)
         ->and($dryRun['healthy'])->toBeFalse()
         ->and(Comment::query()->findOrFail($root->id)->only([
             'reply_count',
@@ -476,6 +478,8 @@ it('audits without mutation then repairs safe drift once without replaying user 
         ->and($verified['dryRun'])->toBeTrue()
         ->and($verified['drifted'])->toBe(0)
         ->and($verified['remaining'])->toBe(0)
+        ->and($verified['missingMetadataIndexValues'])->toBe(0)
+        ->and($verified['staleMetadataIndexValues'])->toBe(0)
         ->and($verified['healthy'])->toBeTrue();
 
     expect(Artisan::call('nvl:comments:reconcile', [

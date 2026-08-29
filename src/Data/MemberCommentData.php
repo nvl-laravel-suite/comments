@@ -30,6 +30,7 @@ final class MemberCommentData extends Data
 
     /**
      * @param  list<string>|Optional  $tags
+     * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<MemberCommentReactionSummaryData>|Optional  $reactions
      */
     public function __construct(
@@ -42,6 +43,8 @@ final class MemberCommentData extends Data
         public readonly string|Optional|null $locale,
         #[LiteralTypeScriptType('Array<string>')]
         public readonly array|Optional $tags,
+        #[DataCollectionOf(CommentMetadataProjectionData::class)]
+        public readonly array|Optional $metadata,
         public readonly int $revision,
         public readonly bool|Optional $deleted,
         public readonly int $replyCount,
@@ -64,6 +67,7 @@ final class MemberCommentData extends Data
      * Build a member projection from one pre-authorized comment.
      *
      * @param  list<MemberCommentReactionSummaryData>  $reactions
+     * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      */
     public static function fromModel(
         Comment $comment,
@@ -73,6 +77,7 @@ final class MemberCommentData extends Data
         bool $isAuthor,
         CommentAbilitiesData $abilities,
         int $attachmentCount = 0,
+        array|Optional $metadata = new Optional,
     ): self {
         $tombstone = self::isTombstone($comment);
         $omitted = Optional::create();
@@ -88,6 +93,7 @@ final class MemberCommentData extends Data
             tags: $tombstone
                 ? $omitted
                 : (is_array($comment->tags) ? $comment->tags : []),
+            metadata: $tombstone ? $omitted : $metadata,
             revision: $comment->revision,
             deleted: $tombstone ? $omitted : false,
             replyCount: $replyCount,

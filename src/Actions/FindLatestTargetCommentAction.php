@@ -11,6 +11,7 @@ use Nvl\Comments\Data\MemberCommentData;
 use Nvl\Comments\Data\PublicCommentData;
 use Nvl\Comments\Data\Queries\CommentSelectorData;
 use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentProjectionFactory;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Support\CommentIdentity;
@@ -26,6 +27,7 @@ final readonly class FindLatestTargetCommentAction
     public function __construct(
         private CommentReadService $reads,
         private CommentProjectionFactory $projections,
+        private CommentMetadataIndexWriter $metadataIndex,
     ) {}
 
     /**
@@ -47,6 +49,8 @@ final readonly class FindLatestTargetCommentAction
         foreach ($selector->tags as $tag) {
             $query->whereJsonContains('tags', $tag);
         }
+
+        $this->metadataIndex->apply($query, $selector->metadataEquals);
 
         if ($selector->status !== null) {
             $query->where(

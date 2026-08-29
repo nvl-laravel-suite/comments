@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use JsonException;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
@@ -16,16 +15,33 @@ use Spatie\LaravelData\Optional;
  */
 final class CommentContentGuard
 {
-    public function create(CreateCommentData $data): void
+    /**
+     * Create the content mutation guard.
+     */
+    public function __construct(private readonly CommentMetadataGuard $metadata) {}
+
+    /**
+     * Validate create content and return normalized metadata for persistence.
+     *
+     * @return array<string, mixed>
+     */
+    public function create(CreateCommentData $data): array
     {
         $this->assertBody($data->body);
         $this->assertFormat($data->format->value);
         $this->assertLocale($data->locale);
         $this->assertTags($data->tags);
-        $this->assertMetadata($data->metadata);
+
+        return $this->metadata->normalize($data->metadata);
     }
 
-    public function update(UpdateCommentData $data): void
+    /**
+     * Validate update content and return presence-aware normalized metadata.
+     *
+     * @param  array<string, mixed>|null  $existingMetadata
+     * @return array<string, mixed>
+     */
+    public function update(UpdateCommentData $data, ?array $existingMetadata = null): array
     {
         $this->assertBody($data->body);
 
@@ -42,8 +58,10 @@ final class CommentContentGuard
         }
 
         if (! $data->metadata instanceof Optional) {
-            $this->assertMetadata($data->metadata);
+            return $this->metadata->normalize($data->metadata, $existingMetadata);
         }
+
+        return $existingMetadata ?? [];
     }
 
     private function assertBody(string $body): void
@@ -126,40 +144,6 @@ final class CommentContentGuard
             }
 
             $uniqueTags[$tag] = true;
-        }
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $metadata
-     */
-    private function assertMetadata(array $metadata): void
-    {
-        foreach (array_keys($metadata) as $key) {
-            if (! is_string($key)) {
-                throw new InvalidCommentMutationException(
-                    'Comment metadata must use string keys.',
-                );
-            }
-        }
-
-        $maximumBytes = CommentsConfiguration::positiveInteger(
-            'comments.content.maximum_bytes',
-            20_000,
-        );
-
-        try {
-            $encoded = json_encode($metadata, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new InvalidCommentMutationException(
-                'Comment metadata must be valid JSON data.',
-                previous: $exception,
-            );
-        }
-
-        if (strlen($encoded) > $maximumBytes) {
-            throw new InvalidCommentMutationException(
-                'Comment metadata exceeds the content byte limit.',
-            );
         }
     }
 }

@@ -19,12 +19,18 @@ final class CommentsTables
 
     public const string Reports = 'comment_reports';
 
+    public const string MetadataValues = 'comment_metadata_values';
+
     /**
      * Return one validated configured package table name.
      */
     public static function get(string $key): string
     {
         $table = config("comments.tables.{$key}");
+
+        if ($table === null && $key === self::MetadataValues) {
+            $table = self::MetadataValues;
+        }
 
         if (! is_string($table)
             || strlen($table) > 63

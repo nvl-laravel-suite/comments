@@ -31,5 +31,7 @@ final class CommentReconciliationResultData extends Data
         public readonly int $missingTargetComments,
         public readonly int $invalidAttachmentAssociations,
         public readonly bool $healthy,
+        public readonly int $missingMetadataIndexValues = 0,
+        public readonly int $staleMetadataIndexValues = 0,
     ) {}
 }

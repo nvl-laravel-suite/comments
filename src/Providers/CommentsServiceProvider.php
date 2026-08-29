@@ -17,6 +17,7 @@ use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
@@ -68,12 +69,14 @@ final class CommentsServiceProvider extends ServiceProvider
             DatabaseTransactionsManager::class,
         );
         $this->app->scoped(CommentMutationLock::class);
+        $this->app->singleton(CommentMetadataRegistry::class);
         $this->app->singleton(CommentTargetRegistry::class);
     }
 
     public function boot(
         TypeScriptSourceRegistry $typeScriptSources,
         CommentTargetRegistry $targets,
+        CommentMetadataRegistry $metadata,
         Dispatcher $events,
     ): void {
         $typeScriptSources->register(__DIR__.'/..', 'nvl/comments');

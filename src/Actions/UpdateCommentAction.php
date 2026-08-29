@@ -17,6 +17,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentContentGuard;
+use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -32,6 +33,7 @@ final readonly class UpdateCommentAction
         private CommentAccessService $access,
         private CommentContentGuard $guard,
         private CommentMutationLock $mutationLock,
+        private CommentMetadataIndexWriter $metadataIndex,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
     ) {}
@@ -46,7 +48,6 @@ final readonly class UpdateCommentAction
         CommentAudience $audience = CommentAudience::Public,
     ): Comment {
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
-        $this->guard->update($data);
 
         return $this->mutationLock->execute(
             $commentId,
@@ -74,6 +75,8 @@ final readonly class UpdateCommentAction
                         throw StaleCommentException::forComment($comment->id);
                     }
 
+                    $normalizedMetadata = $this->guard->update($data, $comment->metadata);
+
                     $format = $data->format instanceof Optional
                         ? $comment->format
                         : $data->format;
@@ -85,7 +88,7 @@ final readonly class UpdateCommentAction
                         : $data->tags;
                     $metadata = $data->metadata instanceof Optional
                         ? $comment->metadata
-                        : $data->metadata;
+                        : $normalizedMetadata;
 
                     if ($comment->body === $data->body
                         && $comment->format === $format
@@ -132,6 +135,8 @@ final readonly class UpdateCommentAction
                             'The comment update could not be saved.',
                         );
                     }
+
+                    $this->metadataIndex->synchronize($comment, $metadata);
 
                     CommentChanged::dispatch(
                         $comment->id,

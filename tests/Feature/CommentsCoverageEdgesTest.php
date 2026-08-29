@@ -319,9 +319,9 @@ it('enforces byte locale tag format and metadata limits at the direct action bou
         metadata: ['invalid' => "\xB1\x31"],
     )))->toThrow(InvalidCommentMutationException::class, 'valid JSON data');
 
-    config()->set('comments.content.maximum_bytes', 4);
+    config()->set('comments.metadata.maximum_bytes', 4);
     expect(fn () => $guard->create(new CreateCommentData('Body', metadata: ['key' => 'value'])))
-        ->toThrow(InvalidCommentMutationException::class, 'exceeds the content byte limit');
+        ->toThrow(InvalidCommentMutationException::class, 'exceeds the metadata byte limit');
 });
 
 it('enforces lifecycle tokens and terminal anonymization audit reasons', function (): void {

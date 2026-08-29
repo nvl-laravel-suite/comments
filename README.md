@@ -89,6 +89,8 @@ populate them with `CommentIdentity` or persist through the package models.
 - `comment_revisions` stores immutable pre-mutation content snapshots.
 - `comment_reactions` stores one configured reaction type per comment/actor.
 - `comment_reports` stores one reviewable report per comment/reporter.
+- `comment_metadata_values` stores only keyed hashes for registered queryable
+  scalar metadata; the JSON document remains the revisioned source of truth.
 
 `report_count` is a lifetime distinct-reporter count.
 `open_report_count` is the current actionable count. Composite indexes support
@@ -555,6 +557,57 @@ sort, threads are pin-first then newest-first with UUID as the deterministic
 tie-breaker. An explicit allowlisted caller sort replaces that default pin
 priority and still receives the UUID tie-breaker.
 
+## Registered metadata and selectors
+
+Existing JSON metadata remains internal and backward compatible by default.
+Applications opt individual scalar fields into validation, equality selectors,
+and audience-safe projections by implementing `CommentMetadataSchema` and adding
+the class to `comments.metadata.schemas`. A schema owns one stable snake/dot
+namespace and a list of `CommentMetadataField` definitions. Fields have a public
+snake-case alias, a unique top-level JSON storage key, one of `string`,
+`integer`, `boolean`, or `uuid`, explicit nullability/mutability/queryability,
+and an explicit `CommentAudience` visibility list. Management sees only fields
+that declare `CommentAudience::Management`.
+
+Compatibility mode (`comments.metadata.strict=false`) validates every registered
+field while retaining unknown legacy keys internally. Strict mode rejects an
+unknown key on mutation and should be enabled only after Doctor reports
+`metadata.strict_compatible=true`. Metadata has independent encoded-byte and
+registered-field limits; it no longer shares the comment body byte limit.
+
+Queryable values are copied to `comment_metadata_values` as a domain-separated
+keyed hash of their type and normalized scalar. The index contains no plaintext
+value. Set `COMMENTS_METADATA_DIGEST_KEY`; otherwise Comments falls back to its
+idempotency digest key and then `app.key`. Rotating that key invalidates lookup
+hashes, so run `nvl:comments:reconcile --repair` to rebuild the index before
+depending on metadata selectors.
+
+Use `<namespace>.<field>` aliases in the selector; raw JSON paths, columns,
+operators, unregistered fields, and non-queryable fields are rejected:
+
+```php
+$selector = new CommentSelectorData(
+    tags: ['candidacy-workflow'],
+    metadataEquals: [
+        'workflow.event' => 'submitted',
+        'workflow.sequence' => 4,
+    ],
+    status: CommentStatus::Approved,
+);
+```
+
+At most 10 metadata equalities and 20 tags are accepted. String, integer,
+boolean, and explicit null equality use the package-owned hash index on every
+supported database; callers never query JSON directly. Safe response metadata
+is a list of `CommentMetadataProjectionData` records containing a namespace and
+an allowlisted scalar `values` record. When no schema value is visible, the
+optional property is omitted to preserve existing serialized shapes.
+
+Metadata is categorical workflow context, not a secret store or rich reference
+system. Do not place credentials, private tokens, personal secrets, model
+payloads, or mentions in metadata. Mentions require server-side resolution and
+authorization and belong to the package's rich-mention contract.
+
 ## Latest target comment read
 
 Use `FindLatestTargetCommentAction` when an application needs one newest
@@ -573,6 +626,7 @@ $comment = app(FindLatestTargetCommentAction::class)->execute(
     actor: CommentActorData::system(),
     selector: new CommentSelectorData(
         tags: ['candidacy-workflow'],
+        metadataEquals: ['workflow.event' => 'submitted'],
         status: CommentStatus::Approved,
     ),
     audience: CommentAudience::Management,
@@ -587,9 +641,10 @@ or the lower configured write limit; status is an optional `CommentStatus`.
 The Action applies authorization and `CommentQueryScope` before these
 selectors, excludes soft-deleted comments, orders by `created_at` then `id`
 descending, and returns the DTO for the requested audience or `null`.
-Management denial occurs before SQL. The selector never accepts raw columns or
-JSON paths; registered metadata selectors belong to the package contract
-rather than consumer query code.
+Management denial occurs before SQL. Use `DeleteLatestTargetCommentAction` for
+the same bounded selector when a workflow needs to delete its newest match
+without receiving a `Comment` model. Match resolution, authorization, row lock,
+and the current-revision delete lifecycle execute in one package transaction.
 
 ## Operations
 
@@ -608,7 +663,8 @@ php artisan nvl:media:doctor --production --strict --format=json
 Doctor verifies schema columns, production-critical types/lengths/nullability/
 defaults, indexes, foreign keys, resolvers, contracts, route completeness,
 middleware, actor resolution, author presentation, query scoping,
-authorization readiness, mutation-lock configuration/topology, and the
+authorization readiness, registered metadata schemas/digest/strict compatibility,
+mutation-lock configuration/topology, and the
 Comments/Media connection boundary. It also rejects malformed security switches
 and limits, non-canonical bundled-migration storage configuration, missing
 fingerprint columns/indexes, and incomplete disabled-attachment history.
@@ -640,8 +696,8 @@ php artisan nvl:comments:reconcile \
 ```
 
 `--repair` additionally requires `--force` in production. Reconciliation audits
-and safely repairs reply, reaction, total-report, open-report, root, and depth
-drift. It diagnoses cycles, missing targets, invalid attachment associations,
+and safely repairs reply, reaction, total-report, open-report, root, depth, and
+metadata-index drift. It diagnoses cycles, missing targets, invalid attachment associations,
 identity/classification fingerprint drift, and unsafe hierarchy damage without
 deleting data. Fingerprint mismatches are never auto-repaired, and they block
 counter repair for the affected comment so an ambiguous imported identity

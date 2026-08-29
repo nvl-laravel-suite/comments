@@ -18,6 +18,8 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentLifecycleGuard;
+use Nvl\Comments\Services\CommentMetadataGuard;
+use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -35,6 +37,8 @@ final readonly class RestoreCommentRevisionAction
         private CommentAccessService $access,
         private CommentLifecycleGuard $guard,
         private CommentMutationLock $mutationLock,
+        private CommentMetadataGuard $metadataGuard,
+        private CommentMetadataIndexWriter $metadataIndex,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
     ) {}
@@ -110,6 +114,13 @@ final readonly class RestoreCommentRevisionAction
                             );
                         }
 
+                        $currentMetadata = $this->metadataGuard->normalize(
+                            $comment->metadata ?? [],
+                        );
+                        $restoredMetadata = $this->metadataGuard->normalize(
+                            $revision->metadata ?? [],
+                        );
+
                         $currentRevision = CommentRevision::query()->create([
                             'comment_id' => $comment->id,
                             'revision' => $comment->revision,
@@ -117,7 +128,7 @@ final readonly class RestoreCommentRevisionAction
                             'format' => $comment->format,
                             'locale' => $comment->locale,
                             'tags' => $comment->tags,
-                            'metadata' => $comment->metadata,
+                            'metadata' => $currentMetadata,
                             'edited_by_type' => $actor->type,
                             'edited_by' => $actor->id,
                         ]);
@@ -140,7 +151,7 @@ final readonly class RestoreCommentRevisionAction
                             'format' => $revision->format,
                             'locale' => $revision->locale,
                             'tags' => $revision->tags,
-                            'metadata' => $revision->metadata,
+                            'metadata' => $restoredMetadata,
                             'status' => $status ?? $comment->status,
                             'revision' => $comment->revision + 1,
                             'edited_at' => now(),
@@ -151,6 +162,8 @@ final readonly class RestoreCommentRevisionAction
                                 'The historical comment revision could not be restored.',
                             );
                         }
+
+                        $this->metadataIndex->synchronize($comment, $restoredMetadata);
 
                         $comment->refresh();
                         CommentChanged::dispatch(

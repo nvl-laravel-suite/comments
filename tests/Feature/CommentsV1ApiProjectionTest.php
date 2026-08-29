@@ -55,9 +55,11 @@ use Nvl\Comments\Enums\CommentVisibility;
 use Nvl\Comments\Events\CommentChanged;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAttachmentUrlFactory;
+use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentProjectionFactory;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
+use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Media\Contracts\MediaAuthorization;
 use Nvl\Media\Data\MediaActorData;
@@ -225,6 +227,47 @@ it('finds the latest target comment through bounded selectors and audience proje
             new CommentSelectorData(tags: ['missing']),
             CommentAudience::Public,
         ))->toBeNull();
+});
+
+it('returns only audience-registered metadata through HTTP projections', function (): void {
+    config()->set([
+        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'comments.metadata.digest_key' => 'comments-api-metadata-key',
+    ]);
+    app()->forgetInstance(CommentMetadataRegistry::class);
+    commentsV1RegisterRoutes(public: true, member: true);
+    $target = TestCommentTarget::query()->create(['name' => 'Metadata API projection']);
+    $viewer = commentsV1Member('metadata-api-viewer');
+    $actor = CommentActorData::fromAuthenticatable($viewer);
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Metadata API comment', metadata: [
+            'legacy_private' => 'legacy-api-secret',
+            'workflow_event' => 'submitted',
+            'workflow_sequence' => 14,
+            'workflow_approved' => true,
+        ]),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    $public = $this->getJson(route('nvl.comments.public.show', [
+        'comment' => $comment->id,
+    ]))->assertOk();
+    $member = $this->actingAs($viewer)->getJson(route('nvl.comments.member.show', [
+        'comment' => $comment->id,
+    ]))->assertOk();
+
+    $public->assertJsonPath('data.metadata.0.namespace', 'workflow')
+        ->assertJsonPath('data.metadata.0.values.sequence', 14)
+        ->assertJsonMissingPath('data.metadata.0.values.event');
+    $member->assertJsonPath('data.metadata.0.namespace', 'workflow')
+        ->assertJsonPath('data.metadata.0.values.event', 'submitted')
+        ->assertJsonPath('data.metadata.0.values.approved', true)
+        ->assertJsonMissingPath('data.metadata.0.values.sequence');
+
+    expect($public->getContent().$member->getContent())
+        ->not->toContain('legacy_private', 'legacy-api-secret');
 });
 
 it('uses the comment identifier as the deterministic latest-selector tie breaker', function (): void {

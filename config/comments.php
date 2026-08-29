@@ -94,6 +94,14 @@ return [
         'maximum_tags' => 20,
     ],
 
+    'metadata' => [
+        'strict' => false,
+        'maximum_bytes' => 16_384,
+        'maximum_registered_fields' => 50,
+        'digest_key' => env('COMMENTS_METADATA_DIGEST_KEY'),
+        'schemas' => [],
+    ],
+
     'reactions' => [
         'allowed' => ['like', 'love', 'insightful', 'helpful'],
     ],

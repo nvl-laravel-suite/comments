@@ -26,7 +26,6 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Data\CommentManagementData;
 use Nvl\Comments\Data\CommentReportManagementData;
-use Nvl\Comments\Data\CommentRevisionData;
 use Nvl\Comments\Data\CommentTargetReportQueueData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Data\Mutations\ModerateCommentData;
@@ -379,6 +378,7 @@ final class CommentsManagementController extends Controller
         string $comment,
         CommentActorResolver $actors,
         ListCommentRevisionsAction $action,
+        CommentProjectionFactory $projections,
     ): JsonResponse {
         $revisions = $action->execute(
             $comment,
@@ -389,9 +389,9 @@ final class CommentsManagementController extends Controller
 
         return $this->respond([
             'data' => array_map(
-                static fn (CommentRevision $revision): array => CommentRevisionData::fromModel(
-                    $revision,
-                )->toArray(),
+                fn (CommentRevision $revision): array => $projections
+                    ->revision($revision, CommentAudience::Management)
+                    ->toArray(),
                 $revisions->items(),
             ),
             'meta' => $this->pagination($revisions),

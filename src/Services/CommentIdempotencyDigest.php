@@ -16,6 +16,11 @@ use Nvl\Comments\Enums\CommentVisibility;
 final class CommentIdempotencyDigest
 {
     /**
+     * Create the canonical idempotency digest service.
+     */
+    public function __construct(private readonly CommentMetadataRegistry $metadata) {}
+
+    /**
      * Hash the target, actor, hierarchy, and persisted mutation fields.
      *
      * @throws JsonException
@@ -47,7 +52,7 @@ final class CommentIdempotencyDigest
             'effectiveVisibility' => $visibility->value,
             'locale' => $data->locale,
             'tags' => $data->tags,
-            'metadata' => $data->metadata,
+            'metadata' => $this->metadata->normalize($data->metadata),
         ];
         $jsonValue = json_decode(
             json_encode(

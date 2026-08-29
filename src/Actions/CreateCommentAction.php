@@ -23,6 +23,7 @@ use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentContentGuard;
 use Nvl\Comments\Services\CommentIdempotencyDigest;
 use Nvl\Comments\Services\CommentLifecycleGuard;
+use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Support\CommentsConfiguration;
@@ -42,6 +43,7 @@ final readonly class CreateCommentAction
         private CommentIdempotencyDigest $idempotency,
         private CommentLifecycleGuard $lifecycle,
         private CommentMutationLock $mutationLock,
+        private CommentMetadataIndexWriter $metadataIndex,
         private CommentReadService $reads,
     ) {}
 
@@ -149,7 +151,7 @@ final readonly class CreateCommentAction
                                 }
                             }
 
-                            $this->guard->create($data);
+                            $metadata = $this->guard->create($data);
                             $parent = $data->parentId === null
                                 ? null
                                 : $this->reads->resolve(
@@ -253,7 +255,7 @@ final readonly class CreateCommentAction
                                 'status' => $status ?? CommentStatus::Pending,
                                 'visibility' => $visibility,
                                 'tags' => $data->tags,
-                                'metadata' => $data->metadata,
+                                'metadata' => $metadata,
                             ]);
 
                             if (! $comment->exists) {
@@ -261,6 +263,8 @@ final readonly class CreateCommentAction
                                     'The comment could not be created.',
                                 );
                             }
+
+                            $this->metadataIndex->synchronize($comment, $metadata);
 
                             if ($parent !== null
                                 && $parent->increment('reply_count') !== 1) {

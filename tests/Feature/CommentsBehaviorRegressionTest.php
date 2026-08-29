@@ -575,7 +575,7 @@ it('preserves omitted editable fields while honoring explicit replacement values
         ->and($bodyOnly->format)->toBe(CommentFormat::Markdown)
         ->and($bodyOnly->locale)->toBe('en-GB')
         ->and($bodyOnly->tags)->toBe(['release', 'guide'])
-        ->and($bodyOnly->metadata)->toBe(['source' => 'import', 'featured' => true])
+        ->and($bodyOnly->metadata)->toBe(['featured' => true, 'source' => 'import'])
         ->and($bodyOnly->revision)->toBe(2);
 
     $cleared = $update->execute(

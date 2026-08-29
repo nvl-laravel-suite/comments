@@ -19,6 +19,7 @@ use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLockStore;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
@@ -120,6 +121,16 @@ final class CommentsDoctorCommand extends Command
             'reviewed_by',
             'resolution',
             'reviewed_at',
+            'created_at',
+            'updated_at',
+        ],
+        CommentsTables::MetadataValues => [
+            'id',
+            'comment_id',
+            'schema_namespace',
+            'field_name',
+            'value_type',
+            'value_hash',
             'created_at',
             'updated_at',
         ],
@@ -489,6 +500,44 @@ final class CommentsDoctorCommand extends Command
                 'default' => null,
             ],
         ],
+        CommentsTables::MetadataValues => [
+            'id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
+            'comment_id' => ['kind' => 'uuid', 'nullable' => false, 'default' => null],
+            'schema_namespace' => [
+                'kind' => 'string',
+                'length' => 100,
+                'nullable' => false,
+                'default' => null,
+            ],
+            'field_name' => [
+                'kind' => 'string',
+                'length' => 64,
+                'nullable' => false,
+                'default' => null,
+            ],
+            'value_type' => [
+                'kind' => 'string',
+                'length' => 16,
+                'nullable' => false,
+                'default' => null,
+            ],
+            'value_hash' => [
+                'kind' => 'fixed_string',
+                'length' => 64,
+                'nullable' => false,
+                'default' => null,
+            ],
+            'created_at' => [
+                'kind' => 'timestamp',
+                'nullable' => true,
+                'default' => null,
+            ],
+            'updated_at' => [
+                'kind' => 'timestamp',
+                'nullable' => true,
+                'default' => null,
+            ],
+        ],
     ];
 
     /**
@@ -602,6 +651,19 @@ final class CommentsDoctorCommand extends Command
                 'columns' => ['comment_id', 'status_hash', 'created_at', 'id'],
             ],
         ],
+        CommentsTables::MetadataValues => [
+            'primary' => [
+                'columns' => ['id'],
+                'primary' => true,
+            ],
+            'owner_unique' => [
+                'columns' => ['comment_id', 'schema_namespace', 'field_name'],
+                'unique' => true,
+            ],
+            'lookup' => [
+                'columns' => ['schema_namespace', 'field_name', 'value_hash'],
+            ],
+        ],
     ];
 
     /** @var array<string, array<string, list<string>>> */
@@ -616,6 +678,9 @@ final class CommentsDoctorCommand extends Command
             'comment' => ['comment_id'],
         ],
         CommentsTables::Reports => [
+            'comment' => ['comment_id'],
+        ],
+        CommentsTables::MetadataValues => [
             'comment' => ['comment_id'],
         ],
     ];
@@ -684,6 +749,7 @@ final class CommentsDoctorCommand extends Command
     public function handle(
         CommentTargetRegistry $targets,
         CommentMutationLockStore $mutationLockStore,
+        CommentMetadataRegistry $metadata,
         Container $container,
     ): int {
         try {
@@ -799,6 +865,14 @@ final class CommentsDoctorCommand extends Command
                 $requiredChecks[] = $foreignKeyReady;
             }
         }
+
+        $metadataDigestReady = $metadata->hasStableDigestKey();
+        $metadataStrictCompatible = $this->strictMetadataCompatible($metadata);
+        $checks['metadata.schemas_ready'] = true;
+        $checks['metadata.digest_key_ready'] = $metadataDigestReady;
+        $checks['metadata.strict_compatible'] = $metadataStrictCompatible;
+        $requiredChecks[] = $metadataDigestReady;
+        $requiredChecks[] = $metadataStrictCompatible;
 
         $checks['targets'] = $targets->aliases();
         $targetResolversReady = $this->targetResolversReady($targets, $container);
@@ -1122,6 +1196,8 @@ final class CommentsDoctorCommand extends Command
             'comments.threading.maximum_replies_per_page',
             'comments.content.maximum_bytes',
             'comments.content.maximum_tags',
+            'comments.metadata.maximum_bytes',
+            'comments.metadata.maximum_registered_fields',
             'comments.attachments.maximum_per_comment',
             'comments.attachments.maximum_file_bytes',
             'comments.attachments.signed_url_lifetime',
@@ -1141,9 +1217,20 @@ final class CommentsDoctorCommand extends Command
 
         $publicMaxAge = config('comments.cache.public_max_age');
         $connection = config('comments.connection');
+        $metadataStrict = config('comments.metadata.strict');
+        $metadataSchemas = config('comments.metadata.schemas');
+        $metadataMaximumBytes = config('comments.metadata.maximum_bytes');
+        $metadataMaximumFields = config('comments.metadata.maximum_registered_fields');
 
         if (! is_int($publicMaxAge)
             || $publicMaxAge < 0
+            || ! is_bool($metadataStrict)
+            || ! is_array($metadataSchemas)
+            || ! array_is_list($metadataSchemas)
+            || ! is_int($metadataMaximumBytes)
+            || $metadataMaximumBytes > 65_536
+            || ! is_int($metadataMaximumFields)
+            || $metadataMaximumFields > 100
             || ($connection !== null
                 && (! is_string($connection) || trim($connection) === ''))) {
             return false;
@@ -1194,6 +1281,35 @@ final class CommentsDoctorCommand extends Command
         }
 
         return true;
+    }
+
+    /**
+     * Determine whether strict mode can accept every existing metadata key.
+     */
+    private function strictMetadataCompatible(CommentMetadataRegistry $metadata): bool
+    {
+        if (config('comments.metadata.strict', false) !== true) {
+            return true;
+        }
+
+        $compatible = true;
+
+        Comment::query()
+            ->withTrashed()
+            ->select(['id', 'metadata'])
+            ->chunkById(500, function ($comments) use ($metadata, &$compatible): void {
+                foreach ($comments as $comment) {
+                    foreach (array_keys($comment->metadata ?? []) as $storageKey) {
+                        if (! $metadata->ownsStorageKey($storageKey)) {
+                            $compatible = false;
+
+                            return;
+                        }
+                    }
+                }
+            });
+
+        return $compatible;
     }
 
     /**

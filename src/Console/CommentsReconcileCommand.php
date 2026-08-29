@@ -204,6 +204,8 @@ final class CommentsReconcileCommand extends Command
                     'Invalid attachment associations',
                     $result->invalidAttachmentAssociations,
                 ],
+                ['Missing metadata index values', $result->missingMetadataIndexValues],
+                ['Stale metadata index values', $result->staleMetadataIndexValues],
                 ['Healthy', $result->healthy ? 'yes' : 'no'],
             ],
         );

@@ -26,13 +26,19 @@ final class CommentSelectorData extends Data
     #[LiteralTypeScriptType('Array<string>')]
     public readonly array $tags;
 
+    /** @var array<string, string|int|bool|null> */
+    #[LiteralTypeScriptType('Record<string, string | number | boolean | null>')]
+    public readonly array $metadataEquals;
+
     /**
      * Create one exact tag-and-status selector.
      *
      * @param  array<array-key, mixed>  $tags
+     * @param  array<array-key, mixed>  $metadataEquals
      */
     public function __construct(
         array $tags = [],
+        array $metadataEquals = [],
         public readonly ?CommentStatus $status = null,
     ) {
         if (! array_is_list($tags)) {
@@ -75,5 +81,30 @@ final class CommentSelectorData extends Data
         }
 
         $this->tags = $validatedTags;
+
+        if (count($metadataEquals) > 10) {
+            throw new InvalidArgumentException(
+                'Comment selectors may contain at most 10 metadata criteria.',
+            );
+        }
+
+        $validatedMetadata = [];
+
+        foreach ($metadataEquals as $alias => $value) {
+            if (! is_string($alias)
+                || preg_match('/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/', $alias) !== 1
+                || (! is_string($value)
+                    && ! is_int($value)
+                    && ! is_bool($value)
+                    && $value !== null)) {
+                throw new InvalidArgumentException(
+                    'Comment metadata selectors must use scalar registered aliases.',
+                );
+            }
+
+            $validatedMetadata[$alias] = $value;
+        }
+
+        $this->metadataEquals = $validatedMetadata;
     }
 }

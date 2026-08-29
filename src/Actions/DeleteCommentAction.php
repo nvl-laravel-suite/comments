@@ -17,6 +17,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentLifecycleGuard;
+use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -33,6 +34,7 @@ final readonly class DeleteCommentAction
     public function __construct(
         private CommentAccessService $access,
         private CommentLifecycleGuard $guard,
+        private CommentMetadataIndexWriter $metadataIndex,
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
@@ -126,6 +128,8 @@ final readonly class DeleteCommentAction
                                 'The comment could not be deleted.',
                             );
                         }
+
+                        $this->metadataIndex->delete($comment);
 
                         $parent = $comment->parent_id === null
                             ? null

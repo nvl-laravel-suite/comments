@@ -34,7 +34,14 @@ use Nvl\Media\Models\MediaAssociation;
  */
 final readonly class CommentStateReconciler
 {
-    public function __construct(private CommentMutationLock $mutationLock) {}
+    /**
+     * Create the comment state reconciler.
+     */
+    public function __construct(
+        private CommentMetadataIndexWriter $metadataIndex,
+        private CommentMetadataRegistry $metadataRegistry,
+        private CommentMutationLock $mutationLock,
+    ) {}
 
     /**
      * Audit or repair comment state in bounded chunks.
@@ -90,6 +97,8 @@ final readonly class CommentStateReconciler
             missingTargetComments: $verification->missingTargetComments,
             invalidAttachmentAssociations: $verification->invalidAttachmentAssociations,
             healthy: $verification->drifted === 0,
+            missingMetadataIndexValues: $initial->missingMetadataIndexValues,
+            staleMetadataIndexValues: $initial->staleMetadataIndexValues,
         );
     }
 
@@ -119,6 +128,8 @@ final readonly class CommentStateReconciler
         $identityFingerprintMismatches = 0;
         $missingTargetComments = 0;
         $invalidAttachmentAssociations = $danglingAttachments;
+        $missingMetadataIndexValues = 0;
+        $staleMetadataIndexValues = 0;
         $maximumDepth = CommentsConfiguration::positiveInteger(
             'comments.threading.maximum_depth',
             6,
@@ -140,6 +151,8 @@ final readonly class CommentStateReconciler
                 &$identityFingerprintMismatches,
                 &$missingTargetComments,
                 &$invalidAttachmentAssociations,
+                &$missingMetadataIndexValues,
+                &$staleMetadataIndexValues,
                 $auditAttachments,
                 $maximumDepth,
                 $repair,
@@ -158,6 +171,12 @@ final readonly class CommentStateReconciler
                     $missingTarget = isset($missingTargetIds[$comment->id]);
                     $fingerprintMismatch = isset($fingerprintMismatchIds[$comment->id]);
                     $invalidAttachmentCount = $invalidAttachments[$comment->id] ?? 0;
+                    [$missingMetadataValues, $staleMetadataValues] =
+                        $this->metadataIndexDrift($comment);
+                    $metadataIndexMismatch = $missingMetadataValues > 0
+                        || $staleMetadataValues > 0;
+                    $missingMetadataIndexValues += $missingMetadataValues;
+                    $staleMetadataIndexValues += $staleMetadataValues;
 
                     if ($missingTarget) {
                         $missingTargetComments++;
@@ -222,17 +241,21 @@ final readonly class CommentStateReconciler
                         && ! $threadUnrepairable
                         && ! $fingerprintMismatch
                         && ! $missingTarget
+                        && ! $metadataIndexMismatch
                         && $invalidAttachmentCount === 0) {
                         continue;
                     }
 
                     $drifted++;
 
-                    if ($repair
-                        && ! $fingerprintMismatch
-                        && $updates !== []
-                        && $this->repair($comment, $updates)) {
-                        $repaired++;
+                    if ($repair && ! $fingerprintMismatch) {
+                        $repairedState = $updates !== [] && $this->repair($comment, $updates);
+                        $repairedMetadata = $metadataIndexMismatch
+                            && $this->repairMetadataIndex($comment);
+
+                        if ($repairedState || $repairedMetadata) {
+                            $repaired++;
+                        }
                     }
                 }
             },
@@ -256,6 +279,8 @@ final readonly class CommentStateReconciler
             missingTargetComments: $missingTargetComments,
             invalidAttachmentAssociations: $invalidAttachmentAssociations,
             healthy: $drifted === 0,
+            missingMetadataIndexValues: $missingMetadataIndexValues,
+            staleMetadataIndexValues: $staleMetadataIndexValues,
         );
     }
 
@@ -371,6 +396,7 @@ final readonly class CommentStateReconciler
     {
         $query = Comment::query()
             ->withTrashed()
+            ->with('metadataValues')
             ->with($this->parentRelations($maximumDepth))
             ->withCount([
                 'replies as actual_reply_count',
@@ -1006,5 +1032,99 @@ final readonly class CommentStateReconciler
         );
 
         return $repaired === true;
+    }
+
+    /**
+     * Compare expected hash-only metadata rows with persisted index state.
+     *
+     * @return array{int, int}
+     */
+    private function metadataIndexDrift(Comment $comment): array
+    {
+        try {
+            $expectedRows = $this->metadataRegistry->indexRows(
+                $comment->anonymized_at === null ? $comment->metadata : null,
+            );
+        } catch (InvalidCommentMutationException) {
+            return [0, max(1, $comment->metadataValues->count())];
+        }
+
+        $expected = [];
+
+        foreach ($expectedRows as $row) {
+            $expected[$row['schema_namespace'].'.'.$row['field_name']] = $row;
+        }
+
+        $actual = [];
+
+        foreach ($comment->metadataValues as $row) {
+            $actual[$row->schema_namespace.'.'.$row->field_name] = [
+                'value_type' => $row->value_type,
+                'value_hash' => $row->value_hash,
+            ];
+        }
+
+        $missing = 0;
+        $stale = 0;
+
+        foreach ($expected as $alias => $row) {
+            $stored = $actual[$alias] ?? null;
+
+            if ($stored === null) {
+                $missing++;
+
+                continue;
+            }
+
+            if ($stored['value_type'] !== $row['value_type']
+                || ! hash_equals($stored['value_hash'], $row['value_hash'])) {
+                $stale++;
+            }
+        }
+
+        foreach (array_keys($actual) as $alias) {
+            if (! isset($expected[$alias])) {
+                $stale++;
+            }
+        }
+
+        return [$missing, $stale];
+    }
+
+    /**
+     * Rebuild one comment's metadata index under the package mutation lock.
+     */
+    private function repairMetadataIndex(Comment $comment): bool
+    {
+        try {
+            $this->metadataRegistry->indexRows(
+                $comment->anonymized_at === null ? $comment->metadata : null,
+            );
+
+            return $this->mutationLock->execute(
+                $comment->id,
+                fn (): bool => DB::connection((new Comment)->getConnectionName())
+                    ->transaction(function () use ($comment): bool {
+                        $locked = Comment::query()
+                            ->withTrashed()
+                            ->whereKey($comment->id)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (! $locked instanceof Comment) {
+                            return false;
+                        }
+
+                        $this->metadataIndex->synchronize(
+                            $locked,
+                            $locked->anonymized_at === null ? $locked->metadata : null,
+                        );
+
+                        return true;
+                    }),
+            ) === true;
+        } catch (InvalidCommentMutationException) {
+            return false;
+        }
     }
 }

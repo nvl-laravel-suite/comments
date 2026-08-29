@@ -12,7 +12,9 @@ use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentAbilitiesData;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentManagementData;
+use Nvl\Comments\Data\CommentMetadataProjectionData;
 use Nvl\Comments\Data\CommentReactionSummaryData;
+use Nvl\Comments\Data\CommentRevisionData;
 use Nvl\Comments\Data\MemberCommentData;
 use Nvl\Comments\Data\MemberCommentReactionSummaryData;
 use Nvl\Comments\Data\PublicCommentData;
@@ -20,9 +22,11 @@ use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReaction;
+use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Media\Models\MediaAssociation;
+use Spatie\LaravelData\Optional;
 
 /**
  * Builds batched public and member comment projections without per-row queries.
@@ -34,6 +38,7 @@ final readonly class CommentProjectionFactory
         private CommentAttachmentDataFactory $attachments,
         private CommentAuthorPresenter $authors,
         private CommentQueryScope $queryScope,
+        private CommentMetadataRegistry $metadata,
     ) {}
 
     /**
@@ -66,12 +71,13 @@ final readonly class CommentProjectionFactory
         );
 
         return array_values($comments->map(
-            static fn (Comment $comment): PublicCommentData => PublicCommentData::fromModel(
+            fn (Comment $comment): PublicCommentData => PublicCommentData::fromModel(
                 $comment,
                 $authors[$comment->id] ?? null,
                 $replyCounts[$comment->id] ?? 0,
                 $reactions[$comment->id] ?? [],
                 $attachmentCounts[$comment->id] ?? 0,
+                $this->projectedMetadata($comment, CommentAudience::Public),
             ),
         )->all());
     }
@@ -127,6 +133,7 @@ final readonly class CommentProjectionFactory
                 $this->isAuthor($comment, $actor),
                 $this->abilities($comment, $target, $actor),
                 $attachmentCounts[$comment->id] ?? 0,
+                $this->projectedMetadata($comment, CommentAudience::Member),
             ),
         )->all());
     }
@@ -172,6 +179,7 @@ final readonly class CommentProjectionFactory
                 $comment,
                 $replyCounts[$comment->id] ?? 0,
                 $this->canViewManagementIdentity($comment, $target, $actor),
+                $this->projectedMetadata($comment, CommentAudience::Management),
             );
         }
 
@@ -194,6 +202,21 @@ final readonly class CommentProjectionFactory
     }
 
     /**
+     * Build one audience-safe historical revision projection.
+     */
+    public function revision(
+        CommentRevision $revision,
+        CommentAudience $audience,
+    ): CommentRevisionData {
+        $metadata = $this->metadata->project($revision->metadata, $audience);
+
+        return CommentRevisionData::fromModel(
+            $revision,
+            $metadata === [] ? Optional::create() : $metadata,
+        );
+    }
+
+    /**
      * Ask the policy separately before exposing stored management identities.
      */
     public function canViewManagementIdentity(
@@ -208,6 +231,24 @@ final readonly class CommentProjectionFactory
             $target,
             CommentAudience::Management,
         );
+    }
+
+    /**
+     * Return visible registered metadata or omit the projection for compatibility.
+     *
+     * @return list<CommentMetadataProjectionData>|Optional
+     */
+    private function projectedMetadata(
+        Comment $comment,
+        CommentAudience $audience,
+    ): array|Optional {
+        if ($this->isTombstone($comment)) {
+            return Optional::create();
+        }
+
+        $metadata = $this->metadata->project($comment->metadata, $audience);
+
+        return $metadata === [] ? Optional::create() : $metadata;
     }
 
     /**

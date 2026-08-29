@@ -88,6 +88,7 @@ use Nvl\Media\Traits\InteractsWithMedia;
  * @property-read Collection<int, CommentReaction> $reactions
  * @property-read Collection<int, CommentRevision> $revisions
  * @property-read Collection<int, CommentReport> $reports
+ * @property-read Collection<int, CommentMetadataValue> $metadataValues
  * @property-read Collection<int, MediaAssociation> $attachmentAssociations
  */
 final class Comment extends Model implements HasMedia
@@ -345,6 +346,16 @@ final class Comment extends Model implements HasMedia
     public function reports(): HasMany
     {
         return $this->hasMany(CommentReport::class);
+    }
+
+    /**
+     * Return hash-only query rows for registered metadata fields.
+     *
+     * @return HasMany<CommentMetadataValue, $this>
+     */
+    public function metadataValues(): HasMany
+    {
+        return $this->hasMany(CommentMetadataValue::class);
     }
 
     /**
