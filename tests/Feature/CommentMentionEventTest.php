@@ -11,6 +11,7 @@ use Nvl\Comments\Actions\CreateRichCommentAction;
 use Nvl\Comments\Actions\RestoreCommentRevisionAction;
 use Nvl\Comments\Actions\UpdateRichCommentAction;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Data\Mutations\CreateRichCommentData;
@@ -54,6 +55,39 @@ function commentsMentionEventDocument(string ...$ids): CommentDocumentData
         ),
     ]]);
 }
+
+it('rejects malformed or oversized durable mention change facts', function (): void {
+    $change = new CommentMentionChangeData(
+        resourceAlias: 'organization',
+        resourceId: 'org-1',
+        tokenId: (string) Str::uuid(),
+    );
+
+    expect(fn () => new CommentMentionsChanged(
+        commentId: (string) Str::uuid(),
+        targetType: 'article',
+        targetId: (string) Str::uuid(),
+        revision: 1,
+        added: array_fill(0, 101, $change),
+        removed: [],
+    ))->toThrow(InvalidArgumentException::class, 'exceed hard bounds')
+        ->and(fn () => new CommentMentionsChanged(
+            commentId: (string) Str::uuid(),
+            targetType: 'article',
+            targetId: (string) Str::uuid(),
+            revision: 1,
+            added: ['not-a-change-fact'],
+            removed: [],
+        ))->toThrow(InvalidArgumentException::class, 'change facts are invalid');
+});
+
+it('rejects malformed mention identities before they enter durable events', function (): void {
+    expect(fn () => new CommentMentionChangeData(
+        resourceAlias: 'organization',
+        resourceId: 'org-1',
+        tokenId: 'not-a-uuid',
+    ))->toThrow(InvalidArgumentException::class, 'change facts are invalid');
+});
 
 it('emits bounded after-commit facts for newly added mention identities', function (): void {
     commentsMentionEventRegister();

@@ -27,6 +27,7 @@ use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
+use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Exceptions\CommentIdempotencyConflictException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
@@ -360,6 +361,29 @@ it('rejects unknown rich document root keys', function (): void {
     ]))->toThrow(ValidationException::class);
 });
 
+it('rejects rich input before resolution while mentions are disabled', function (): void {
+    config()->set('comments.mentions.enabled', false);
+    $target = TestCommentTarget::query()->create(['name' => 'Disabled rich mentions']);
+
+    expect(fn () => app(CommentDocumentNormalizer::class)->normalizeInput(
+        new CommentDocumentData(1, [[
+            'type' => 'paragraph',
+            'children' => [['type' => 'text', 'text' => 'Safe text']],
+        ]]),
+        new CommentMentionContext(
+            target: $target,
+            actor: new CommentActorData('member', 'rich-author'),
+            audience: CommentAudience::Member,
+        ),
+    ))->toThrow(InvalidCommentMutationException::class, 'mentions are not enabled');
+});
+
+it('rejects malformed stored document roots before rebuilding history', function (): void {
+    expect(fn () => app(CommentDocumentNormalizer::class)->normalizeStored([
+        'version' => 1,
+    ]))->toThrow(InvalidCommentMutationException::class, 'not a valid version-one document');
+});
+
 it('rejects malformed and unbounded rich documents', function (array $document): void {
     commentsRichRegisterResolver();
     $normalizer = app(CommentDocumentNormalizer::class);
@@ -398,6 +422,24 @@ it('rejects malformed and unbounded rich documents', function (array $document):
         'version' => 1,
         'blocks' => [['type' => 'paragraph', 'children' => [[
             'type' => 'mention', 'tokenId' => (string) Str::uuid(), 'resource' => 'organization', 'id' => ['org-1'],
+        ]]]],
+    ]],
+    'empty text node' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'text', 'text' => '',
+        ]]]],
+    ]],
+    'invalid hard break' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'hard_break', 'text' => 'client-owned',
+        ]]]],
+    ]],
+    'invalid UTF-8 text' => [[
+        'version' => 1,
+        'blocks' => [['type' => 'paragraph', 'children' => [[
+            'type' => 'text', 'text' => "\xC3\x28",
         ]]]],
     ]],
     'empty blocks' => [['version' => 1, 'blocks' => []]],
@@ -568,6 +610,64 @@ it('updates and restores rich revisions with exact current mention rows', functi
         ->and($restored->mentions()->sole()->token_id)->toBe($firstToken)
         ->and(CommentRevision::query()->where('comment_id', $comment->id)->count())
         ->toBe(2);
+});
+
+it('treats an exact rich update as a no-op without creating history', function (): void {
+    commentsRichRegisterResolver();
+    $target = TestCommentTarget::query()->create(['name' => 'Exact rich no-op']);
+    $actor = new CommentActorData('member', 'rich-no-op-author');
+    $token = (string) Str::uuid();
+    $document = new CommentDocumentData(...commentsRichDocument($token));
+    $comment = app(CreateRichCommentAction::class)->execute(
+        $target,
+        new CreateRichCommentData($document),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    $unchanged = app(UpdateRichCommentAction::class)->execute(
+        $comment,
+        new UpdateRichCommentData($document, expectedRevision: 1),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect($unchanged->revision)->toBe(1)
+        ->and($unchanged->mentions()->sole()->token_id)->toBe($token)
+        ->and($unchanged->revisions()->count())->toBe(0);
+});
+
+it('applies explicit rich locale and tags while retaining status for an invalid edited-status config', function (): void {
+    commentsRichRegisterResolver();
+    config()->set('comments.moderation.edited_status', false);
+    $target = TestCommentTarget::query()->create(['name' => 'Explicit rich fields']);
+    $actor = new CommentActorData('member', 'rich-fields-author');
+    $token = (string) Str::uuid();
+    $document = commentsRichDocument($token);
+    $comment = app(CreateRichCommentAction::class)->execute(
+        $target,
+        new CreateRichCommentData(new CommentDocumentData(...$document)),
+        $actor,
+        CommentAudience::Member,
+    );
+    $document['blocks'][0]['children'][0]['text'] = 'Updated contact ';
+
+    $updated = app(UpdateRichCommentAction::class)->execute(
+        $comment,
+        new UpdateRichCommentData(
+            document: new CommentDocumentData(...$document),
+            expectedRevision: 1,
+            locale: 'bg',
+            tags: ['updated'],
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect($updated->locale)->toBe('bg')
+        ->and($updated->tags)->toBe(['updated'])
+        ->and($updated->status)->toBe(CommentStatus::Approved)
+        ->and($updated->revision)->toBe(2);
 });
 
 it('keeps mention rows on soft delete and cascades them on hard delete', function (): void {

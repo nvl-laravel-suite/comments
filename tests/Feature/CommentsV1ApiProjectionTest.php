@@ -300,12 +300,17 @@ it('uses the comment identifier as the deterministic latest-selector tie breaker
 });
 
 it('validates latest-comment tags and denies management before querying', function (): void {
-    expect(fn () => new CommentSelectorData(tags: ['duplicate', 'duplicate']))
+    expect(fn () => new CommentSelectorData(tags: ['first' => 'tag']))
+        ->toThrow(InvalidArgumentException::class, 'must be a list')
+        ->and(fn () => new CommentSelectorData(tags: ['duplicate', 'duplicate']))
         ->toThrow(InvalidArgumentException::class, 'distinct')
         ->and(fn () => new CommentSelectorData(tags: ['']))
         ->toThrow(InvalidArgumentException::class, 'non-blank')
         ->and(fn () => new CommentSelectorData(tags: array_fill(0, 21, 'tag')))
-        ->toThrow(InvalidArgumentException::class, 'at most');
+        ->toThrow(InvalidArgumentException::class, 'at most')
+        ->and(fn () => new CommentSelectorData(metadataEquals: [
+            'workflow.event' => 1.5,
+        ]))->toThrow(InvalidArgumentException::class, 'scalar registered aliases');
 
     config()->set('comments.content.maximum_tags', 50);
     $tooManyDistinctTags = array_map(

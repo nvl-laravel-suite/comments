@@ -27,6 +27,7 @@ use Nvl\Comments\Definitions\CommentMetadataField;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentMetadataValueType;
+use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Events\CommentChanged;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\CommentMetadataValue;
@@ -64,6 +65,59 @@ it('publishes bounded registered metadata defaults', function (): void {
         'schemas' => [],
     ]);
 });
+
+it('rejects unsafe metadata field definitions', function (array $definition): void {
+    expect(fn () => new CommentMetadataField(...$definition))
+        ->toThrow(InvalidArgumentException::class);
+})->with([
+    'invalid storage key' => [[
+        'name' => 'safe_name',
+        'storageKey' => 'Unsafe-Key',
+        'type' => CommentMetadataValueType::String,
+        'nullable' => false,
+        'mutable' => true,
+        'queryable' => true,
+        'visibleTo' => [CommentAudience::Member],
+    ]],
+    'duplicate audiences' => [[
+        'name' => 'safe_name',
+        'storageKey' => 'safe_key',
+        'type' => CommentMetadataValueType::String,
+        'nullable' => false,
+        'mutable' => true,
+        'queryable' => true,
+        'visibleTo' => [CommentAudience::Member, CommentAudience::Member],
+    ]],
+    'invalid audience value' => [[
+        'name' => 'safe_name',
+        'storageKey' => 'safe_key',
+        'type' => CommentMetadataValueType::String,
+        'nullable' => false,
+        'mutable' => true,
+        'queryable' => true,
+        'visibleTo' => ['member'],
+    ]],
+    'string limit on integer field' => [[
+        'name' => 'safe_name',
+        'storageKey' => 'safe_key',
+        'type' => CommentMetadataValueType::Integer,
+        'nullable' => false,
+        'mutable' => true,
+        'queryable' => true,
+        'visibleTo' => [CommentAudience::Member],
+        'maximumStringLength' => 100,
+    ]],
+    'zero string limit' => [[
+        'name' => 'safe_name',
+        'storageKey' => 'safe_key',
+        'type' => CommentMetadataValueType::String,
+        'nullable' => false,
+        'mutable' => true,
+        'queryable' => true,
+        'visibleTo' => [CommentAudience::Member],
+        'maximumStringLength' => 0,
+    ]],
+]);
 
 it('creates the portable hash-only metadata index schema', function (): void {
     $table = CommentsTables::get(CommentsTables::MetadataValues);
@@ -549,6 +603,45 @@ it('deletes the latest metadata match without exposing a comment model', functio
             $actor,
             CommentAudience::Member,
         ))->toBeFalse();
+});
+
+it('deletes a latest reply selected by tags metadata and status while repairing its parent count', function (): void {
+    commentsMetadataConfigure([TestCommentMetadataSchema::class]);
+    $target = TestCommentTarget::query()->create(['name' => 'Selected reply deletion']);
+    $actor = new CommentActorData('member', 'selected-reply-author');
+    $create = app(CreateCommentAction::class);
+    $root = $create->execute(
+        $target,
+        new CreateCommentData('Root comment'),
+        $actor,
+        CommentAudience::Member,
+    );
+    $reply = $create->execute(
+        $target,
+        new CreateCommentData(
+            body: 'Selected reply',
+            parentId: $root->id,
+            tags: ['workflow-delete'],
+            metadata: ['workflow_event' => 'delete-reply'],
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    $deleted = app(DeleteLatestTargetCommentAction::class)->execute(
+        $target,
+        new CommentSelectorData(
+            tags: ['workflow-delete'],
+            metadataEquals: ['workflow.event' => 'delete-reply'],
+            status: CommentStatus::Approved,
+        ),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect($deleted)->toBeTrue()
+        ->and($reply->refresh()->trashed())->toBeTrue()
+        ->and($root->refresh()->reply_count)->toBe(0);
 });
 
 it('synchronizes indexes across updates revision restore and anonymization', function (): void {

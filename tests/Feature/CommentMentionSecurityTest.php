@@ -14,6 +14,7 @@ use Nvl\Comments\Actions\SuggestCommentMentionResourcesAction;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentMentionResourceData;
+use Nvl\Comments\Data\CommentMentionSuggestionData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Enums\CommentAudience;
@@ -433,6 +434,69 @@ it('authorizes targets before validating or querying suggestion resources', func
         'unregistered-secret-alias',
         'anything',
     ))->toThrow(AuthorizationException::class);
+});
+
+it('rejects suggestions while rich mentions are disabled', function (): void {
+    $target = TestCommentTarget::query()->create(['name' => 'Disabled mention suggestions']);
+
+    expect(fn () => app(SuggestCommentMentionResourcesAction::class)->execute(
+        $target,
+        new CommentActorData('member', 'suggestion-author'),
+        CommentAudience::Member,
+        'unregistered',
+        'anything',
+    ))->toThrow(InvalidCommentMutationException::class, 'mentions are not enabled');
+});
+
+it('rejects malformed resolver-owned mention identity data', function (array $resource): void {
+    expect(fn () => new CommentMentionResourceData(...$resource))
+        ->toThrow(InvalidArgumentException::class);
+})->with([
+    'blank identifier' => [[
+        'id' => '   ',
+        'label' => 'Organization',
+    ]],
+    'blank resolved label' => [[
+        'id' => 'org-1',
+        'label' => '   ',
+    ]],
+    'unavailable resource exposing live data' => [[
+        'id' => 'org-1',
+        'label' => 'Restricted organization',
+        'state' => CommentMentionState::Restricted,
+    ]],
+]);
+
+it('accepts bounded JSON scalars and safe absolute resource URLs', function (): void {
+    $resource = new CommentMentionResourceData(
+        id: 'org-1',
+        label: 'Organization',
+        fields: [
+            'score' => 4.5,
+            'rank' => 2,
+            'verified' => true,
+            'parent' => null,
+        ],
+        url: 'HTTPS://resources.example.test/organizations/org-1',
+    );
+
+    expect($resource->fields)->toBe([
+        'score' => 4.5,
+        'rank' => 2,
+        'verified' => true,
+        'parent' => null,
+    ])->and($resource->url)->toBe('HTTPS://resources.example.test/organizations/org-1');
+});
+
+it('rejects unavailable resources as editor suggestions', function (): void {
+    $missing = new CommentMentionResourceData(
+        id: 'org-missing',
+        label: null,
+        state: CommentMentionState::Missing,
+    );
+
+    expect(fn () => CommentMentionSuggestionData::fromResource($missing))
+        ->toThrow(InvalidArgumentException::class, 'require resolved resource data');
 });
 
 it('rejects client-owned model column URL label and resolver mention data', function (string $key, mixed $value): void {
