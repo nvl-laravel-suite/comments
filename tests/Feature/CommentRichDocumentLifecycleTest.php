@@ -225,11 +225,24 @@ it('upgrades released schemas and rolls rich storage back safely', function (): 
 });
 
 it('refuses vendor rich migrations for application-owned table names', function (): void {
+    Schema::create('tenant_comments', function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+    });
+    Schema::create('tenant_comment_revisions', function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+    });
+    config()->set('comments.tables.comments', 'tenant_comments');
+    config()->set('comments.tables.comment_revisions', 'tenant_comment_revisions');
     config()->set('comments.tables.comment_mentions', 'tenant_comment_mentions');
-    $migration = require __DIR__
+    $documents = require __DIR__
+        .'/../../database/migrations/2026_08_28_000001_add_comment_documents.php';
+    $mentions = require __DIR__
         .'/../../database/migrations/2026_08_28_000002_create_comment_mentions_table.php';
 
-    expect(fn () => $migration->up())->toThrow(LogicException::class, 'canonical tables')
+    expect(fn () => $documents->up())->toThrow(LogicException::class, 'canonical tables')
+        ->and(fn () => $mentions->up())->toThrow(LogicException::class, 'canonical tables')
+        ->and(Schema::hasColumn('tenant_comments', 'document'))->toBeFalse()
+        ->and(Schema::hasColumn('tenant_comment_revisions', 'document'))->toBeFalse()
         ->and(Schema::hasTable('tenant_comment_mentions'))->toBeFalse();
 });
 

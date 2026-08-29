@@ -4,12 +4,20 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-29
+
 ### Added
 
 - Added forward-only rich-document columns, normalized current mention rows,
   strict bounded version-one document compilation, server-owned label
   snapshots, and dedicated rich create/update Actions with revision,
   idempotency, concurrency, restore, deletion, and anonymization integration.
+
+### Changed
+
+- Established bounded Comment Actions, selectors, and owner traits as the 2.0
+  consumer boundary; direct consumer Comment-model queries and relation
+  aggregates now fail Suite audit.
 
 ## [1.0.7] - 2026-08-22
 
