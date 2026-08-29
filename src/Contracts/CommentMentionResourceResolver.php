@@ -20,4 +20,15 @@ interface CommentMentionResourceResolver
      * @return Collection<int, CommentMentionResourceData>
      */
     public function resolve(CommentMentionContext $context, array $ids): Collection;
+
+    /**
+     * Suggest authorized resources for one bounded query.
+     *
+     * @return Collection<int, CommentMentionResourceData>
+     */
+    public function suggest(
+        CommentMentionContext $context,
+        string $query,
+        int $limit,
+    ): Collection;
 }

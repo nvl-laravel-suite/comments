@@ -38,6 +38,7 @@ final readonly class CommentProjectionFactory
         private CommentAttachmentDataFactory $attachments,
         private CommentAuthorPresenter $authors,
         private CommentQueryScope $queryScope,
+        private CommentMentionProjectionFactory $mentions,
         private CommentMetadataRegistry $metadata,
     ) {}
 
@@ -69,6 +70,12 @@ final readonly class CommentProjectionFactory
             $actor,
             CommentAudience::Public,
         );
+        $rich = $this->mentions->project(
+            $comments,
+            $target,
+            $actor,
+            CommentAudience::Public,
+        );
 
         return array_values($comments->map(
             fn (Comment $comment): PublicCommentData => PublicCommentData::fromModel(
@@ -78,6 +85,8 @@ final readonly class CommentProjectionFactory
                 $reactions[$comment->id] ?? [],
                 $attachmentCounts[$comment->id] ?? 0,
                 $this->projectedMetadata($comment, CommentAudience::Public),
+                $rich[$comment->id]['document'],
+                $rich[$comment->id]['mentions'],
             ),
         )->all());
     }
@@ -123,6 +132,12 @@ final readonly class CommentProjectionFactory
             $actor,
             CommentAudience::Member,
         );
+        $rich = $this->mentions->project(
+            $comments,
+            $target,
+            $actor,
+            CommentAudience::Member,
+        );
 
         return array_values($comments->map(
             fn (Comment $comment): MemberCommentData => MemberCommentData::fromModel(
@@ -134,6 +149,8 @@ final readonly class CommentProjectionFactory
                 $this->abilities($comment, $target, $actor),
                 $attachmentCounts[$comment->id] ?? 0,
                 $this->projectedMetadata($comment, CommentAudience::Member),
+                $rich[$comment->id]['document'],
+                $rich[$comment->id]['mentions'],
             ),
         )->all());
     }
@@ -172,6 +189,12 @@ final readonly class CommentProjectionFactory
             CommentAudience::Management,
             CommentAbility::Moderate,
         );
+        $rich = $this->mentions->project(
+            $comments,
+            $target,
+            $actor,
+            CommentAudience::Management,
+        );
         $projections = [];
 
         foreach ($comments as $comment) {
@@ -180,6 +203,8 @@ final readonly class CommentProjectionFactory
                 $replyCounts[$comment->id] ?? 0,
                 $this->canViewManagementIdentity($comment, $target, $actor),
                 $this->projectedMetadata($comment, CommentAudience::Management),
+                $rich[$comment->id]['document'],
+                $rich[$comment->id]['mentions'],
             );
         }
 

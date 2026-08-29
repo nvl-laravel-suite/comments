@@ -9,8 +9,10 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 use Nvl\Comments\Actions\AnonymizeCommentAction;
+use Nvl\Comments\Actions\CreateRichCommentAction;
 use Nvl\Comments\Actions\DetachCommentMediaAction;
 use Nvl\Comments\Actions\ListCommentAttachmentsAction;
 use Nvl\Comments\Actions\ListCommentReportsAction;
@@ -21,17 +23,22 @@ use Nvl\Comments\Actions\ModerateCommentAction;
 use Nvl\Comments\Actions\ResolveCommentReportAction;
 use Nvl\Comments\Actions\RestoreCommentAction;
 use Nvl\Comments\Actions\RestoreCommentRevisionAction;
+use Nvl\Comments\Actions\SuggestCommentMentionResourcesAction;
+use Nvl\Comments\Actions\UpdateRichCommentAction;
 use Nvl\Comments\Contracts\CommentActorResolver;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Data\CommentManagementData;
+use Nvl\Comments\Data\CommentMentionSuggestionData;
 use Nvl\Comments\Data\CommentReportManagementData;
 use Nvl\Comments\Data\CommentTargetReportQueueData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
+use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Data\Mutations\ResolveCommentReportData;
 use Nvl\Comments\Data\Mutations\RestoreCommentData;
 use Nvl\Comments\Data\Mutations\RestoreCommentRevisionData;
+use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
@@ -41,6 +48,7 @@ use Nvl\Comments\Services\CommentProjectionFactory;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentTargetRegistry;
+use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Filterable\Http\QueryFilterSetFactory;
 
 /**
@@ -88,6 +96,95 @@ final class CommentsManagementController extends Controller
                 array_values($commentData),
             ),
             'meta' => $this->pagination($comments),
+        ]);
+    }
+
+    /**
+     * Create one management-authorized rich comment.
+     */
+    public function storeRich(
+        Request $request,
+        string $target,
+        string $targetId,
+        CommentTargetRegistry $targets,
+        CommentActorResolver $actors,
+        CreateRichCommentAction $action,
+        CommentProjectionFactory $projections,
+    ): JsonResponse {
+        $model = $targets->resolve($target, $targetId);
+        $actor = $actors->fromRequest($request);
+        $comment = $action->execute(
+            $model,
+            CreateRichCommentData::validateAndCreate($this->creationPayload($request)),
+            $actor,
+            CommentAudience::Management,
+        );
+
+        return $this->respond([
+            'data' => $projections->managementComment($comment, $model, $actor)->toArray(),
+        ], $comment->wasRecentlyCreated ? 201 : 200);
+    }
+
+    /**
+     * Suggest management-authorized registered resources.
+     */
+    public function mentionSuggestions(
+        Request $request,
+        string $target,
+        string $targetId,
+        string $resource,
+        CommentTargetRegistry $targets,
+        CommentActorResolver $actors,
+        SuggestCommentMentionResourcesAction $action,
+    ): JsonResponse {
+        $model = $targets->resolve($target, $targetId);
+        $query = $request->query('q');
+
+        if (! is_string($query)) {
+            throw ValidationException::withMessages(['q' => 'A suggestion query is required.']);
+        }
+
+        return $this->respond([
+            'data' => $action->execute(
+                $model,
+                $actors->fromRequest($request),
+                CommentAudience::Management,
+                $resource,
+                $query,
+                $request->has('limit')
+                    ? $request->integer('limit')
+                    : min(20, CommentsConfiguration::positiveInteger(
+                        'comments.mentions.suggestion_limit',
+                        10,
+                    )),
+            )->map(
+                static fn (CommentMentionSuggestionData $suggestion): array => $suggestion->toArray(),
+            )->all(),
+        ]);
+    }
+
+    /**
+     * Replace one management-authorized rich comment.
+     */
+    public function updateRich(
+        Request $request,
+        string $comment,
+        CommentActorResolver $actors,
+        UpdateRichCommentAction $action,
+        CommentProjectionFactory $projections,
+        CommentTargetLocator $targets,
+    ): JsonResponse {
+        $actor = $actors->fromRequest($request);
+        $comment = $action->execute(
+            $comment,
+            UpdateRichCommentData::validateAndCreate($request->all()),
+            $actor,
+            CommentAudience::Management,
+        );
+        $target = $targets->locate($comment);
+
+        return $this->respond([
+            'data' => $projections->managementComment($comment, $target, $actor)->toArray(),
         ]);
     }
 
@@ -443,6 +540,37 @@ final class CommentsManagementController extends Controller
             CommentAudience::Management,
             CommentAbility::Moderate,
         );
+    }
+
+    /**
+     * Copy an optional idempotency header into the validated rich creation payload.
+     *
+     * @return array<string, mixed>
+     */
+    private function creationPayload(Request $request): array
+    {
+        $payload = [];
+
+        foreach ($request->all() as $key => $value) {
+            if (is_string($key)) {
+                $payload[$key] = $value;
+            }
+        }
+
+        $header = $request->header('Idempotency-Key');
+
+        if (is_string($header) && $header !== '') {
+            if (isset($payload['idempotencyKey'])
+                && $payload['idempotencyKey'] !== $header) {
+                throw ValidationException::withMessages([
+                    'idempotencyKey' => 'The body and Idempotency-Key header must match.',
+                ]);
+            }
+
+            $payload['idempotencyKey'] = $header;
+        }
+
+        return $payload;
     }
 
     /**

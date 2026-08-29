@@ -363,6 +363,9 @@ it('keeps every route group disabled by default and enables the complete member 
     $memberRouteNames = [
         'nvl.comments.member.index',
         'nvl.comments.member.store',
+        'nvl.comments.member.rich.store',
+        'nvl.comments.member.rich.update',
+        'nvl.comments.member.mentions.suggestions',
         'nvl.comments.member.show',
         'nvl.comments.member.update',
         'nvl.comments.member.destroy',
@@ -381,6 +384,7 @@ it('keeps every route group disabled by default and enables the complete member 
         static fn (string $name): bool => ! Route::has($name),
     )))->toBe([])
         ->and(Route::has('nvl.comments.public.index'))->toBeFalse()
+        ->and(Route::has('nvl.comments.public.mentions.suggestions'))->toBeFalse()
         ->and(Route::has('nvl.comments.management.index'))->toBeFalse()
         ->and(Route::getRoutes()->getByName('nvl.comments.member.index')?->uri())
         ->toBe('api/v1/member/discussions/targets/{target}/{targetId}')

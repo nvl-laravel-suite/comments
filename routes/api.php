@@ -103,6 +103,19 @@ if (config('comments.routes.member.enabled', false) === true) {
             Route::post('/targets/{target}/{targetId}', [MemberCommentsController::class, 'store'])
                 ->where('target', '[a-z][a-z0-9_.-]{0,99}')
                 ->name('store');
+            Route::post(
+                '/targets/{target}/{targetId}/rich',
+                [MemberCommentsController::class, 'storeRich'],
+            )
+                ->where('target', '[a-z][a-z0-9_.-]{0,99}')
+                ->name('rich.store');
+            Route::get(
+                '/targets/{target}/{targetId}/mentions/{resource}/suggestions',
+                [MemberCommentsController::class, 'mentionSuggestions'],
+            )
+                ->where('target', '[a-z][a-z0-9_.-]{0,99}')
+                ->where('resource', '[a-z][a-z0-9_.-]{0,99}')
+                ->name('mentions.suggestions');
             Route::get('/comments/{comment}', [MemberCommentsController::class, 'show'])
                 ->whereUuid('comment')->name('show');
             Route::match(
@@ -111,6 +124,12 @@ if (config('comments.routes.member.enabled', false) === true) {
                 [MemberCommentsController::class, 'update'],
             )
                 ->whereUuid('comment')->name('update');
+            Route::match(
+                ['put', 'patch'],
+                '/comments/{comment}/rich',
+                [MemberCommentsController::class, 'updateRich'],
+            )
+                ->whereUuid('comment')->name('rich.update');
             Route::delete('/comments/{comment}', [MemberCommentsController::class, 'destroy'])
                 ->whereUuid('comment')->name('destroy');
             Route::post('/comments/{comment}/restore', [MemberCommentsController::class, 'restore'])
@@ -167,6 +186,19 @@ if (config('comments.routes.management.enabled', false) === true) {
             )
                 ->where('target', '[a-z][a-z0-9_.-]{0,99}')
                 ->name('index');
+            Route::post(
+                '/targets/{target}/{targetId}/rich',
+                [CommentsManagementController::class, 'storeRich'],
+            )
+                ->where('target', '[a-z][a-z0-9_.-]{0,99}')
+                ->name('rich.store');
+            Route::get(
+                '/targets/{target}/{targetId}/mentions/{resource}/suggestions',
+                [CommentsManagementController::class, 'mentionSuggestions'],
+            )
+                ->where('target', '[a-z][a-z0-9_.-]{0,99}')
+                ->where('resource', '[a-z][a-z0-9_.-]{0,99}')
+                ->name('mentions.suggestions');
             Route::get(
                 '/targets/{target}/{targetId}/reports',
                 [CommentsManagementController::class, 'targetReports'],
@@ -175,6 +207,12 @@ if (config('comments.routes.management.enabled', false) === true) {
                 ->name('target_reports.index');
             Route::put('/{comment}/moderation', [CommentsManagementController::class, 'moderate'])
                 ->whereUuid('comment')->name('moderate');
+            Route::match(
+                ['put', 'patch'],
+                '/{comment}/rich',
+                [CommentsManagementController::class, 'updateRich'],
+            )
+                ->whereUuid('comment')->name('rich.update');
             Route::post('/{comment}/restore', [CommentsManagementController::class, 'restore'])
                 ->whereUuid('comment')->name('restore');
             Route::post('/{comment}/anonymize', [CommentsManagementController::class, 'anonymize'])

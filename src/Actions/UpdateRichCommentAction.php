@@ -13,6 +13,7 @@ use Nvl\Comments\Enums\CommentChangeOperation;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Events\CommentChanged;
+use Nvl\Comments\Events\CommentMentionsChanged;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
@@ -91,6 +92,10 @@ final readonly class UpdateRichCommentAction
                         throw StaleCommentException::forComment($comment->id);
                     }
 
+                    $previousDocument = is_array($comment->document)
+                        ? $this->documents->normalizeStored($comment->document)
+                        : null;
+
                     $document = $this->documents->normalizeInput(
                         $inputDocument,
                         new CommentMentionContext($target, $actor, $audience),
@@ -162,6 +167,18 @@ final readonly class UpdateRichCommentAction
 
                     $this->metadataIndex->synchronize($comment, $metadata);
                     $this->mentions->synchronize($comment, $document);
+                    $mentionChanges = $this->mentions->changes($previousDocument, $document);
+
+                    if ($mentionChanges['added'] !== [] || $mentionChanges['removed'] !== []) {
+                        CommentMentionsChanged::dispatch(
+                            $comment->id,
+                            $comment->commentable_type,
+                            $comment->commentable_id,
+                            $comment->revision,
+                            $mentionChanges['added'],
+                            $mentionChanges['removed'],
+                        );
+                    }
                     CommentChanged::dispatch(
                         $comment->id,
                         $comment->commentable_type,

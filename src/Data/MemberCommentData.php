@@ -32,6 +32,8 @@ final class MemberCommentData extends Data
      * @param  list<string>|Optional  $tags
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<MemberCommentReactionSummaryData>|Optional  $reactions
+     * @param  array<string, mixed>|Optional  $document
+     * @param  list<CommentMentionData>|Optional  $mentions
      */
     public function __construct(
         public readonly string $id,
@@ -61,6 +63,10 @@ final class MemberCommentData extends Data
         public readonly CommentAbilitiesData|Optional $abilities,
         public readonly string $createdAt,
         public readonly string $updatedAt,
+        #[LiteralTypeScriptType('Record<string, unknown>')]
+        public readonly array|Optional $document = new Optional,
+        #[DataCollectionOf(CommentMentionData::class)]
+        public readonly array|Optional $mentions = new Optional,
     ) {}
 
     /**
@@ -68,6 +74,8 @@ final class MemberCommentData extends Data
      *
      * @param  list<MemberCommentReactionSummaryData>  $reactions
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
+     * @param  array<string, mixed>|Optional  $document
+     * @param  list<CommentMentionData>|Optional  $mentions
      */
     public static function fromModel(
         Comment $comment,
@@ -78,6 +86,8 @@ final class MemberCommentData extends Data
         CommentAbilitiesData $abilities,
         int $attachmentCount = 0,
         array|Optional $metadata = new Optional,
+        array|Optional $document = new Optional,
+        array|Optional $mentions = new Optional,
     ): self {
         $tombstone = self::isTombstone($comment);
         $omitted = Optional::create();
@@ -109,6 +119,8 @@ final class MemberCommentData extends Data
             abilities: $tombstone ? $omitted : $abilities,
             createdAt: $comment->created_at->format(DATE_ATOM),
             updatedAt: $comment->updated_at->format(DATE_ATOM),
+            document: $tombstone ? $omitted : $document,
+            mentions: $tombstone ? $omitted : $mentions,
         );
     }
 

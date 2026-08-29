@@ -232,11 +232,60 @@ server. HTML, URLs, client labels, arbitrary fields, and nested children are
 rejected.
 
 Rich support is disabled by default through `comments.mentions.enabled` until
-the application registers resolvers. The package bounds encoded bytes, blocks,
-nodes, resource aliases, mentions, and resolution batches. `body` is always a
-deterministic plain-text projection for compatibility and search. Raw stored
-documents and resource identity hashes are hidden from model serialization;
-viewer-safe rich projections are a separate public transport boundary.
+the application registers resources. Declarative Eloquent resources are a
+convenience for non-sensitive allowlisted fields; custom resolvers retain
+ownership of sensitive domain authorization:
+
+```php
+'mentions' => [
+    'enabled' => false,
+    'maximum_per_comment' => 25,
+    'maximum_resource_types_per_comment' => 10,
+    'suggestion_limit' => 10,
+    'maximum_suggestion_limit' => 20,
+    'maximum_query_length' => 160,
+    'maximum_batch_size' => 100,
+    'resources' => [
+        'organization' => [
+            'model' => Organization::class,
+            'searchable_fields' => ['name', 'registration_number'],
+            'exposed_fields' => ['name', 'registration_number'],
+            'label_field' => 'name',
+            'authorization' => OrganizationMentionAuthorization::class,
+            'url_resolver' => OrganizationMentionUrlResolver::class,
+            'public' => false,
+        ],
+        'candidacy' => [
+            'resolver' => CandidacyMentionResourceResolver::class,
+        ],
+    ],
+],
+```
+
+Aliases, searchable/exposed columns, labels, URLs, and authorization are always
+server-owned. Declarative queries select only the model key, label, and exposed
+fields; escape SQL wildcards; apply the configured authorization scope; order
+deterministically; and use bounded parameterized queries. Custom resolvers
+implement `CommentMentionResourceResolver`. A custom public resolver must also
+implement `ViewerIndependentCommentMentionResource`; otherwise public shared
+projections use only immutable label snapshots and never call it.
+
+Call `SuggestCommentMentionResourcesAction` for an authorized editor and
+`ResolveCommentMentionsAction` for one authorized current comment. Suggestions
+return opaque IDs, labels, allowlisted scalar fields, and package-produced URLs.
+Viewer projections use `resolved`, `missing`, or `restricted`; unavailable
+resources expose no live ID, fields, or URL. Projection batches de-duplicate IDs
+per alias and preserve token order without N+1 queries. The package bounds
+encoded bytes, blocks, nodes, resource aliases, mentions, queries, suggestions,
+and resolution batches. `body` is always a deterministic plain-text projection
+for compatibility and search. Raw stored documents and resource identity hashes
+are hidden from model serialization; viewer-safe documents never serialize raw
+opaque resource IDs.
+
+`CommentMentionsChanged` is an after-commit, delivery-agnostic fact containing
+only comment/target/revision identity and bounded added/removed alias, opaque ID,
+and token facts. Applications own notification recipients, copy, channels, and
+delivery.
 
 Applications using custom table names must disable vendor migrations and add
 nullable JSON `document` columns to both comment and revision tables plus a
@@ -394,6 +443,9 @@ the package Actions.
 
 Member routes additionally provide:
 
+- `POST /targets/{alias}/{id}/rich`
+- `GET /targets/{alias}/{id}/mentions/{resource}/suggestions?q=...&limit=...`
+- `PUT|PATCH /comments/{comment}/rich`
 - `POST /comments/{comment}/restore`
 - `GET /comments/{comment}/revisions`
 - `POST /comments/{comment}/revisions/{revision}/restore`
@@ -421,6 +473,10 @@ cached list cannot outlive its asset capabilities.
 Management discovery is always scoped to a canonical target:
 
 - `GET /targets/{alias}/{id}` returns actionable comments.
+- `POST /targets/{alias}/{id}/rich` creates a rich comment.
+- `GET /targets/{alias}/{id}/mentions/{resource}/suggestions` returns private,
+  authorization-scoped suggestions.
+- `PUT|PATCH /{comment}/rich` updates a rich comment.
 - `GET /targets/{alias}/{id}/reports` returns actionable reports.
 - `PUT /{comment}/moderation`
 - `POST /{comment}/restore`
@@ -698,13 +754,20 @@ Doctor verifies schema columns, production-critical types/lengths/nullability/
 defaults, indexes, foreign keys, resolvers, contracts, route completeness,
 middleware, actor resolution, author presentation, query scoping,
 authorization readiness, registered metadata schemas/digest/strict compatibility,
-mutation-lock configuration/topology, and the
+registered mention resource definitions/hard caps/schema, mutation-lock
+configuration/topology, and the
 Comments/Media connection boundary. It also rejects malformed security switches
 and limits, non-canonical bundled-migration storage configuration, missing
 fingerprint columns/indexes, and incomplete disabled-attachment history.
 Enabled public routes require throttling; enabled member and management routes
 require authentication and throttling. Management additionally requires
 non-default authorization and query scoping.
+
+Reconciliation validates the current rich document against normalized mention
+rows and its plain-text body projection, reports invalid snapshots, identity
+collisions, and orphan rows, and can rebuild current rows/body after stored
+snapshot revalidation. It never resolves live resources into historical
+revisions.
 
 Consumer contract checks are structural: Doctor proves that configured classes
 resolve and that management bindings are not the package defaults, but it cannot

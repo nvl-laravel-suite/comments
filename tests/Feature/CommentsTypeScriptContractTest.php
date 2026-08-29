@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use Nvl\Comments\Data\CommentMentionChangeData;
+use Nvl\Comments\Data\CommentMentionData;
+use Nvl\Comments\Data\CommentMentionResourceData;
+use Nvl\Comments\Data\CommentMentionSuggestionData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
@@ -9,6 +13,7 @@ use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
 use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 it('marks every backend-defaulted comment mutation field optional for TypeScript', function (): void {
     /** @var array<class-string, list<string>> $optionalProperties */
@@ -61,4 +66,21 @@ it('retains the declared backend defaults for omitted mutation fields', function
         ->and($moderate->reason)->toBeNull()
         ->and($moderate->pinned)->toBeNull()
         ->and($report->details)->toBeNull();
+});
+
+it('exports every viewer and event mention contract to generated TypeScript', function (): void {
+    foreach ([
+        CommentMentionResourceData::class,
+        CommentMentionSuggestionData::class,
+        CommentMentionData::class,
+        CommentMentionChangeData::class,
+    ] as $class) {
+        expect((new ReflectionClass($class))->getAttributes(TypeScript::class))
+            ->toHaveCount(1);
+    }
+
+    expect((new ReflectionProperty(CommentMentionData::class, 'resourceId'))->getType())
+        ->not->toBeNull()
+        ->and((new ReflectionProperty(CommentMentionData::class, 'currentLabel'))->getType())
+        ->not->toBeNull();
 });

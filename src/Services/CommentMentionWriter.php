@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Illuminate\Support\Str;
+use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
@@ -62,5 +63,84 @@ final readonly class CommentMentionWriter
     public function delete(Comment $comment): void
     {
         CommentMention::query()->where('comment_id', $comment->id)->delete();
+    }
+
+    /**
+     * Return bounded unique removal facts from the current normalized rows.
+     *
+     * @return list<CommentMentionChangeData>
+     */
+    public function removals(Comment $comment): array
+    {
+        $identities = [];
+        $mentions = CommentMention::query()
+            ->where('comment_id', $comment->id)
+            ->orderBy('position')
+            ->orderBy('token_id')
+            ->get();
+
+        foreach ($mentions as $mention) {
+            $key = hash(
+                'sha256',
+                "comment-mention-event\0{$mention->resource_alias}\0{$mention->resource_id}",
+            );
+            $identities[$key] ??= new CommentMentionChangeData(
+                resourceAlias: $mention->resource_alias,
+                resourceId: $mention->resource_id,
+                tokenId: $mention->token_id,
+            );
+        }
+
+        ksort($identities);
+
+        return array_values($identities);
+    }
+
+    /**
+     * Diff two normalized documents by alias and opaque resource identity.
+     *
+     * @return array{added: list<CommentMentionChangeData>, removed: list<CommentMentionChangeData>}
+     */
+    public function changes(
+        ?CommentDocumentData $before,
+        ?CommentDocumentData $after,
+    ): array {
+        $previous = $this->identities($before);
+        $current = $this->identities($after);
+
+        return [
+            'added' => array_values(array_diff_key($current, $previous)),
+            'removed' => array_values(array_diff_key($previous, $current)),
+        ];
+    }
+
+    /**
+     * Index the first token for each unique mention resource identity.
+     *
+     * @return array<string, CommentMentionChangeData>
+     */
+    private function identities(?CommentDocumentData $document): array
+    {
+        if ($document === null) {
+            return [];
+        }
+
+        $identities = [];
+
+        foreach ($this->documents->references($document) as $reference) {
+            $key = hash(
+                'sha256',
+                "comment-mention-event\0{$reference->resourceAlias}\0{$reference->resourceId}",
+            );
+            $identities[$key] ??= new CommentMentionChangeData(
+                resourceAlias: $reference->resourceAlias,
+                resourceId: $reference->resourceId,
+                tokenId: $reference->tokenId,
+            );
+        }
+
+        ksort($identities);
+
+        return $identities;
     }
 }

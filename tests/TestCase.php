@@ -58,5 +58,15 @@ abstract class TestCase extends Orchestra
             $table->string('name');
             $table->timestamps();
         });
+
+        Schema::create('comment_mention_test_resources', function (Blueprint $table): void {
+            $table->string('id')->primary();
+            $table->string('tenant_id');
+            $table->string('name');
+            $table->string('registration_number');
+            $table->string('secret')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
     }
 }

@@ -18,6 +18,7 @@ use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
 use Nvl\Comments\Events\CommentChanged;
+use Nvl\Comments\Events\CommentMentionsChanged;
 use Nvl\Comments\Exceptions\CommentIdempotencyConflictException;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
@@ -317,6 +318,18 @@ final readonly class CommentCreationWriter
 
                             if ($document instanceof CommentDocumentData) {
                                 $this->mentions->synchronize($comment, $document);
+                                $changes = $this->mentions->changes(null, $document);
+
+                                if ($changes['added'] !== [] || $changes['removed'] !== []) {
+                                    CommentMentionsChanged::dispatch(
+                                        $comment->id,
+                                        $comment->commentable_type,
+                                        $comment->commentable_id,
+                                        $comment->revision,
+                                        $changes['added'],
+                                        $changes['removed'],
+                                    );
+                                }
                             }
 
                             if ($parent !== null && $parent->increment('reply_count') !== 1) {

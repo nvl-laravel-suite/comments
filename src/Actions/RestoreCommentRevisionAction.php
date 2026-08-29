@@ -13,6 +13,7 @@ use Nvl\Comments\Enums\CommentChangeOperation;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Events\CommentChanged;
+use Nvl\Comments\Events\CommentMentionsChanged;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
@@ -122,6 +123,10 @@ final readonly class RestoreCommentRevisionAction
                         $currentMetadata = $this->metadataGuard->normalize(
                             $comment->metadata ?? [],
                         );
+                        $currentDocument = $comment->format === CommentFormat::RichText
+                            && is_array($comment->document)
+                                ? $this->documents->normalizeStored($comment->document)
+                                : null;
                         $restoredMetadata = $this->metadataGuard->normalize(
                             $revision->metadata ?? [],
                         );
@@ -190,6 +195,22 @@ final readonly class RestoreCommentRevisionAction
 
                         $this->metadataIndex->synchronize($comment, $restoredMetadata);
                         $this->mentions->synchronize($comment, $restoredDocument);
+                        $mentionChanges = $this->mentions->changes(
+                            $currentDocument,
+                            $restoredDocument,
+                        );
+
+                        if ($mentionChanges['added'] !== []
+                            || $mentionChanges['removed'] !== []) {
+                            CommentMentionsChanged::dispatch(
+                                $comment->id,
+                                $comment->commentable_type,
+                                $comment->commentable_id,
+                                $comment->revision,
+                                $mentionChanges['added'],
+                                $mentionChanges['removed'],
+                            );
+                        }
 
                         $comment->refresh();
                         CommentChanged::dispatch(

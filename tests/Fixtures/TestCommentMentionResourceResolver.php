@@ -36,4 +36,25 @@ final class TestCommentMentionResourceResolver implements CommentMentionResource
             ))
             ->values();
     }
+
+    /**
+     * Suggest known package-test resources by their server-owned labels.
+     *
+     * @return Collection<int, CommentMentionResourceData>
+     */
+    public function suggest(
+        CommentMentionContext $context,
+        string $query,
+        int $limit,
+    ): Collection {
+        return $this->resolve($context, ['org-1', 'org-2', 'org-long'])
+            ->filter(static fn (CommentMentionResourceData $resource): bool => is_string(
+                $resource->label,
+            ) && str_contains(
+                mb_strtolower($resource->label),
+                mb_strtolower($query),
+            ))
+            ->take($limit)
+            ->values();
+    }
 }

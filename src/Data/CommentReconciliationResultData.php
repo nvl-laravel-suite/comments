@@ -33,5 +33,10 @@ final class CommentReconciliationResultData extends Data
         public readonly bool $healthy,
         public readonly int $missingMetadataIndexValues = 0,
         public readonly int $staleMetadataIndexValues = 0,
+        public readonly int $documentMentionMismatches = 0,
+        public readonly int $duplicateMentionIdentities = 0,
+        public readonly int $invalidMentionSnapshots = 0,
+        public readonly int $orphanMentionRows = 0,
+        public readonly int $bodyProjectionMismatches = 0,
     ) {}
 }

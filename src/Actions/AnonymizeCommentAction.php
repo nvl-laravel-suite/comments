@@ -16,6 +16,7 @@ use Nvl\Comments\Enums\CommentChangeOperation;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Events\CommentChanged;
+use Nvl\Comments\Events\CommentMentionsChanged;
 use Nvl\Comments\Exceptions\CommentMutationBusyException;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\StaleCommentException;
@@ -224,6 +225,7 @@ final readonly class AnonymizeCommentAction
                                 ->delete();
                         }
 
+                        $mentionRemovals = $this->mentions->removals($comment);
                         $comment->revisions()->delete();
                         $this->metadataIndex->delete($comment);
                         $this->mentions->delete($comment);
@@ -296,6 +298,17 @@ final readonly class AnonymizeCommentAction
                         }
 
                         $comment->refresh();
+
+                        if ($mentionRemovals !== []) {
+                            CommentMentionsChanged::dispatch(
+                                $comment->id,
+                                $comment->commentable_type,
+                                $comment->commentable_id,
+                                $comment->revision,
+                                [],
+                                $mentionRemovals,
+                            );
+                        }
                         CommentChanged::dispatch(
                             $comment->id,
                             $comment->commentable_type,

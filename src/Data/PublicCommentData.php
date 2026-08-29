@@ -30,6 +30,8 @@ final class PublicCommentData extends Data
      * @param  list<string>|Optional  $tags
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<CommentReactionSummaryData>|Optional  $reactions
+     * @param  array<string, mixed>|Optional  $document
+     * @param  list<CommentMentionData>|Optional  $mentions
      */
     public function __construct(
         public readonly string $id,
@@ -55,6 +57,10 @@ final class PublicCommentData extends Data
         public readonly array|Optional $reactions,
         public readonly string $createdAt,
         public readonly string $updatedAt,
+        #[LiteralTypeScriptType('Record<string, unknown>')]
+        public readonly array|Optional $document = new Optional,
+        #[DataCollectionOf(CommentMentionData::class)]
+        public readonly array|Optional $mentions = new Optional,
     ) {}
 
     /**
@@ -62,6 +68,8 @@ final class PublicCommentData extends Data
      *
      * @param  list<CommentReactionSummaryData>  $reactions
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
+     * @param  array<string, mixed>|Optional  $document
+     * @param  list<CommentMentionData>|Optional  $mentions
      */
     public static function fromModel(
         Comment $comment,
@@ -70,6 +78,8 @@ final class PublicCommentData extends Data
         array $reactions,
         int $attachmentCount = 0,
         array|Optional $metadata = new Optional,
+        array|Optional $document = new Optional,
+        array|Optional $mentions = new Optional,
     ): self {
         $tombstone = self::isTombstone($comment);
         $omitted = Optional::create();
@@ -97,6 +107,8 @@ final class PublicCommentData extends Data
             reactions: $tombstone ? $omitted : $reactions,
             createdAt: $comment->created_at->format(DATE_ATOM),
             updatedAt: $comment->updated_at->format(DATE_ATOM),
+            document: $tombstone ? $omitted : $document,
+            mentions: $tombstone ? $omitted : $mentions,
         );
     }
 

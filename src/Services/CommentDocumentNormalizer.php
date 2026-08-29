@@ -53,6 +53,12 @@ final readonly class CommentDocumentNormalizer
             $resolved = $this->resources->resolve($alias, $context, array_values(array_unique($ids)));
 
             foreach ($resolved as $resource) {
+                if (! is_string($resource->label)) {
+                    throw new InvalidCommentMutationException(
+                        'Comment mention resolution returned an invalid resource label.',
+                    );
+                }
+
                 $labels[$alias][$resource->id] = $this->normalizeText($resource->label);
             }
         }
@@ -202,7 +208,7 @@ final readonly class CommentDocumentNormalizer
     /**
      * Return the canonical storage array for one normalized document.
      *
-     * @return array{version: int, blocks: list<array<string, mixed>>}
+     * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
      */
     public function toArray(CommentDocumentData $document): array
     {

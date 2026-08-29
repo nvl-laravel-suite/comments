@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Nvl\Comments\Actions\CreateCommentAction;
+use Nvl\Comments\Actions\CreateRichCommentAction;
 use Nvl\Comments\Actions\DeleteCommentAction;
 use Nvl\Comments\Actions\ListModerationCommentsAction;
 use Nvl\Comments\Actions\ListTargetCommentReportsAction;
@@ -15,7 +17,9 @@ use Nvl\Comments\Actions\ReportCommentAction;
 use Nvl\Comments\Actions\ResolveCommentReportAction;
 use Nvl\Comments\Actions\SetCommentReactionAction;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
+use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
@@ -27,9 +31,12 @@ use Nvl\Comments\Events\CommentChanged;
 use Nvl\Comments\Events\CommentReported;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentMention;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Models\CommentReport;
+use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
+use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Filterable\Data\FilterCriterion;
@@ -528,6 +535,111 @@ it('audits without mutation then repairs safe drift once without replaying user 
         );
     Event::assertNotDispatched(CommentChanged::class);
     Event::assertNotDispatched(CommentReported::class);
+});
+
+it('audits and safely rebuilds current rich mention rows and body without changing history', function (): void {
+    config()->set('comments.mentions.enabled', true);
+    app(CommentMentionResourceRegistry::class)->register(
+        'organization',
+        TestCommentMentionResourceResolver::class,
+    );
+    $target = TestCommentTarget::query()->create(['name' => 'Rich reconciliation']);
+    $tokenId = (string) Str::uuid();
+    $comment = app(CreateRichCommentAction::class)->execute(
+        $target,
+        new CreateRichCommentData(new CommentDocumentData(1, [[
+            'type' => 'paragraph',
+            'children' => [[
+                'type' => 'mention',
+                'tokenId' => $tokenId,
+                'resource' => 'organization',
+                'id' => 'org-1',
+            ]],
+        ]])),
+        new CommentActorData('member', 'rich-reconcile-author'),
+    );
+    $storedDocument = $comment->document;
+    DB::table($comment->getTable())->where('id', $comment->id)->update([
+        'body' => 'corrupted rich projection',
+    ]);
+    DB::table((new CommentMention)->getTable())
+        ->where('comment_id', $comment->id)
+        ->update([
+            'resource_id' => 'wrong-resource',
+            'resource_identity_hash' => str_repeat('0', 64),
+            'label_snapshot' => 'wrong label',
+        ]);
+
+    [$dryExitCode, $dry] = runCommentsV1Reconciliation([
+        '--strict' => true,
+        '--target' => "article:{$target->id}",
+    ]);
+
+    expect($dryExitCode)->toBe(1)
+        ->and($dry['documentMentionMismatches'])->toBe(1)
+        ->and($dry['bodyProjectionMismatches'])->toBe(1)
+        ->and($dry['invalidMentionSnapshots'])->toBe(0)
+        ->and($dry['orphanMentionRows'])->toBe(0)
+        ->and(Comment::query()->findOrFail($comment->id)->body)
+        ->toBe('corrupted rich projection');
+
+    [$repairExitCode, $repair] = runCommentsV1Reconciliation([
+        '--repair' => true,
+        '--strict' => true,
+        '--target' => "article:{$target->id}",
+    ]);
+    $repaired = Comment::query()->findOrFail($comment->id);
+    $mention = CommentMention::query()->where('comment_id', $comment->id)->sole();
+
+    expect($repairExitCode)->toBe(0)
+        ->and($repair['repaired'])->toBe(1)
+        ->and($repair['remaining'])->toBe(0)
+        ->and($repaired->body)->toBe('@Организация')
+        ->and($repaired->document)->toBe($storedDocument)
+        ->and($repaired->revisions()->count())->toBe(0)
+        ->and($mention->token_id)->toBe($tokenId)
+        ->and($mention->resource_id)->toBe('org-1')
+        ->and($mention->label_snapshot)->toBe('Организация');
+});
+
+it('reports invalid rich snapshots without rewriting current or historical documents', function (): void {
+    $target = TestCommentTarget::query()->create(['name' => 'Invalid rich reconciliation']);
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Preserved body'),
+        new CommentActorData('member', 'invalid-rich-author'),
+    );
+    $invalidDocument = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'children' => [[
+                'type' => 'mention',
+                'tokenId' => (string) Str::uuid(),
+                'resource' => 'organization',
+                'id' => 'org-1',
+                'labelSnapshot' => '',
+            ]],
+        ]],
+    ];
+    DB::table($comment->getTable())->where('id', $comment->id)->update([
+        'format' => 'rich_text',
+        'document' => json_encode($invalidDocument, JSON_THROW_ON_ERROR),
+    ]);
+
+    [$exitCode, $result] = runCommentsV1Reconciliation([
+        '--repair' => true,
+        '--strict' => true,
+        '--target' => "article:{$target->id}",
+    ]);
+
+    expect($exitCode)->toBe(1)
+        ->and($result['invalidMentionSnapshots'])->toBe(1)
+        ->and($result['repaired'])->toBe(0)
+        ->and($result['remaining'])->toBe(1)
+        ->and(Comment::query()->findOrFail($comment->id)->document)
+        ->toBe($invalidDocument)
+        ->and($comment->revisions()->count())->toBe(0);
 });
 
 it('fails strict repair while unsafe missing-target damage remains untouched', function (): void {

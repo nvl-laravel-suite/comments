@@ -21,7 +21,9 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentTargetRegistry;
+use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\Tests\Fixtures\TestStringCommentTarget;
 use Nvl\Comments\Tests\Fixtures\TestStringCommentTargetResolver;
@@ -29,6 +31,7 @@ use Nvl\Comments\Tests\Fixtures\TestStringCommentTargetResolver;
 beforeEach(function (): void {
     config()->set([
         'comments.routes.public.enabled' => true,
+        'comments.routes.member.enabled' => true,
         'comments.routes.management.enabled' => true,
     ]);
 
@@ -44,6 +47,73 @@ function commentsHttpUser(string $id): GenericUser
 {
     return new GenericUser(['id' => $id]);
 }
+
+it('exposes authenticated rich mutation and suggestion seams without a public suggestion route', function (): void {
+    config()->set('comments.mentions.enabled', true);
+    app(CommentMentionResourceRegistry::class)->register(
+        'organization',
+        TestCommentMentionResourceResolver::class,
+    );
+    $target = TestCommentTarget::query()->create(['name' => 'Rich HTTP']);
+    $author = commentsHttpUser('rich-http-author');
+    $token = '018f91ba-d58a-73f8-baa7-6b2ed792d865';
+
+    $this->actingAs($author)->getJson(route(
+        'nvl.comments.member.mentions.suggestions',
+        [
+            'target' => 'article',
+            'targetId' => $target->id,
+            'resource' => 'organization',
+            'q' => 'organization',
+        ],
+    ))->assertOk()
+        ->assertJsonPath('data.0.id', 'org-2')
+        ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
+
+    $created = $this->actingAs($author)->postJson(route(
+        'nvl.comments.member.rich.store',
+        ['target' => 'article', 'targetId' => $target->id],
+    ), [
+        'document' => [
+            'version' => 1,
+            'blocks' => [[
+                'type' => 'paragraph',
+                'children' => [[
+                    'type' => 'mention',
+                    'tokenId' => $token,
+                    'resource' => 'organization',
+                    'id' => 'org-1',
+                ]],
+            ]],
+        ],
+    ])->assertCreated()
+        ->assertJsonPath('data.document.blocks.0.children.0.label', 'Организация')
+        ->assertJsonPath('data.mentions.0.resourceId', 'org-1');
+    $commentId = $created->json('data.id');
+
+    $this->actingAs($author)->patchJson(route(
+        'nvl.comments.member.rich.update',
+        ['comment' => $commentId],
+    ), [
+        'document' => [
+            'version' => 1,
+            'blocks' => [[
+                'type' => 'paragraph',
+                'children' => [[
+                    'type' => 'mention',
+                    'tokenId' => $token,
+                    'resource' => 'organization',
+                    'id' => 'org-2',
+                ]],
+            ]],
+        ],
+        'expectedRevision' => 1,
+    ])->assertOk()
+        ->assertJsonPath('data.revision', 2)
+        ->assertJsonPath('data.mentions.0.resourceId', 'org-2');
+
+    expect(Route::has('nvl.comments.public.mentions.suggestions'))->toBeFalse();
+});
 
 it('creates a public comment with a revision and no private actor or metadata fields', function (): void {
     $target = TestCommentTarget::query()->create(['name' => 'Article']);

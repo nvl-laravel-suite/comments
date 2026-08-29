@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Providers;
 
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\DatabaseTransactionsManager;
 use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\ServiceProvider;
@@ -71,7 +72,15 @@ final class CommentsServiceProvider extends ServiceProvider
         );
         $this->app->scoped(CommentMutationLock::class);
         $this->app->singleton(CommentMetadataRegistry::class);
-        $this->app->singleton(CommentMentionResourceRegistry::class);
+        $this->app->singleton(
+            CommentMentionResourceRegistry::class,
+            static function (Application $app): CommentMentionResourceRegistry {
+                $registry = new CommentMentionResourceRegistry($app);
+                $registry->registerConfigured();
+
+                return $registry;
+            },
+        );
         $this->app->singleton(CommentTargetRegistry::class);
     }
 
