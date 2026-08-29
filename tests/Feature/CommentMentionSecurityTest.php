@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Nvl\Comments\Actions\CreateRichCommentAction;
 use Nvl\Comments\Actions\ResolveCommentMentionsAction;
 use Nvl\Comments\Actions\SuggestCommentMentionResourcesAction;
+use Nvl\Comments\Contracts\CommentMentionResourceResolver;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Enums\CommentAudience;
@@ -24,6 +27,7 @@ use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionUrlResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\Tests\Fixtures\TestViewerIndependentCommentMentionResourceResolver;
+use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 /**
  * Register a private custom resource and enable rich mentions.
@@ -94,6 +98,56 @@ function commentsMentionSecurityCreate(
         $actor,
         CommentAudience::Member,
     );
+}
+
+/**
+ * Build one malformed custom resolver value for a package-boundary regression case.
+ */
+function commentsMentionSecurityMalformedResource(string $case): CommentMentionResourceData
+{
+    return match ($case) {
+        'field count' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            fields: array_fill_keys(
+                array_map(
+                    static fn (int $field): string => "field_{$field}",
+                    range(1, 26),
+                ),
+                'value',
+            ),
+        ),
+        'field key length' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            fields: [str_repeat('a', 65) => 'value'],
+        ),
+        'field value length' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            fields: ['name' => str_repeat('界', 2_049)],
+        ),
+        'field value encoding' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            fields: ['name' => "\xC3\x28"],
+        ),
+        'URL length' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            url: '/'.str_repeat('a', 2_048),
+        ),
+        'URL scheme' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            url: 'javascript:alert(1)',
+        ),
+        'URL encoding' => new CommentMentionResourceData(
+            id: 'org-1',
+            label: 'Organization',
+            url: "/\xC3\x28",
+        ),
+    };
 }
 
 it('projects member rich documents without serializing stored opaque IDs', function (): void {
@@ -214,6 +268,91 @@ it('rejects cross-tenant mention identities during rich mutation', function (): 
         'org-private',
     ))->toThrow(InvalidCommentMutationException::class, 'unavailable or unauthorized');
 });
+
+it('conceals nonexistent and cross-tenant resources through the same scoped query path', function (): void {
+    commentsMentionSecurityRegisterEloquent();
+    TestCommentMentionResource::query()->create([
+        'id' => 'org-private',
+        'tenant_id' => 'tenant-b',
+        'name' => 'Private Organization',
+        'registration_number' => 'PRIVATE',
+    ]);
+    $context = new CommentMentionContext(
+        TestCommentTarget::query()->create(['name' => 'Scoped lookup']),
+        new CommentActorData('member', 'tenant-a'),
+        CommentAudience::Member,
+    );
+    $registry = app(CommentMentionResourceRegistry::class);
+
+    DB::connection()->enableQueryLog();
+    DB::connection()->flushQueryLog();
+    $missing = $registry->resolveForProjection('organization', $context, ['org-missing']);
+    $missingQueries = DB::connection()->getQueryLog();
+    DB::connection()->flushQueryLog();
+    $crossTenant = $registry->resolveForProjection('organization', $context, ['org-private']);
+    $crossTenantQueries = DB::connection()->getQueryLog();
+    DB::connection()->disableQueryLog();
+
+    expect($missing->sole()->state)->toBe(CommentMentionState::Missing)
+        ->and($crossTenant->sole()->state)->toBe(CommentMentionState::Missing)
+        ->and($missingQueries)->toHaveCount(1)
+        ->and($crossTenantQueries)->toHaveCount(1)
+        ->and(array_column($missingQueries, 'query'))
+        ->toBe(array_column($crossTenantQueries, 'query'))
+        ->and(strtolower($missingQueries[0]['query']))->toContain('tenant_id');
+});
+
+it('bounds every custom resolver field and URL before projection', function (string $case): void {
+    $resolver = new readonly class($case) implements CommentMentionResourceResolver
+    {
+        /**
+         * Create one deliberately malformed custom resolver.
+         */
+        public function __construct(private string $case) {}
+
+        /**
+         * Return one malformed result to exercise the registry boundary.
+         *
+         * @param  list<string>  $ids
+         * @return SupportCollection<int, CommentMentionResourceData>
+         */
+        public function resolve(CommentMentionContext $context, array $ids): SupportCollection
+        {
+            return collect([commentsMentionSecurityMalformedResource($this->case)]);
+        }
+
+        /**
+         * Return one malformed suggestion to exercise the same DTO boundary.
+         *
+         * @return SupportCollection<int, CommentMentionResourceData>
+         */
+        public function suggest(
+            CommentMentionContext $context,
+            string $query,
+            int $limit,
+        ): SupportCollection {
+            return collect([commentsMentionSecurityMalformedResource($this->case)]);
+        }
+    };
+    $registry = new CommentMentionResourceRegistry(app());
+    $registry->register('malformed', $resolver);
+    $context = new CommentMentionContext(
+        TestCommentTarget::query()->create(['name' => "Malformed {$case}"]),
+        new CommentActorData('member', 'tenant-a'),
+        CommentAudience::Member,
+    );
+
+    expect(fn () => $registry->resolveForProjection('malformed', $context, ['org-1']))
+        ->toThrow(InvalidCommentMutationException::class, 'invalid resource batch');
+})->with([
+    'field count',
+    'field key length',
+    'field value length',
+    'field value encoding',
+    'URL length',
+    'URL scheme',
+    'URL encoding',
+]);
 
 it('authorizes targets before validating or querying suggestion resources', function (): void {
     $target = TestCommentTarget::query()->create(['name' => 'Unauthorized target']);

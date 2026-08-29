@@ -44,6 +44,7 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
+use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentProjectionFactory;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -57,6 +58,7 @@ use Nvl\Filterable\Http\QueryFilterSetFactory;
 final class CommentsManagementController extends Controller
 {
     public function __construct(
+        private readonly CommentAccessService $access,
         private readonly CommentReadService $reads,
     ) {}
 
@@ -113,6 +115,12 @@ final class CommentsManagementController extends Controller
     ): JsonResponse {
         $model = $targets->resolve($target, $targetId);
         $actor = $actors->fromRequest($request);
+        $this->access->authorize(
+            CommentAbility::Create,
+            $actor,
+            target: $model,
+            audience: CommentAudience::Management,
+        );
         $comment = $action->execute(
             $model,
             CreateRichCommentData::validateAndCreate($this->creationPayload($request)),
@@ -138,6 +146,13 @@ final class CommentsManagementController extends Controller
         SuggestCommentMentionResourcesAction $action,
     ): JsonResponse {
         $model = $targets->resolve($target, $targetId);
+        $actor = $actors->fromRequest($request);
+        $this->access->authorize(
+            CommentAbility::List,
+            $actor,
+            target: $model,
+            audience: CommentAudience::Management,
+        );
         $query = $request->query('q');
 
         if (! is_string($query)) {
@@ -147,7 +162,7 @@ final class CommentsManagementController extends Controller
         return $this->respond([
             'data' => $action->execute(
                 $model,
-                $actors->fromRequest($request),
+                $actor,
                 CommentAudience::Management,
                 $resource,
                 $query,
@@ -175,8 +190,23 @@ final class CommentsManagementController extends Controller
         CommentTargetLocator $targets,
     ): JsonResponse {
         $actor = $actors->fromRequest($request);
-        $comment = $action->execute(
+        $authorizedComment = $this->reads->resolveById(
             $comment,
+            $actor,
+            CommentAudience::Management,
+            CommentAbility::Update,
+            withTrashed: false,
+        );
+        $authorizedTarget = $targets->locate($authorizedComment);
+        $this->access->authorize(
+            CommentAbility::Update,
+            $actor,
+            $authorizedComment,
+            $authorizedTarget,
+            CommentAudience::Management,
+        );
+        $comment = $action->execute(
+            $authorizedComment,
             UpdateRichCommentData::validateAndCreate($request->all()),
             $actor,
             CommentAudience::Management,

@@ -832,6 +832,7 @@ final class CommentsDoctorCommand extends Command
         CommentTargetRegistry $targets,
         CommentMutationLockStore $mutationLockStore,
         CommentMetadataRegistry $metadata,
+        CommentMentionResourceRegistry $mentionResources,
         Container $container,
     ): int {
         try {
@@ -959,11 +960,13 @@ final class CommentsDoctorCommand extends Command
         $requiredChecks[] = $metadataDigestReady;
         $requiredChecks[] = $metadataStrictCompatible;
 
-        [$mentionBoundsReady, $mentionResourcesReady, $mentionAliases] =
-            $this->mentionReadiness($container);
+        [$mentionBoundsReady, $mentionResourcesReady, $mentionDiagnostics] =
+            $this->mentionReadiness($mentionResources);
         $checks['mentions.bounds_ready'] = $mentionBoundsReady;
         $checks['mentions.resources_ready'] = $mentionResourcesReady;
-        $checks['mentions.aliases'] = $mentionAliases;
+        $checks['mentions.aliases'] = $mentionDiagnostics['aliases'];
+        $checks['mentions.registered'] = $mentionDiagnostics['registered'];
+        $checks['mentions.aliases_truncated'] = $mentionDiagnostics['truncated'];
         $requiredChecks[] = $mentionBoundsReady;
         $requiredChecks[] = $mentionResourcesReady;
 
@@ -1380,9 +1383,9 @@ final class CommentsDoctorCommand extends Command
     /**
      * Validate hard mention caps and every server-owned resource definition.
      *
-     * @return array{bool, bool, list<string>}
+     * @return array{bool, bool, array{aliases: list<string>, ready: bool, registered: int, truncated: bool}}
      */
-    private function mentionReadiness(Container $container): array
+    private function mentionReadiness(CommentMentionResourceRegistry $resources): array
     {
         $maximumMentions = config('comments.mentions.maximum_per_comment');
         $maximumAliases = config('comments.mentions.maximum_resource_types_per_comment');
@@ -1409,14 +1412,9 @@ final class CommentsDoctorCommand extends Command
             && $maximumBatchSize >= 1
             && $maximumBatchSize <= 100;
 
-        try {
-            $registry = new CommentMentionResourceRegistry($container);
-            $registry->registerConfigured();
+        $diagnostics = $resources->diagnostics();
 
-            return [$boundsReady, true, $registry->aliases()];
-        } catch (Throwable) {
-            return [$boundsReady, false, []];
-        }
+        return [$boundsReady, $diagnostics['ready'], $diagnostics];
     }
 
     /**

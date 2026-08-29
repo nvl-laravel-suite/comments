@@ -22,11 +22,13 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Providers\CommentsServiceProvider;
+use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentMutationLockStore;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionAuthorization;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResource;
+use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionUrlResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
@@ -80,6 +82,8 @@ it('reports complete schema and dependency readiness by default', function (): v
         ->and($report['mentions.bounds_ready'])->toBeTrue()
         ->and($report['mentions.resources_ready'])->toBeTrue()
         ->and($report['mentions.aliases'])->toBe([])
+        ->and($report['mentions.registered'])->toBe(0)
+        ->and($report['mentions.aliases_truncated'])->toBeFalse()
         ->and($report['metadata.schemas_ready'])->toBeTrue()
         ->and($report['metadata.digest_key_ready'])->toBeTrue()
         ->and($report['metadata.strict_compatible'])->toBeTrue()
@@ -134,8 +138,24 @@ it('validates registered mention resources and every hard bound', function (): v
         ->and($readyReport['mentions.aliases'])->toBe(['organization'])
         ->and($invalidExitCode)->toBe(1)
         ->and($invalidReport['mentions.bounds_ready'])->toBeFalse()
-        ->and($invalidReport['mentions.resources_ready'])->toBeFalse()
+        ->and($invalidReport['mentions.resources_ready'])->toBeTrue()
+        ->and($invalidReport['mentions.aliases'])->toBe(['organization'])
         ->and($invalidReport['healthy'])->toBeFalse();
+});
+
+it('reports resources registered programmatically on the live mention registry', function (): void {
+    app(CommentMentionResourceRegistry::class)->register(
+        'runtime-resource',
+        TestCommentMentionResourceResolver::class,
+    );
+
+    [$exitCode, $report] = runCommentsDoctor();
+
+    expect($exitCode)->toBe(0)
+        ->and($report['mentions.resources_ready'])->toBeTrue()
+        ->and($report['mentions.aliases'])->toBe(['runtime-resource'])
+        ->and($report['mentions.registered'])->toBe(1)
+        ->and($report['mentions.aliases_truncated'])->toBeFalse();
 });
 
 it('reports legacy metadata as strict incompatible before strict mode is enabled', function (): void {

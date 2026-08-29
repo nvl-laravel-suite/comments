@@ -122,7 +122,7 @@ it('resolves declarative Eloquent resources through authorization and allowliste
         ])
         ->and($resolved[0]->fields)->not->toHaveKeys(['tenant_id', 'secret'])
         ->and($resolved[0]->url)->toBe('/organizations/org-a')
-        ->and($resolved[1]->state)->toBe(CommentMentionState::Restricted)
+        ->and($resolved[1]->state)->toBe(CommentMentionState::Missing)
         ->and($resolved[1]->label)->toBeNull()
         ->and($resolved[2]->state)->toBe(CommentMentionState::Missing)
         ->and($resolved[3]->state)->toBe(CommentMentionState::Missing);

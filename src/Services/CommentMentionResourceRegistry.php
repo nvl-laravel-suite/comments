@@ -24,6 +24,8 @@ use Throwable;
  */
 final class CommentMentionResourceRegistry
 {
+    private const int MAXIMUM_DIAGNOSTIC_ALIASES = 100;
+
     /**
      * @var array<string, array{resolver: class-string<CommentMentionResourceResolver>|CommentMentionResourceResolver, public: bool}>
      */
@@ -399,6 +401,34 @@ final class CommentMentionResourceRegistry
     public function aliases(): array
     {
         return array_keys($this->resources);
+    }
+
+    /**
+     * Return a bounded snapshot of the registered definitions used by consumers.
+     *
+     * @return array{aliases: list<string>, ready: bool, registered: int, truncated: bool}
+     */
+    public function diagnostics(): array
+    {
+        $aliases = $this->aliases();
+        $diagnosticAliases = array_slice($aliases, 0, self::MAXIMUM_DIAGNOSTIC_ALIASES);
+        $truncated = count($aliases) > self::MAXIMUM_DIAGNOSTIC_ALIASES;
+        $ready = ! $truncated;
+
+        foreach ($diagnosticAliases as $alias) {
+            try {
+                $this->resolver($alias);
+            } catch (Throwable) {
+                $ready = false;
+            }
+        }
+
+        return [
+            'aliases' => $diagnosticAliases,
+            'ready' => $ready,
+            'registered' => count($aliases),
+            'truncated' => $truncated,
+        ];
     }
 
     /**

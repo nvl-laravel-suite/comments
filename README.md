@@ -273,6 +273,10 @@ projections use only immutable label snapshots and never call it.
 Call `SuggestCommentMentionResourcesAction` for an authorized editor and
 `ResolveCommentMentionsAction` for one authorized current comment. Suggestions
 return opaque IDs, labels, allowlisted scalar fields, and package-produced URLs.
+Every result is capped at 25 fields, 64 bytes per field key, 2,048 bytes per
+string field value, and a 2,048-byte relative or HTTP(S) URL. Field strings and
+URLs must be valid UTF-8; executable, protocol-relative, control-character, and
+non-finite values are rejected at the shared package boundary.
 Viewer projections use `resolved`, `missing`, or `restricted`; unavailable
 resources expose no live ID, fields, or URL. Projection batches de-duplicate IDs
 per alias and preserve token order without N+1 queries. The package bounds
@@ -281,6 +285,10 @@ and resolution batches. `body` is always a deterministic plain-text projection
 for compatibility and search. Raw stored documents and resource identity hashes
 are hidden from model serialization; viewer-safe documents never serialize raw
 opaque resource IDs.
+
+Declarative Eloquent resolution never performs an unscoped existence lookup:
+an absent resource and a resource outside the authorization scope both project
+as the same snapshot-only `missing` state through one scoped query.
 
 `CommentMentionsChanged` is an after-commit, delivery-agnostic fact containing
 only comment/target/revision identity and bounded added/removed alias, opaque ID,

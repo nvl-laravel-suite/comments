@@ -39,7 +39,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     ) {}
 
     /**
-     * Resolve requested resources while retaining safe missing and restricted states.
+     * Resolve requested resources while concealing absent and unauthorized identities.
      *
      * @param  list<string>  $ids
      * @return Collection<int, CommentMentionResourceData>
@@ -48,11 +48,6 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     {
         $model = new $this->modelClass;
         $key = $model->getKeyName();
-        $existing = $model->newQuery()
-            ->whereKey($ids)
-            ->pluck($key)
-            ->map(fn (mixed $id): string => $this->identifier($id))
-            ->flip();
         $query = $model->newQuery()->whereKey($ids);
         $this->authorization->scope($query, $context);
         $authorized = $query
@@ -63,7 +58,6 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         return collect($ids)->map(function (string $id) use (
             $authorized,
             $context,
-            $existing,
         ): CommentMentionResourceData {
             $resource = $authorized->get($id);
 
@@ -71,9 +65,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
                 return new CommentMentionResourceData(
                     id: $id,
                     label: null,
-                    state: $existing->has($id)
-                        ? CommentMentionState::Restricted
-                        : CommentMentionState::Missing,
+                    state: CommentMentionState::Missing,
                 );
             }
 
@@ -159,17 +151,11 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
             $fields[$field] = $value;
         }
 
-        $url = $this->urlResolver?->resolve($resource, $context);
-
-        if ($url !== null && (! mb_check_encoding($url, 'UTF-8') || mb_strlen($url) > 2_048)) {
-            throw new InvalidArgumentException('Comment mention resource URLs are invalid.');
-        }
-
         return new CommentMentionResourceData(
             id: $this->identifier($resource->getKey()),
             label: (string) $label,
             fields: $fields,
-            url: $url,
+            url: $this->urlResolver?->resolve($resource, $context),
         );
     }
 

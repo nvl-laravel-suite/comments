@@ -41,9 +41,11 @@ use Nvl\Comments\Data\Mutations\RestoreCommentRevisionData;
 use Nvl\Comments\Data\Mutations\SetCommentReactionData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
+use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentRevision;
+use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentAttachmentDataFactory;
 use Nvl\Comments\Services\CommentAttachmentUrlFactory;
 use Nvl\Comments\Services\CommentProjectionFactory;
@@ -61,6 +63,7 @@ use Nvl\Media\Services\MediaQueryService;
 final class MemberCommentsController extends Controller
 {
     public function __construct(
+        private readonly CommentAccessService $access,
         private readonly CommentReadService $reads,
         private readonly MediaQueryService $mediaQueries,
     ) {}
@@ -144,6 +147,13 @@ final class MemberCommentsController extends Controller
     ): JsonResponse {
         $model = $targets->resolve($target, $targetId);
         $actor = $actors->fromRequest($request);
+        $this->access->authorize(
+            CommentAbility::Create,
+            $actor,
+            target: $model,
+            audience: CommentAudience::Member,
+            asNotFound: true,
+        );
         $comment = $action->execute(
             $model,
             CreateRichCommentData::validateAndCreate($this->creationPayload($request)),
@@ -169,6 +179,14 @@ final class MemberCommentsController extends Controller
         SuggestCommentMentionResourcesAction $action,
     ): JsonResponse {
         $model = $targets->resolve($target, $targetId);
+        $actor = $actors->fromRequest($request);
+        $this->access->authorize(
+            CommentAbility::List,
+            $actor,
+            target: $model,
+            audience: CommentAudience::Member,
+            asNotFound: true,
+        );
         $query = $request->query('q');
 
         if (! is_string($query)) {
@@ -178,7 +196,7 @@ final class MemberCommentsController extends Controller
         return $this->respond([
             'data' => $action->execute(
                 $model,
-                $actors->fromRequest($request),
+                $actor,
                 CommentAudience::Member,
                 $resource,
                 $query,
@@ -253,8 +271,24 @@ final class MemberCommentsController extends Controller
         CommentTargetLocator $targets,
     ): JsonResponse {
         $actor = $actors->fromRequest($request);
-        $comment = $action->execute(
+        $authorizedComment = $this->reads->resolveById(
             $comment,
+            $actor,
+            CommentAudience::Member,
+            CommentAbility::Update,
+            withTrashed: false,
+        );
+        $authorizedTarget = $targets->locate($authorizedComment);
+        $this->access->authorize(
+            CommentAbility::Update,
+            $actor,
+            $authorizedComment,
+            $authorizedTarget,
+            CommentAudience::Member,
+            asNotFound: true,
+        );
+        $comment = $action->execute(
+            $authorizedComment,
             UpdateRichCommentData::validateAndCreate($request->all()),
             $actor,
             CommentAudience::Member,

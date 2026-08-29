@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\TestResponse;
 use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Actions\ReportCommentAction;
 use Nvl\Comments\Contracts\CommentAuthorization;
@@ -46,6 +47,20 @@ beforeEach(function (): void {
 function commentsHttpUser(string $id): GenericUser
 {
     return new GenericUser(['id' => $id]);
+}
+
+/**
+ * Assert the audience-specific denial shape used by private Comments routes.
+ */
+function commentsHttpAssertDenied(TestResponse $response, string $audience): void
+{
+    if ($audience === 'member') {
+        $response->assertNotFound();
+
+        return;
+    }
+
+    $response->assertForbidden();
 }
 
 it('exposes authenticated rich mutation and suggestion seams without a public suggestion route', function (): void {
@@ -114,6 +129,170 @@ it('exposes authenticated rich mutation and suggestion seams without a public su
 
     expect(Route::has('nvl.comments.public.mentions.suggestions'))->toBeFalse();
 });
+
+it('authorizes private rich HTTP seams before malformed documents and suggestion input', function (
+    string $audience,
+): void {
+    config()->set('comments.mentions.enabled', true);
+    app(CommentMentionResourceRegistry::class)->register(
+        'organization',
+        TestCommentMentionResourceResolver::class,
+    );
+    $target = TestCommentTarget::query()->create(['name' => "Denied {$audience} rich HTTP"]);
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData('Existing comment'),
+        new CommentActorData('member', 'existing-author'),
+    );
+    $boundary = new class implements CommentAuthorization, CommentQueryScope
+    {
+        /**
+         * Deny every ability so transport validation cannot disclose target existence.
+         *
+         * @param  array<string, mixed>  $context
+         */
+        public function allows(
+            CommentAbility $ability,
+            CommentActorData $actor,
+            ?Comment $comment = null,
+            ?Model $target = null,
+            CommentAudience $audience = CommentAudience::Public,
+            array $context = [],
+        ): bool {
+            return false;
+        }
+
+        /**
+         * Leave test queries visible so explicit authorization owns the denial response.
+         *
+         * @param  Builder<Comment>  $query
+         */
+        public function scopeComments(
+            Builder $query,
+            CommentActorData $actor,
+            Model $target,
+            CommentAudience $audience,
+            CommentAbility $ability,
+        ): void {}
+    };
+    app()->instance(CommentAuthorization::class, $boundary);
+    app()->instance(CommentQueryScope::class, $boundary);
+    $user = commentsHttpUser("denied-{$audience}");
+    $prefix = "nvl.comments.{$audience}";
+
+    $store = $this->actingAs($user)->postJson(route(
+        "{$prefix}.rich.store",
+        ['target' => 'article', 'targetId' => $target->id],
+    ), ['document' => 'malformed']);
+    commentsHttpAssertDenied($store, $audience);
+
+    $update = $this->actingAs($user)->patchJson(route(
+        "{$prefix}.rich.update",
+        ['comment' => $comment->id],
+    ), [
+        'document' => 'malformed',
+        'expectedRevision' => 'malformed',
+    ]);
+    commentsHttpAssertDenied($update, $audience);
+
+    $missingQuery = $this->actingAs($user)->getJson(route(
+        "{$prefix}.mentions.suggestions",
+        [
+            'target' => 'article',
+            'targetId' => $target->id,
+            'resource' => 'unregistered-resource',
+        ],
+    ));
+    commentsHttpAssertDenied($missingQuery, $audience);
+
+    $invalidLimit = $this->actingAs($user)->getJson(route(
+        "{$prefix}.mentions.suggestions",
+        [
+            'target' => 'article',
+            'targetId' => $target->id,
+            'resource' => 'organization',
+            'q' => 'organization',
+            'limit' => 21,
+        ],
+    ));
+    commentsHttpAssertDenied($invalidLimit, $audience);
+
+    $unregisteredResource = $this->actingAs($user)->getJson(route(
+        "{$prefix}.mentions.suggestions",
+        [
+            'target' => 'article',
+            'targetId' => $target->id,
+            'resource' => 'unregistered-resource',
+            'q' => 'organization',
+        ],
+    ));
+    commentsHttpAssertDenied($unregisteredResource, $audience);
+})->with(['member', 'management']);
+
+it('retains Action reauthorization after private suggestion preauthorization', function (
+    string $audience,
+): void {
+    config()->set('comments.mentions.enabled', true);
+    app(CommentMentionResourceRegistry::class)->register(
+        'organization',
+        TestCommentMentionResourceResolver::class,
+    );
+    $target = TestCommentTarget::query()->create(['name' => "Reauthorization {$audience}"]);
+    $boundary = new class implements CommentAuthorization, CommentQueryScope
+    {
+        public int $listAuthorizations = 0;
+
+        /**
+         * Permit only the HTTP preflight and deny the Action-level list authorization.
+         *
+         * @param  array<string, mixed>  $context
+         */
+        public function allows(
+            CommentAbility $ability,
+            CommentActorData $actor,
+            ?Comment $comment = null,
+            ?Model $target = null,
+            CommentAudience $audience = CommentAudience::Public,
+            array $context = [],
+        ): bool {
+            if ($ability !== CommentAbility::List) {
+                return true;
+            }
+
+            $this->listAuthorizations++;
+
+            return $this->listAuthorizations === 1;
+        }
+
+        /**
+         * Keep comment query scoping inert for suggestion authorization coverage.
+         *
+         * @param  Builder<Comment>  $query
+         */
+        public function scopeComments(
+            Builder $query,
+            CommentActorData $actor,
+            Model $target,
+            CommentAudience $audience,
+            CommentAbility $ability,
+        ): void {}
+    };
+    app()->instance(CommentAuthorization::class, $boundary);
+    app()->instance(CommentQueryScope::class, $boundary);
+
+    $response = $this->actingAs(commentsHttpUser("reauthorize-{$audience}"))->getJson(route(
+        "nvl.comments.{$audience}.mentions.suggestions",
+        [
+            'target' => 'article',
+            'targetId' => $target->id,
+            'resource' => 'organization',
+            'q' => 'organization',
+        ],
+    ));
+
+    commentsHttpAssertDenied($response, $audience);
+    expect($boundary->listAuthorizations)->toBe(2);
+})->with(['member', 'management']);
 
 it('creates a public comment with a revision and no private actor or metadata fields', function (): void {
     $target = TestCommentTarget::query()->create(['name' => 'Article']);

@@ -24,6 +24,14 @@ final class CommentMentionResourceData extends Data
 {
     use DataTransform;
 
+    private const int MAXIMUM_FIELDS = 25;
+
+    private const int MAXIMUM_FIELD_NAME_BYTES = 64;
+
+    private const int MAXIMUM_FIELD_STRING_BYTES = 2_048;
+
+    private const int MAXIMUM_URL_BYTES = 2_048;
+
     /**
      * Create one resolved mention resource value.
      *
@@ -64,13 +72,27 @@ final class CommentMentionResourceData extends Data
             );
         }
 
+        if (count($this->fields) > self::MAXIMUM_FIELDS) {
+            throw new InvalidArgumentException(
+                'Comment mention resource fields exceed the package boundary.',
+            );
+        }
+
         foreach ($this->fields as $field => $value) {
-            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field) !== 1
+            if (! mb_check_encoding($field, 'UTF-8')
+                || strlen($field) > self::MAXIMUM_FIELD_NAME_BYTES
+                || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field) !== 1
                 || ! self::isAllowedFieldValue($value)) {
                 throw new InvalidArgumentException(
                     'Comment mention resource fields must be allowlisted scalar values.',
                 );
             }
+        }
+
+        if (! self::isAllowedUrl($this->url)) {
+            throw new InvalidArgumentException(
+                'Comment mention resource URLs must be bounded safe HTTP or relative URLs.',
+            );
         }
     }
 
@@ -79,6 +101,46 @@ final class CommentMentionResourceData extends Data
      */
     private static function isAllowedFieldValue(mixed $value): bool
     {
-        return is_scalar($value) || $value === null;
+        if (is_string($value)) {
+            return mb_check_encoding($value, 'UTF-8')
+                && strlen($value) <= self::MAXIMUM_FIELD_STRING_BYTES;
+        }
+
+        if (is_float($value)) {
+            return is_finite($value);
+        }
+
+        return is_int($value) || is_bool($value) || $value === null;
+    }
+
+    /**
+     * Determine whether one package-produced URL is bounded and non-executable.
+     */
+    private static function isAllowedUrl(?string $url): bool
+    {
+        if ($url === null) {
+            return true;
+        }
+
+        if (! mb_check_encoding($url, 'UTF-8')
+            || $url === ''
+            || strlen($url) > self::MAXIMUM_URL_BYTES
+            || str_contains($url, '\\')
+            || preg_match('/[\x00-\x20\x7F]/u', $url) === 1) {
+            return false;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return ! str_starts_with($url, '//');
+        }
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        return is_string($scheme)
+            && in_array(strtolower($scheme), ['http', 'https'], true);
     }
 }
