@@ -192,7 +192,8 @@ it('reports legacy metadata as strict incompatible before strict mode is enabled
         ->and($report['metadata.strict_compatible'])->toBeFalse()
         ->and($report['metadata.strict_incompatible_records'])->toBe(1)
         ->and(json_encode($report, JSON_THROW_ON_ERROR))
-        ->not->toContain('unknown_legacy_key', 'private-legacy-value');
+        ->not->toContain('unknown_legacy_key')
+        ->not->toContain('private-legacy-value');
 });
 
 it('reports revision-only legacy metadata without exposing historical keys or values', function (): void {
@@ -232,10 +233,9 @@ it('reports revision-only legacy metadata without exposing historical keys or va
     expect($exitCode)->toBe(1)
         ->and($report['metadata.strict_compatible'])->toBeFalse()
         ->and($report['metadata.strict_incompatible_records'])->toBe(1)
-        ->and($serialized)->not->toContain(
-            'revision_only_secret_key',
-            'revision-only-secret-value',
-        );
+        ->and($serialized)
+        ->not->toContain('revision_only_secret_key')
+        ->not->toContain('revision-only-secret-value');
 });
 
 it('accepts valid configured rich-document lows', function (): void {

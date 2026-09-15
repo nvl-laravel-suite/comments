@@ -205,12 +205,10 @@ it('keeps moderation queues actionable target-bound filterable and deleted-aware
 
     expect($queueIds)->toHaveCount(4)
         ->toContain($pending->id, $spam->id, $reported->id, $deletedEvidence->id)
-        ->not->toContain(
-            $clean->id,
-            $resolvedComment->id,
-            $otherTargetPending->id,
-            $otherTargetReported->id,
-        );
+        ->not->toContain($clean->id)
+        ->not->toContain($resolvedComment->id)
+        ->not->toContain($otherTargetPending->id)
+        ->not->toContain($otherTargetReported->id);
 
     $openReportQueue = app(ListModerationCommentsAction::class)->execute(
         $firstTarget,

@@ -522,7 +522,9 @@ Stale mutations raise `StaleCommentException`.
 
 Anonymization is terminal and irreversible. It clears comment actor identity,
 content, locale, tags, metadata, identifying moderation text, stored revision
-content/identity, and attachment associations. An active comment is soft
+content/identity, and attachment associations. Deletion and restoration actor
+pairs are also cleared when they match the erased author exactly; other actors'
+audit identities and lifecycle timestamps remain intact. An active comment is soft
 deleted and its parent count is adjusted once. Structural target/thread facts
 and categorical reports/reactions from other actors remain available for
 authorized audit; any report/reaction owned by the erased comment actor is
@@ -740,13 +742,18 @@ $body = $comment?->body;
 Every selected tag must be present. Tags use the same list, distinctness,
 UTF-8, and 64-character limits as comment writes, with a hard query cap of 20
 or the lower configured write limit; status is an optional `CommentStatus`.
-The Action applies authorization and `CommentQueryScope` before these
+The Action reloads the target on its declared connection before authorization
+and applies `CommentQueryScope` before these
 selectors, excludes soft-deleted comments, orders by `created_at` then `id`
 descending, and returns the DTO for the requested audience or `null`.
-Management denial occurs before SQL. Use `DeleteLatestTargetCommentAction` for
+Management denial occurs before comment SQL, after the canonical target lookup.
+Use `DeleteLatestTargetCommentAction` for
 the same bounded selector when a workflow needs to delete its newest match
 without receiving a `Comment` model. Match resolution, authorization, row lock,
 and the current-revision delete lifecycle execute in one package transaction.
+Latest deletion applies both List and Delete query scopes before selecting a
+match and uses the same mutation locks, ordered parent/comment row locks,
+revision checks, counter updates, and after-commit event as ordinary deletion.
 
 ## Operations
 

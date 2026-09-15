@@ -267,7 +267,8 @@ it('validates registered values while retaining compatible legacy metadata inter
     ])
         ->and(CommentMetadataValue::query()->where('comment_id', $comment->id)->count())->toBe(4)
         ->and(json_encode(CommentMetadataValue::query()->get()->toArray()))
-        ->not->toContain('submitted', 'must-never-project');
+        ->not->toContain('submitted')
+        ->not->toContain('must-never-project');
 
     expect(fn () => app(CreateCommentAction::class)->execute(
         $target,
@@ -314,19 +315,18 @@ it('keeps raw metadata out of mutation events log contexts and exceptions', func
         $logged = (string) file_get_contents($path);
         @unlink($path);
 
-        expect($serialized)->not->toContain(
-            'legacy_private',
-            'raw-private-value',
-            'registered-private-value',
-        )->and($context)->not->toContain(
-            'legacy_private',
-            'raw-private-value',
-            'registered-private-value',
-        )->and($logged)->not->toContain(
-            'legacy_private',
-            'raw-private-value',
-            'registered-private-value',
-        );
+        expect($serialized)
+            ->not->toContain('legacy_private')
+            ->not->toContain('raw-private-value')
+            ->not->toContain('registered-private-value')
+            ->and($context)
+            ->not->toContain('legacy_private')
+            ->not->toContain('raw-private-value')
+            ->not->toContain('registered-private-value')
+            ->and($logged)
+            ->not->toContain('legacy_private')
+            ->not->toContain('raw-private-value')
+            ->not->toContain('registered-private-value');
 
         return true;
     });
@@ -343,10 +343,9 @@ it('keeps raw metadata out of mutation events log contexts and exceptions', func
             CommentAudience::Member,
         );
     } catch (InvalidCommentMutationException $exception) {
-        expect((string) $exception)->not->toContain(
-            'raw_private_key',
-            'raw-private-exception-value',
-        );
+        expect((string) $exception)
+            ->not->toContain('raw_private_key')
+            ->not->toContain('raw-private-exception-value');
 
         return;
     }
@@ -413,7 +412,8 @@ it('rejects unknown keys in strict mode without disclosing their names or values
         );
     } catch (InvalidCommentMutationException $exception) {
         expect($exception->getMessage())
-            ->not->toContain('private_unknown_key', 'private-unknown-value');
+            ->not->toContain('private_unknown_key')
+            ->not->toContain('private-unknown-value');
 
         return;
     }
@@ -498,7 +498,8 @@ it('projects only registered fields declared for each audience and omits tombsto
             'values' => ['event' => 'submitted', 'recipient' => null],
         ]])
         ->and(json_encode([$public, $member, $management]))
-        ->not->toContain('legacy_private', 'must-never-project');
+        ->not->toContain('legacy_private')
+        ->not->toContain('must-never-project');
 
     $comment->delete();
 

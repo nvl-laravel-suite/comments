@@ -272,6 +272,20 @@ final readonly class AnonymizeCommentAction
                             $attributes['deleted_by'] = $actor->id;
                         }
 
+                        if ($commentActorType !== null && $commentActorId !== null) {
+                            foreach (['deleted_by', 'restored_by'] as $auditField) {
+                                $auditType = $attributes[$auditField.'_type']
+                                    ?? $comment->getAttribute($auditField.'_type');
+                                $auditId = $attributes[$auditField]
+                                    ?? $comment->getAttribute($auditField);
+
+                                if ($auditType === $commentActorType && $auditId === $commentActorId) {
+                                    $attributes[$auditField.'_type'] = null;
+                                    $attributes[$auditField] = null;
+                                }
+                            }
+                        }
+
                         if (! $comment->forceFill($attributes)->save()) {
                             throw new InvalidCommentLifecycleException(
                                 'The comment could not be anonymized.',

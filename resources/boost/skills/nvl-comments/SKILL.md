@@ -120,10 +120,15 @@ and signed-asset delivery responses are private/no-store.
   consumer input.
 - Consume only the returned `PublicCommentData`, `MemberCommentData`, or
   `CommentManagementData`; `null` means no audience-visible match.
-- Keep management authorization in `CommentAuthorization`. The Action invokes
-  it before SQL, then applies `CommentQueryScope`, selectors, and deterministic
+- Keep management authorization in `CommentAuthorization`. The Action reloads
+  the target on its declared connection and invokes authorization before comment
+  SQL, then applies `CommentQueryScope`, selectors, and deterministic
   `created_at`/`id` descending order. It excludes soft-deleted comments so a
   deleted workflow note falls back to the previous active match.
+- Use `DeleteLatestTargetCommentAction` for selector-based deletion. It applies
+  List and Delete query scopes before selecting the match, then uses the shared
+  deletion writer's mutation locks, ordered row locks, current-revision check,
+  counters, and after-commit event.
 
 For a privileged workflow read, use these exact imports and call:
 
@@ -166,7 +171,9 @@ $comment = app(FindLatestTargetCommentAction::class)->execute(
   content before applying the selected snapshot.
 - Treat `AnonymizeCommentAction` as terminal and irreversible. It scrubs
   package-owned identity/content/revisions and detaches attachments while
-  retaining structural/categorical audit facts.
+  retaining structural/categorical audit facts. It also clears deletion and
+  restoration actor pairs that match the erased author exactly, preserving
+  other actors' audit identities and lifecycle timestamps.
 - Use `SetCommentReactionAction` with an explicit desired state.
 - Use `ReportCommentAction`, `ResolveCommentReportAction`, and
   `ModerateCommentAction` for report/moderation state machines. Preserve

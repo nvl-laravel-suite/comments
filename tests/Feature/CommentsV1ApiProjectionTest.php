@@ -17,6 +17,7 @@ use Nvl\Comments\Actions\AnonymizeCommentAction;
 use Nvl\Comments\Actions\AttachCommentMediaAction;
 use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Actions\DeleteCommentAction;
+use Nvl\Comments\Actions\DeleteLatestTargetCommentAction;
 use Nvl\Comments\Actions\DetachCommentMediaAction;
 use Nvl\Comments\Actions\FindLatestTargetCommentAction;
 use Nvl\Comments\Actions\ListCommentAttachmentsAction;
@@ -267,7 +268,8 @@ it('returns only audience-registered metadata through HTTP projections', functio
         ->assertJsonMissingPath('data.metadata.0.values.sequence');
 
     expect($public->getContent().$member->getContent())
-        ->not->toContain('legacy_private', 'legacy-api-secret');
+        ->not->toContain('legacy_private')
+        ->not->toContain('legacy-api-secret');
 });
 
 it('uses the comment identifier as the deterministic latest-selector tie breaker', function (): void {
@@ -299,7 +301,7 @@ it('uses the comment identifier as the deterministic latest-selector tie breaker
     expect($result?->id)->toBe($expectedId);
 });
 
-it('validates latest-comment tags and denies management before querying', function (): void {
+it('validates latest-comment tags and denies management before querying comments', function (): void {
     expect(fn () => new CommentSelectorData(tags: ['first' => 'tag']))
         ->toThrow(InvalidArgumentException::class, 'must be a list')
         ->and(fn () => new CommentSelectorData(tags: ['duplicate', 'duplicate']))
@@ -355,7 +357,9 @@ it('validates latest-comment tags and denies management before querying', functi
         new CommentSelectorData(tags: ['workflow']),
         CommentAudience::Management,
     ))->toThrow(AuthorizationException::class)
-        ->and(DB::getQueryLog())->toBeEmpty();
+        ->and(collect(DB::getQueryLog())->filter(
+            static fn (array $query): bool => str_contains($query['query'], '"comments"'),
+        ))->toBeEmpty();
 });
 
 it('keeps every route group disabled by default and enables the complete member API independently', function (): void {
@@ -459,7 +463,9 @@ it('limits the default member expansion to the viewers own pending rejected or p
     $ids = collect($response->json('data'))->pluck('id')->all();
 
     expect($ids)->toContain($public->id, $pending->id, $rejected->id, $private->id)
-        ->not->toContain($hidden->id, $spam->id, $internal->id);
+        ->not->toContain($hidden->id)
+        ->not->toContain($spam->id)
+        ->not->toContain($internal->id);
 
     foreach ([$hidden, $spam, $internal] as $inaccessible) {
         $this->actingAs($viewer)
@@ -2267,4 +2273,95 @@ it('derives management reply counts through the trusted operation scope', functi
 
     expect($root->refresh()->reply_count)->toBe(2)
         ->and($projection->replyCount)->toBe(1);
+});
+
+it('authorizes latest target actions against persisted target attributes', function (bool $delete): void {
+    config()->set('comments.attachments.enabled', false);
+    $target = TestCommentTarget::query()->create(['name' => 'Private target']);
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Protected comment'),
+        CommentActorData::system(),
+    );
+
+    app()->instance(CommentAuthorization::class, new class implements CommentAuthorization
+    {
+        /** @param array<string, mixed> $context */
+        public function allows(
+            CommentAbility $ability,
+            CommentActorData $actor,
+            ?Comment $comment = null,
+            ?Model $target = null,
+            CommentAudience $audience = CommentAudience::Public,
+            array $context = [],
+        ): bool {
+            return $target?->getAttribute('name') === 'Public target';
+        }
+    });
+
+    $target->name = 'Public target';
+    $actor = new CommentActorData('member', 'viewer');
+    $selector = new CommentSelectorData;
+
+    expect(function () use ($delete, $target, $actor, $selector): void {
+        if ($delete) {
+            app(DeleteLatestTargetCommentAction::class)->execute(
+                $target,
+                $selector,
+                $actor,
+                CommentAudience::Member,
+            );
+
+            return;
+        }
+
+        app(FindLatestTargetCommentAction::class)->execute(
+            $target,
+            $actor,
+            $selector,
+            CommentAudience::Member,
+        );
+    })->toThrow(AuthorizationException::class);
+
+    expect($comment->fresh()?->deleted_at)->toBeNull();
+})->with([
+    'read' => false,
+    'delete' => true,
+]);
+
+it('honors the operation specific scope when deleting the latest comment', function (): void {
+    config()->set('comments.attachments.enabled', false);
+    $target = TestCommentTarget::query()->create(['name' => 'Target']);
+    $actor = new CommentActorData('member', 'author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Visible but outside the trusted delete scope'),
+        $actor,
+        CommentAudience::Member,
+    );
+
+    app()->instance(CommentQueryScope::class, new class implements CommentQueryScope
+    {
+        /** @param Builder<Comment> $query */
+        public function scopeComments(
+            Builder $query,
+            CommentActorData $actor,
+            Model $target,
+            CommentAudience $audience,
+            CommentAbility $ability,
+        ): void {
+            if ($ability === CommentAbility::Delete) {
+                $query->whereRaw('1 = 0');
+            }
+        }
+    });
+
+    app(DeleteLatestTargetCommentAction::class)->execute(
+        $target,
+        new CommentSelectorData,
+        $actor,
+        CommentAudience::Member,
+    );
+
+    expect($comment->fresh()?->deleted_at)->toBeNull();
 });

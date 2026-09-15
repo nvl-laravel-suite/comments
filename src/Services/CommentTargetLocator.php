@@ -18,6 +18,21 @@ use Nvl\Comments\Support\CommentTargetIdentifier;
 final class CommentTargetLocator
 {
     /**
+     * Reload a supplied target on its declared connection before evaluating policy attributes.
+     */
+    public function reload(Model $target): Model
+    {
+        $prototype = new ($target::class);
+        $lookupKey = CommentTargetIdentifier::lookupKey($prototype, $target->getKey());
+
+        return $prototype->newQuery()->find($lookupKey)
+            ?? throw CommentTargetNotFoundException::forIdentifier(
+                $prototype->getMorphClass(),
+                (string) $lookupKey,
+            );
+    }
+
+    /**
      * Locate the live target referenced by a persisted comment.
      */
     public function locate(Comment $comment): Model

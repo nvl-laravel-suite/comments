@@ -14,6 +14,7 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Services\CommentMetadataIndexWriter;
 use Nvl\Comments\Services\CommentProjectionFactory;
 use Nvl\Comments\Services\CommentReadService;
+use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 
 /**
@@ -28,6 +29,7 @@ final readonly class FindLatestTargetCommentAction
         private CommentReadService $reads,
         private CommentProjectionFactory $projections,
         private CommentMetadataIndexWriter $metadataIndex,
+        private CommentTargetLocator $targets,
     ) {}
 
     /**
@@ -39,6 +41,7 @@ final readonly class FindLatestTargetCommentAction
         CommentSelectorData $selector,
         CommentAudience $audience = CommentAudience::Member,
     ): PublicCommentData|MemberCommentData|CommentManagementData|null {
+        $target = $this->targets->reload($target);
         $query = $this->reads->query(
             $target,
             $actor,

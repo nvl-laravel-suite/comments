@@ -12,6 +12,7 @@ use Nvl\Comments\Actions\AnonymizeCommentAction;
 use Nvl\Comments\Actions\AttachCommentMediaAction;
 use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Actions\DeleteCommentAction;
+use Nvl\Comments\Actions\DeleteLatestTargetCommentAction;
 use Nvl\Comments\Actions\DetachCommentMediaAction;
 use Nvl\Comments\Actions\FindLatestTargetCommentAction;
 use Nvl\Comments\Actions\ModerateCommentAction;
@@ -21,7 +22,9 @@ use Nvl\Comments\Actions\RestoreCommentAction;
 use Nvl\Comments\Actions\RestoreCommentRevisionAction;
 use Nvl\Comments\Actions\SetCommentReactionAction;
 use Nvl\Comments\Actions\UpdateCommentAction;
+use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\CommentManagementData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Data\Mutations\DeleteCommentData;
@@ -42,6 +45,7 @@ use Nvl\Comments\Events\CommentChanged;
 use Nvl\Comments\Events\CommentReactionChanged;
 use Nvl\Comments\Events\CommentReported;
 use Nvl\Comments\Exceptions\CommentIdempotencyConflictException;
+use Nvl\Comments\Exceptions\CommentMutationBusyException;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
@@ -1509,4 +1513,129 @@ it('detaches and anonymizes attachment associations after Media soft deletion', 
         ->and(Media::query()->withTrashed()->findOrFail($deletedMedia->id)->trashed())
         ->toBeTrue()
         ->and(Media::query()->whereKey($inactiveMedia->id)->exists())->toBeTrue();
+});
+
+it('scrubs only the erased author from deletion and restoration audit identities', function (
+    bool $restore,
+    bool $authorOwnsAudit,
+): void {
+    config()->set('comments.attachments.enabled', false);
+    $target = TestCommentTarget::query()->create(['name' => 'Anonymization history']);
+    $author = new CommentActorData('member', 'erased-author');
+    $system = CommentActorData::system();
+    $auditActor = $authorOwnsAudit ? $author : $system;
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Personal content'),
+        $author,
+        CommentAudience::Member,
+    );
+    app(DeleteCommentAction::class)->execute(
+        $comment,
+        new DeleteCommentData($comment->revision),
+        $auditActor,
+        CommentAudience::Member,
+    );
+    $comment->refresh();
+
+    if ($restore) {
+        $comment = app(RestoreCommentAction::class)->execute(
+            $comment,
+            new RestoreCommentData($comment->revision),
+            $auditActor,
+            CommentAudience::Member,
+        );
+    }
+
+    $deletedAt = $comment->deleted_at?->format(DATE_ATOM);
+    $restoredAt = $comment->restored_at?->format(DATE_ATOM);
+    $erased = app(AnonymizeCommentAction::class)->execute(
+        $comment,
+        new AnonymizeCommentData($comment->revision, 'Erase author content'),
+        $system,
+        CommentAudience::Management,
+    );
+    $projection = CommentManagementData::fromModel($erased, 0, true)->toArray();
+    $expectedDeletedType = $restore || ! $authorOwnsAudit ? $system->type : null;
+    $expectedDeletedId = $restore || ! $authorOwnsAudit ? $system->id : null;
+    $expectedRestoredType = $restore && ! $authorOwnsAudit ? $system->type : null;
+    $expectedRestoredId = $restore && ! $authorOwnsAudit ? $system->id : null;
+
+    expect($erased->actor_id)->toBeNull()
+        ->and($erased->deleted_by_type)->toBe($expectedDeletedType)
+        ->and($erased->deleted_by)->toBe($expectedDeletedId)
+        ->and($erased->restored_by_type)->toBe($expectedRestoredType)
+        ->and($erased->restored_by)->toBe($expectedRestoredId)
+        ->and($erased->restored_at?->format(DATE_ATOM))->toBe($restoredAt)
+        ->and($projection['deletedBy'])->toBe($expectedDeletedId)
+        ->and($projection['restoredBy'])->toBe($expectedRestoredId);
+
+    if (! $restore) {
+        expect($erased->deleted_at?->format(DATE_ATOM))->toBe($deletedAt);
+    }
+})->with([
+    'author deletion' => [false, true],
+    'author restoration' => [true, true],
+    'other actor deletion' => [false, false],
+    'other actor restoration' => [true, false],
+]);
+
+it('honors the shared mutation lock when deleting the latest comment', function (): void {
+    config()->set('comments.mutation_lock.wait_seconds', 1);
+    $target = TestCommentTarget::query()->create(['name' => 'Latest mutation lock']);
+    $actor = new CommentActorData('member', 'author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Locked latest comment'),
+        $actor,
+        CommentAudience::Member,
+    );
+    $lock = Cache::store('file')->lock(
+        'comments:mutation:'.hash('sha256', $comment->id),
+        10,
+        'independent-lifecycle-writer',
+    );
+    expect($lock->get())->toBeTrue();
+
+    try {
+        expect(fn () => app(DeleteLatestTargetCommentAction::class)->execute(
+            $target,
+            new CommentSelectorData,
+            $actor,
+            CommentAudience::Member,
+        ))->toThrow(CommentMutationBusyException::class);
+
+        expect($comment->refresh()->deleted_at)->toBeNull()
+            ->and($comment->revision)->toBe(1);
+    } finally {
+        $lock->release();
+    }
+});
+
+it('does not reintroduce a deletion identity during authorized self anonymization', function (): void {
+    config()->set('comments.attachments.enabled', false);
+    $target = TestCommentTarget::query()->create(['name' => 'Self anonymization']);
+    $author = new CommentActorData('member', 'erased-author');
+    $comment = app(CreateCommentAction::class)->execute(
+        $target,
+        new CreateCommentData(body: 'Personal content'),
+        $author,
+        CommentAudience::Member,
+    );
+    $authorization = Mockery::mock(CommentAuthorization::class);
+    $authorization->shouldReceive('allows')->andReturnTrue();
+    app()->instance(CommentAuthorization::class, $authorization);
+
+    $erased = app(AnonymizeCommentAction::class)->execute(
+        $comment,
+        new AnonymizeCommentData($comment->revision, 'Erase my comment'),
+        $author,
+        CommentAudience::Member,
+    );
+
+    expect($erased->deleted_by_type)->toBeNull()
+        ->and($erased->deleted_by)->toBeNull()
+        ->and($erased->deleted_at)->not->toBeNull()
+        ->and($erased->anonymized_by_type)->toBe($author->type)
+        ->and($erased->anonymized_by)->toBe($author->id);
 });

@@ -4,6 +4,15 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Reload latest-comment targets before authorization and apply the Delete query
+  scope before selecting a comment for deletion.
+- Share direct and latest-match deletion locks, revision checks, counter updates,
+  rollback behavior, and after-commit events through one internal writer.
+- Clear deletion/restoration audit identities belonging to an anonymized author
+  while preserving other actors' identities and structural timestamps.
+
 ## [2.0.0] - 2026-08-29
 
 ### Added
