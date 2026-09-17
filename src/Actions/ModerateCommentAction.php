@@ -21,6 +21,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Applies an explicit moderation state and pin transition.
@@ -33,6 +34,7 @@ final readonly class ModerateCommentAction
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -85,7 +87,7 @@ final readonly class ModerateCommentAction
                         && $comment->moderated_by === $actor->id
                         && $comment->moderation_reason === $data->reason
                         && $comment->moderated_at !== null) {
-                        return Comment::query()
+                        return $this->boundary->query(Comment::query(), 'comments.comments')
                             ->withTrashed()
                             ->findOrFail($comment->id);
                     }
@@ -115,7 +117,7 @@ final readonly class ModerateCommentAction
                         $actor,
                     );
 
-                    return Comment::query()
+                    return $this->boundary->query(Comment::query(), 'comments.comments')
                         ->withTrashed()
                         ->findOrFail($comment->id);
                 }, attempts: CommentsConfiguration::positiveInteger(

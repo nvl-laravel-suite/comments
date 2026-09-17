@@ -34,6 +34,7 @@ use Nvl\Media\Contracts\DetachMediaContract;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaMutationLock;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Irreversibly anonymizes one comment while retaining thread and audit structure.
@@ -53,6 +54,7 @@ final readonly class AnonymizeCommentAction
         private CommentMentionWriter $mentions,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -145,7 +147,7 @@ final readonly class AnonymizeCommentAction
                         $mediaIds,
                     ): Comment {
                         sort($lockIds, SORT_STRING);
-                        $lockedComments = Comment::query()
+                        $lockedComments = $this->boundary->query(Comment::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($lockIds)
                             ->orderBy('id')

@@ -32,6 +32,7 @@ final class CommentMention extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'tenant_id',
         'comment_id',
         'token_id',
         'resource_alias',

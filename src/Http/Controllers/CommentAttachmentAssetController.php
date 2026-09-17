@@ -14,6 +14,8 @@ use Nvl\Media\Services\MediaConfiguredVariationService;
 use Nvl\Media\Services\MediaQueryService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Nvl\Tenancy\Contracts\TenantContext;
+use Nvl\Tenancy\Enums\TenantContextMode;
 
 /**
  * Serves signed association-scoped assets without placing Media internals in URLs.
@@ -24,6 +26,7 @@ final class CommentAttachmentAssetController extends Controller
         private readonly CommentAttachmentAssetResponder $assets,
         private readonly MediaQueryService $mediaQueries,
         private readonly MediaConfiguredVariationService $variations,
+        private readonly TenantContext $context,
     ) {}
 
     /**
@@ -54,6 +57,14 @@ final class CommentAttachmentAssetController extends Controller
         string $associationId,
         bool $thumbnail,
     ): BinaryFileResponse|StreamedResponse|Response {
+        $snapshot = $this->context->snapshot();
+        if ($snapshot->mode !== TenantContextMode::Disabled) {
+            $expected = hash(
+                'sha256',
+                $snapshot->mode->value."\0".($snapshot->tenantId?->value ?? ''),
+            );
+            abort_unless(hash_equals($expected, (string) $request->query('partition')), 404);
+        }
         $association = $this->mediaQueries->activeAssociation(
             $associationId,
             (new Comment)->getMorphClass(),

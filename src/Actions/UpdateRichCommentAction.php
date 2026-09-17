@@ -130,6 +130,7 @@ final readonly class UpdateRichCommentAction
                     }
 
                     $revision = $comment->revisions()->create([
+                        ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                         'revision' => $comment->revision,
                         'body' => $comment->body,
                         'format' => $comment->format,

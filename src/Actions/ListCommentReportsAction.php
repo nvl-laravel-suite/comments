@@ -16,6 +16,7 @@ use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Filterable\Data\FilterSet;
 use Nvl\Filterable\Services\EloquentFilterApplier;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Lists one comment's reports after target-aware moderator authorization.
@@ -27,6 +28,7 @@ final readonly class ListCommentReportsAction
         private EloquentFilterApplier $filters,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -57,7 +59,7 @@ final readonly class ListCommentReportsAction
         );
         $maximum = CommentsConfiguration::positiveInteger('comments.pagination.maximum', 100);
         $perPage ??= CommentsConfiguration::positiveInteger('comments.pagination.default', 25);
-        $query = CommentReport::query()
+        $query = $this->boundary->query(CommentReport::query(), 'comments.reports')
             ->with('comment')
             ->where('comment_id', $comment->id);
         $this->filters->apply(

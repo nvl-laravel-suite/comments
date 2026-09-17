@@ -12,14 +12,14 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentStatus;
-use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Filterable\Data\FilterSet;
 use Nvl\Filterable\Services\EloquentFilterApplier;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Lists the moderation queue only after the privileged capability check.
@@ -30,6 +30,8 @@ final readonly class ListModerationCommentsAction
         private CommentAccessService $access,
         private EloquentFilterApplier $filters,
         private CommentQueryScope $queryScope,
+        private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -41,12 +43,7 @@ final readonly class ListModerationCommentsAction
         ?int $perPage = null,
         ?FilterSet $filterSet = null,
     ): LengthAwarePaginator {
-        $prototype = new ($target::class);
-        $lookupKey = CommentTargetIdentifier::lookupKey($prototype, $target->getKey());
-        $target = $prototype->newQuery()->find($lookupKey)
-            ?? throw new InvalidCommentMutationException(
-                'The moderation target no longer exists.',
-            );
+        $target = $this->targets->reload($target);
         $identity = CommentTargetIdentifier::canonical($target);
         $this->access->authorize(
             CommentAbility::Moderate,
@@ -65,7 +62,7 @@ final readonly class ListModerationCommentsAction
             ),
             $this->actionableStatuses(),
         );
-        $query = Comment::query()
+        $query = $this->boundary->query(Comment::query(), 'comments.comments')
             ->withTrashed()
             ->where(
                 'commentable_identity_hash',

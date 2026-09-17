@@ -15,6 +15,7 @@ use Nvl\Comments\Exceptions\CommentMutationBusyException;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentMutationLockConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 use Throwable;
 
 /**
@@ -40,6 +41,7 @@ final class CommentMutationLock
     public function __construct(
         private readonly DatabaseTransactionsManager $transactions,
         private readonly CommentMutationLockStore $store,
+        private readonly TenantBoundary $boundary,
     ) {}
 
     /**
@@ -175,7 +177,7 @@ final class CommentMutationLock
      */
     private function lockKey(string $commentId): string
     {
-        return 'comments:mutation:'.hash('sha256', $commentId);
+        return $this->boundary->key('comments.comments', 'mutation:'.$commentId);
     }
 
     /**

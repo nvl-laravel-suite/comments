@@ -16,6 +16,7 @@ use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Owns the atomic deletion lifecycle shared by direct and latest-match Actions.
@@ -35,6 +36,7 @@ final readonly class CommentDeletionWriter
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -68,7 +70,7 @@ final readonly class CommentDeletionWriter
                         $lockIds,
                     ): bool {
                         sort($lockIds, SORT_STRING);
-                        $lockedComments = Comment::query()
+                        $lockedComments = $this->boundary->query(Comment::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($lockIds)
                             ->orderBy('id')

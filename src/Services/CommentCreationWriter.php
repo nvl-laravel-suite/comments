@@ -26,6 +26,9 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
+use Illuminate\Contracts\Config\Repository;
+use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Owns the reusable atomic creation workflow shared by plain and rich entrypoints.
@@ -48,6 +51,9 @@ final readonly class CommentCreationWriter
         private CommentMetadataIndexWriter $metadataIndex,
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
+        private TenantBoundary $boundary,
+        private TenantResourceRegistry $resources,
+        private Repository $config,
     ) {}
 
     /**
@@ -152,6 +158,13 @@ final readonly class CommentCreationWriter
                         ): Comment {
                             $targetQuery = $targetPrototype->newQuery();
 
+                            if ($this->config->get('tenancy.enabled') === true) {
+                                $targetQuery = $this->boundary->query(
+                                    $targetQuery,
+                                    $this->resources->forModel($targetPrototype)->key,
+                                );
+                            }
+
                             if ($sharesConnection) {
                                 $targetQuery->lockForUpdate();
                             }
@@ -167,7 +180,7 @@ final readonly class CommentCreationWriter
                             $targetIdentity = CommentTargetIdentifier::canonical($canonicalTarget);
                             $existing = $idempotencyKey === null
                                 ? null
-                                : Comment::query()
+                                : $this->boundary->query(Comment::query(), 'comments.comments')
                                     ->withTrashed()
                                     ->where('idempotency_key', $idempotencyKey)
                                     ->lockForUpdate()
@@ -285,6 +298,7 @@ final readonly class CommentCreationWriter
                                 ? CommentStatus::tryFrom($configuredStatus)
                                 : null;
                             $comment = Comment::query()->create([
+                                ...$this->ownershipAttributes($canonicalTarget),
                                 'commentable_type' => $targetIdentity['type'],
                                 'commentable_id' => $targetIdentity['id'],
                                 'root_id' => $parent === null ? null : ($parent->root_id ?? $parent->id),
@@ -361,7 +375,7 @@ final readonly class CommentCreationWriter
                         throw $exception;
                     }
 
-                    $existing = Comment::query()
+                    $existing = $this->boundary->query(Comment::query(), 'comments.comments')
                         ->withTrashed()
                         ->where('idempotency_key', $idempotencyKey)
                         ->first();
@@ -370,7 +384,14 @@ final readonly class CommentCreationWriter
                         throw $exception;
                     }
 
-                    $canonicalTarget = $targetPrototype->newQuery()->find($targetLookupKey);
+                    $targetQuery = $targetPrototype->newQuery();
+                    if ($this->config->get('tenancy.enabled') === true) {
+                        $targetQuery = $this->boundary->query(
+                            $targetQuery,
+                            $this->resources->forModel($targetPrototype)->key,
+                        );
+                    }
+                    $canonicalTarget = $targetQuery->find($targetLookupKey);
 
                     if (! $canonicalTarget instanceof Model) {
                         throw new InvalidCommentMutationException(
@@ -389,6 +410,18 @@ final readonly class CommentCreationWriter
                 }
             },
         );
+    }
+
+    /** @return array{tenant_id?: string|null} */
+    private function ownershipAttributes(Model $target): array
+    {
+        if ($this->config->get('tenancy.enabled') !== true) {
+            return [];
+        }
+
+        $tenantId = $target->getAttribute('tenant_id');
+
+        return ['tenant_id' => is_string($tenantId) ? $tenantId : null];
     }
 
     /**

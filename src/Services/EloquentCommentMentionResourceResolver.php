@@ -11,11 +11,16 @@ use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
 use Nvl\Comments\Contracts\CommentMentionUrlResolver;
+use Nvl\Comments\Contracts\CommentMentionTenantProjection;
 use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
+use Illuminate\Contracts\Config\Repository;
+use Nvl\Tenancy\Contracts\TenantContext;
+use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Resolves one declaratively registered Eloquent mention resource.
@@ -36,6 +41,11 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         private string $labelField,
         private CommentMentionResourceAuthorization $authorization,
         private ?CommentMentionUrlResolver $urlResolver = null,
+        private ?CommentMentionTenantProjection $tenantProjection = null,
+        private ?TenantContext $tenantContext = null,
+        private ?TenantBoundary $boundary = null,
+        private ?TenantResourceRegistry $resources = null,
+        private ?Repository $config = null,
     ) {}
 
     /**
@@ -48,7 +58,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     {
         $model = new $this->modelClass;
         $key = $model->getKeyName();
-        $query = $model->newQuery()->whereKey($ids);
+        $query = $this->tenantQuery($model, $context)->whereKey($ids);
         $this->authorization->scope($query, $context);
         $authorized = $query
             ->select($this->selectedFields($key))
@@ -85,7 +95,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     ): Collection {
         $model = new $this->modelClass;
         $key = $model->getKeyName();
-        $builder = $model->newQuery();
+        $builder = $this->tenantQuery($model, $context);
         $this->authorization->scope($builder, $context);
         $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $query);
 
@@ -110,6 +120,27 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
                 $context,
             ))
             ->values();
+    }
+
+    /** @return Builder<Model> */
+    private function tenantQuery(Model $model, CommentMentionContext $context): Builder
+    {
+        $query = $model->newQuery();
+        if ($this->config?->get('tenancy.enabled') !== true) {
+            return $query;
+        }
+        $tenant = $this->tenantContext?->requireTenant()
+            ?? throw new InvalidCommentMutationException('Comment mention tenancy is unavailable.');
+        if ($this->tenantProjection instanceof CommentMentionTenantProjection) {
+            $this->tenantProjection->scope($query, $context, $tenant);
+
+            return $query;
+        }
+        if (! $this->boundary instanceof TenantBoundary || ! $this->resources instanceof TenantResourceRegistry) {
+            throw new InvalidCommentMutationException('Comment mention tenancy is unavailable.');
+        }
+
+        return $this->boundary->query($query, $this->resources->forModel($model)->key);
     }
 
     /**

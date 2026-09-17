@@ -22,6 +22,7 @@ use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Creates or refreshes one actor's report without count inflation.
@@ -34,6 +35,7 @@ final readonly class ReportCommentAction
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -84,7 +86,7 @@ final readonly class ReportCommentAction
                         $audience,
                         asNotFound: $audience !== CommentAudience::Management,
                     );
-                    $report = CommentReport::query()->where([
+                    $report = $this->boundary->query(CommentReport::query(), 'comments.reports')->where([
                         'comment_id' => $comment->id,
                         'reporter_identity_hash' => $reporterIdentityHash,
                     ])->lockForUpdate()->first();
@@ -112,6 +114,7 @@ final readonly class ReportCommentAction
                     $wasOpen = $report?->status === CommentReportStatus::Open;
                     $report ??= new CommentReport;
                     $report->fill([
+                        ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                         'comment_id' => $comment->id,
                         'reporter_type' => $actor->type,
                         'reporter_id' => $actor->id,

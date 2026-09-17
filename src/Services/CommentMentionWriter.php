@@ -9,6 +9,8 @@ use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
+use Illuminate\Contracts\Config\Repository;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Synchronizes current normalized mention rows from canonical documents.
@@ -18,14 +20,19 @@ final readonly class CommentMentionWriter
     /**
      * Create the current mention row writer.
      */
-    public function __construct(private CommentDocumentNormalizer $documents) {}
+    public function __construct(
+        private CommentDocumentNormalizer $documents,
+        private TenantBoundary $boundary,
+        private Repository $config,
+    ) {}
 
     /**
      * Replace current mention rows inside the caller-owned transaction.
      */
     public function synchronize(Comment $comment, ?CommentDocumentData $document): void
     {
-        CommentMention::query()->where('comment_id', $comment->id)->delete();
+        $this->boundary->query(CommentMention::query(), 'comments.mentions')
+            ->where('comment_id', $comment->id)->delete();
 
         if ($document === null) {
             return;
@@ -37,6 +44,7 @@ final readonly class CommentMentionWriter
         foreach ($this->documents->references($document) as $reference) {
             $rows[] = [
                 'id' => (string) Str::uuid(),
+                ...($this->config->get('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                 'comment_id' => $comment->id,
                 'token_id' => $reference->tokenId,
                 'resource_alias' => $reference->resourceAlias,
@@ -53,7 +61,7 @@ final readonly class CommentMentionWriter
         }
 
         if ($rows !== []) {
-            CommentMention::query()->insert($rows);
+            $this->boundary->query(CommentMention::query(), 'comments.mentions')->insert($rows);
         }
     }
 
@@ -62,7 +70,8 @@ final readonly class CommentMentionWriter
      */
     public function delete(Comment $comment): void
     {
-        CommentMention::query()->where('comment_id', $comment->id)->delete();
+        $this->boundary->query(CommentMention::query(), 'comments.mentions')
+            ->where('comment_id', $comment->id)->delete();
     }
 
     /**
@@ -73,7 +82,7 @@ final readonly class CommentMentionWriter
     public function removals(Comment $comment): array
     {
         $identities = [];
-        $mentions = CommentMention::query()
+        $mentions = $this->boundary->query(CommentMention::query(), 'comments.mentions')
             ->where('comment_id', $comment->id)
             ->orderBy('position')
             ->orderBy('token_id')

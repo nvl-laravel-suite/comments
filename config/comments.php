@@ -8,6 +8,9 @@ use Nvl\Comments\Services\SafeCommentAuthorPresenter;
 use Nvl\Comments\Support\CommentActorFactory;
 
 return [
+    'tenancy' => [
+        'target_types' => [],
+    ],
     'connection' => null,
 
     'tables' => [

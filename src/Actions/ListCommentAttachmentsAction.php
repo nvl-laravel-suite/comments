@@ -15,6 +15,7 @@ use Nvl\Comments\Services\CommentAttachmentDataFactory;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Lists authorized, deliverable attachment associations for one scoped comment.
@@ -26,6 +27,7 @@ final readonly class ListCommentAttachmentsAction
         private CommentAttachmentDataFactory $dataFactory,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -60,7 +62,11 @@ final readonly class ListCommentAttachmentsAction
             return new Collection;
         }
 
-        return $comment->attachmentAssociations()
+        return $this->boundary->query(MediaAssociation::query(), 'media.associations')
+            ->where('associable_type', $comment->getMorphClass())
+            ->where('associable_id', $comment->id)
+            ->where('collection', 'attachments')
+            ->where('is_active', true)
             ->with(['media.imageVariations', 'media.translations'])
             ->orderBy('order')
             ->orderBy('id')

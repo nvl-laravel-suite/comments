@@ -19,6 +19,7 @@ use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaConfiguredVariationService;
 use Nvl\Media\Services\MediaLocaleResolver;
 use RuntimeException;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Builds privacy-safe comment attachment projections from authorized Media associations.
@@ -31,6 +32,7 @@ final readonly class CommentAttachmentDataFactory
         private MediaAuthorization $mediaAuthorization,
         private MediaConfiguredVariationService $configuredVariations,
         private MediaLocaleResolver $localeResolver,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -43,6 +45,7 @@ final readonly class CommentAttachmentDataFactory
         CommentActorData $actor,
         CommentAudience $audience,
     ): ?CommentAttachmentData {
+        $this->boundary->assertRecord($association, 'media.associations');
         if ($association->associable_type !== $comment->getMorphClass()
             || $association->associable_id !== $comment->id
             || $association->collection !== 'attachments'
@@ -56,6 +59,7 @@ final readonly class CommentAttachmentDataFactory
         if (! $media instanceof Media || ! $media->isAvailable()) {
             return null;
         }
+        $this->boundary->assertRecord($media, 'media.assets');
 
         $mediaActor = new MediaActorData($actor->type, $actor->id, $actor->system);
 

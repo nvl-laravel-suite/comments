@@ -22,6 +22,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Resolves or dismisses one report through moderator authorization.
@@ -35,6 +36,7 @@ final readonly class ResolveCommentReportAction
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -55,7 +57,8 @@ final readonly class ResolveCommentReportAction
 
         $this->guard->resolution($data);
         $this->lifecycle->expectedRevision($data->expectedRevision);
-        $commentId = CommentReport::query()->findOrFail($reportId)->comment_id;
+        $commentId = $this->boundary->query(CommentReport::query(), 'comments.reports')
+            ->findOrFail($reportId)->comment_id;
 
         return $this->mutationLock->execute(
             $commentId,
@@ -88,7 +91,7 @@ final readonly class ResolveCommentReportAction
                         throw StaleCommentException::forComment($comment->id);
                     }
 
-                    $report = CommentReport::query()
+                    $report = $this->boundary->query(CommentReport::query(), 'comments.reports')
                         ->whereKey($reportId)
                         ->where('comment_id', $comment->id)
                         ->lockForUpdate()

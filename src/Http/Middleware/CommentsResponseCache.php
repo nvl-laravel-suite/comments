@@ -11,13 +11,17 @@ use Illuminate\Routing\Route;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
+use Nvl\Tenancy\Contracts\TenantContext;
 
 /**
  * Enforces private caching for viewer-aware, mutation, error, and asset responses.
  */
 final readonly class CommentsResponseCache
 {
-    public function __construct(private ExceptionHandler $exceptions) {}
+    public function __construct(
+        private ExceptionHandler $exceptions,
+        private ?TenantContext $context = null,
+    ) {}
 
     /**
      * Render route exceptions inside the cache boundary and protect every non-public response.
@@ -27,6 +31,15 @@ final readonly class CommentsResponseCache
     public function handle(Request $request, Closure $next): Response
     {
         $request->headers->set('Accept', 'application/json');
+        $snapshot = $this->context?->snapshot();
+        $request->headers->set(
+            'X-Nvl-Comments-Tenant',
+            hash('sha256', $snapshot?->tenantId?->value ?? $snapshot?->mode->value ?? 'disabled'),
+        );
+        $request->headers->set(
+            'X-Nvl-Comments-Site',
+            hash('sha256', $request->getHost().'\0'.(string) ($request->attributes->get('site') ?? '')),
+        );
 
         try {
             $response = $next($request);
@@ -36,6 +49,24 @@ final readonly class CommentsResponseCache
         }
 
         if ($this->isSuccessfulPublicRead($request, $response)) {
+            $route = $request->route();
+            $partition = hash('sha256', json_encode([
+                'tenant' => $this->context?->snapshot()->tenantId?->value
+                    ?? $this->context?->snapshot()->mode->value
+                    ?? 'disabled',
+                'site' => (string) ($request->attributes->get('site') ?? $request->header('X-Site', '')),
+                'host' => $request->getHost(),
+                'route' => $route instanceof Route ? $route->getName() : null,
+                'parameters' => $route instanceof Route ? $route->parameters() : [],
+                'body' => $response->getContent(),
+            ], JSON_THROW_ON_ERROR));
+            $response->setEtag($partition);
+            $response->setVary(['Host', 'X-Nvl-Comments-Site', 'X-Nvl-Comments-Tenant'], false);
+
+            if ($request->isMethod('GET') && $response->isNotModified($request)) {
+                return $response;
+            }
+
             return $response;
         }
 

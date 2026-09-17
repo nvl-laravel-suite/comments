@@ -12,6 +12,8 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Illuminate\Contracts\Config\Repository;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Synchronizes and queries the hash-only registered metadata index.
@@ -21,7 +23,11 @@ final readonly class CommentMetadataIndexWriter
     /**
      * Create the metadata index writer.
      */
-    public function __construct(private CommentMetadataRegistry $registry) {}
+    public function __construct(
+        private CommentMetadataRegistry $registry,
+        private TenantBoundary $boundary,
+        private Repository $config,
+    ) {}
 
     /**
      * Replace all queryable index rows for one comment inside its transaction.
@@ -32,7 +38,8 @@ final readonly class CommentMetadataIndexWriter
      */
     public function synchronize(Comment $comment, ?array $metadata): void
     {
-        CommentMetadataValue::query()->where('comment_id', $comment->id)->delete();
+        $this->boundary->query(CommentMetadataValue::query(), 'comments.metadata')
+            ->where('comment_id', $comment->id)->delete();
         $rows = $this->registry->indexRows($metadata);
 
         if ($rows === []) {
@@ -41,8 +48,9 @@ final readonly class CommentMetadataIndexWriter
 
         $timestamp = now();
         $records = array_map(
-            static fn (array $row): array => [
+            fn (array $row): array => [
                 'id' => (string) Str::uuid(),
+                ...($this->config->get('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                 'comment_id' => $comment->id,
                 ...$row,
                 'created_at' => $timestamp,
@@ -51,7 +59,7 @@ final readonly class CommentMetadataIndexWriter
             $rows,
         );
 
-        CommentMetadataValue::query()->insert($records);
+        $this->boundary->query(CommentMetadataValue::query(), 'comments.metadata')->insert($records);
     }
 
     /**
@@ -59,7 +67,8 @@ final readonly class CommentMetadataIndexWriter
      */
     public function delete(Comment $comment): void
     {
-        CommentMetadataValue::query()->where('comment_id', $comment->id)->delete();
+        $this->boundary->query(CommentMetadataValue::query(), 'comments.metadata')
+            ->where('comment_id', $comment->id)->delete();
     }
 
     /**

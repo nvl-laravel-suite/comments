@@ -28,6 +28,7 @@ use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Restores historical comment content as a new optimistic revision.
@@ -47,6 +48,7 @@ final readonly class RestoreCommentRevisionAction
         private CommentMetadataIndexWriter $metadataIndex,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -108,7 +110,7 @@ final readonly class RestoreCommentRevisionAction
                             throw StaleCommentException::forComment($comment->id);
                         }
 
-                        $revision = CommentRevision::query()
+                        $revision = $this->boundary->query(CommentRevision::query(), 'comments.revisions')
                             ->where('comment_id', $comment->id)
                             ->whereKey($revisionId)
                             ->lockForUpdate()
@@ -133,6 +135,7 @@ final readonly class RestoreCommentRevisionAction
                         );
 
                         $currentRevision = CommentRevision::query()->create([
+                            ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                             'comment_id' => $comment->id,
                             'revision' => $comment->revision,
                             'body' => $comment->body,

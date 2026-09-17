@@ -23,6 +23,7 @@ use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Restores one soft-deleted comment without reviving an invalid reply branch.
@@ -39,6 +40,7 @@ final readonly class RestoreCommentAction
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -72,7 +74,7 @@ final readonly class RestoreCommentAction
                         $lockIds,
                     ): Comment {
                         sort($lockIds, SORT_STRING);
-                        $lockedComments = Comment::query()
+                        $lockedComments = $this->boundary->query(Comment::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($lockIds)
                             ->orderBy('id')

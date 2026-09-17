@@ -11,12 +11,16 @@ use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Media\Models\MediaAssociation;
 use Throwable;
+use Nvl\Tenancy\Contracts\TenantContext;
+use Nvl\Tenancy\Enums\TenantContextMode;
 
 /**
  * Generates short-lived association-scoped URLs without exposing Media internals.
  */
 final class CommentAttachmentUrlFactory
 {
+    public function __construct(private readonly TenantContext $context) {}
+
     /**
      * Require both signed delivery endpoints before any HTTP attachment mutation begins.
      */
@@ -72,10 +76,19 @@ final class CommentAttachmentUrlFactory
             5,
         );
 
+        $snapshot = $this->context->snapshot();
+        $parameters = ['association' => $association->id];
+        if ($snapshot->mode !== TenantContextMode::Disabled) {
+            $parameters['partition'] = hash(
+                'sha256',
+                $snapshot->mode->value."\0".($snapshot->tenantId?->value ?? ''),
+            );
+        }
+
         return URL::temporarySignedRoute(
             CommentsRouteConfiguration::name('attachments').$route,
             now()->addMinutes($lifetime),
-            ['association' => $association->id],
+            $parameters,
         );
     }
 }

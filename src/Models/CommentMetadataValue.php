@@ -30,6 +30,7 @@ final class CommentMetadataValue extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'tenant_id',
         'comment_id',
         'schema_namespace',
         'field_name',

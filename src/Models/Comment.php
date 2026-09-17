@@ -38,6 +38,7 @@ use Nvl\Media\Traits\InteractsWithMedia;
  * Polymorphic user-authored comment or reply.
  *
  * @property string $id
+ * @property string|null $tenant_id
  * @property string $commentable_type
  * @property string $commentable_id
  * @property string $commentable_identity_hash
@@ -101,6 +102,7 @@ final class Comment extends Model implements HasMedia
 
     /** @var list<string> */
     protected $fillable = [
+        'tenant_id',
         'commentable_type',
         'commentable_id',
         'root_id',

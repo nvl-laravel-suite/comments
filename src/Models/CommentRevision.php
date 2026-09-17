@@ -37,6 +37,7 @@ final class CommentRevision extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'tenant_id',
         'comment_id',
         'revision',
         'body',

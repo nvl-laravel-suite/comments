@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentTargetResolver;
 use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
+use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Allowlist for API-visible comment target aliases.
@@ -18,7 +21,12 @@ final class CommentTargetRegistry
     /** @var array<string, class-string<CommentTargetResolver>> */
     private array $resolvers = [];
 
-    public function __construct(private readonly Container $container) {}
+    public function __construct(
+        private readonly Container $container,
+        private readonly TenantBoundary $boundary,
+        private readonly TenantResourceRegistry $resources,
+        private readonly Repository $config,
+    ) {}
 
     public function register(string $alias, string $resolver): void
     {
@@ -50,8 +58,13 @@ final class CommentTargetRegistry
             throw new InvalidArgumentException("Comment target resolver [{$class}] is invalid.");
         }
 
-        return $resolver->resolve($identifier)
+        $target = $resolver->resolve($identifier)
             ?? throw CommentTargetNotFoundException::forIdentifier($alias, $identifier);
+        if ($this->config->get('tenancy.enabled') === true) {
+            $this->boundary->assertRecord($target, $this->resources->forModel($target)->key);
+        }
+
+        return $target;
     }
 
     /**

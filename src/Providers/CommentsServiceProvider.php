@@ -25,8 +25,12 @@ use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
 use Nvl\Comments\Services\SafeCommentAuthorPresenter;
 use Nvl\Comments\Support\CommentActorFactory;
+use Nvl\Comments\Tenancy\CommentsResourceRegistrar;
 use Nvl\Data\Services\TypeScriptSourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
+use Nvl\Tenancy\Providers\TenancyServiceProvider;
+use Nvl\Tenancy\Services\TenantAdoptionRegistry;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Registers the standalone, headless Comments package.
@@ -37,7 +41,12 @@ final class CommentsServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->app->register(TenancyServiceProvider::class);
         $this->mergePackageConfiguration(__DIR__.'/../../config/comments.php', CommentsTables::Comments);
+        (new CommentsResourceRegistrar)->register(
+            $this->app->make(TenantResourceRegistry::class),
+            $this->app->make(TenantAdoptionRegistry::class),
+        );
         $authorization = config(
             'comments.authorization.class',
             ConfiguredCommentAuthorization::class,

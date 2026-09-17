@@ -23,6 +23,7 @@ use Nvl\Media\Enums\MediaAbility;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaMutationLock;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Detaches one authorized comment association without deleting its Media record.
@@ -37,6 +38,7 @@ final readonly class DetachCommentMediaAction
         private MediaMutationLock $mediaLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -68,7 +70,7 @@ final readonly class DetachCommentMediaAction
                     $audience,
                     asNotFound: $audience !== CommentAudience::Management,
                 );
-                $mediaId = MediaAssociation::query()
+                $mediaId = $this->boundary->query(MediaAssociation::query(), 'media.associations')
                     ->whereKey($associationId)
                     ->value('media_id');
 
@@ -101,11 +103,11 @@ final readonly class DetachCommentMediaAction
                                     withTrashed: false,
                                     lockForUpdate: true,
                                 );
-                                $media = Media::query()
+                                $media = $this->boundary->query(Media::query(), 'media.assets')
                                     ->withTrashed()
                                     ->lockForUpdate()
                                     ->findOrFail($mediaId);
-                                $association = MediaAssociation::query()
+                                $association = $this->boundary->query(MediaAssociation::query(), 'media.associations')
                                     ->whereKey($associationId)
                                     ->where('media_id', $media->id)
                                     ->where('associable_type', $comment->getMorphClass())

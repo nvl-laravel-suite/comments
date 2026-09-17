@@ -31,7 +31,7 @@ final class CommentReaction extends Model
     use HasUuids;
 
     /** @var list<string> */
-    protected $fillable = ['comment_id', 'actor_type', 'actor_id', 'type'];
+    protected $fillable = ['tenant_id', 'comment_id', 'actor_type', 'actor_id', 'type'];
 
     /** @var list<string> */
     protected $hidden = ['actor_identity_hash', 'type_hash'];

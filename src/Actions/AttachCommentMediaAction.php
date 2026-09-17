@@ -25,6 +25,7 @@ use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaMutationLock;
 use Nvl\Media\Slots\MediaSlot;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Attaches available media only after comment and media ownership authorization.
@@ -39,6 +40,7 @@ final readonly class AttachCommentMediaAction
         private MediaMutationLock $mediaLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -86,7 +88,8 @@ final readonly class AttachCommentMediaAction
                         withTrashed: false,
                         lockForUpdate: true,
                     );
-                    $media = Media::query()->lockForUpdate()->findOrFail($mediaId);
+                    $media = $this->boundary->query(Media::query(), 'media.assets')
+                        ->lockForUpdate()->findOrFail($mediaId);
                     $target = $this->targets->locate($comment);
                     $this->access->authorize(
                         CommentAbility::Attach,

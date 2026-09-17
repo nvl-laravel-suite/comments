@@ -14,6 +14,7 @@ use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Lists one comment's authorized immutable content history.
@@ -27,6 +28,7 @@ final readonly class ListCommentRevisionsAction
         private CommentAccessService $access,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -64,7 +66,7 @@ final readonly class ListCommentRevisionsAction
             25,
         );
 
-        return CommentRevision::query()
+        return $this->boundary->query(CommentRevision::query(), 'comments.revisions')
             ->where('comment_id', $comment->id)
             ->orderByDesc('revision')
             ->orderByDesc('id')

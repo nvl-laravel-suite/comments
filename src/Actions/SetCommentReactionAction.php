@@ -19,6 +19,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Idempotently enables or removes one configured reaction type.
@@ -30,6 +31,7 @@ final readonly class SetCommentReactionAction
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -91,7 +93,7 @@ final readonly class SetCommentReactionAction
                         $audience,
                         asNotFound: $audience !== CommentAudience::Management,
                     );
-                    $reaction = CommentReaction::query()->where([
+                    $reaction = $this->boundary->query(CommentReaction::query(), 'comments.reactions')->where([
                         'comment_id' => $comment->id,
                         'actor_identity_hash' => $actorIdentityHash,
                         'type_hash' => $typeHash,
@@ -109,6 +111,7 @@ final readonly class SetCommentReactionAction
 
                     if ($active && $reaction === null) {
                         $reaction = CommentReaction::query()->create([
+                            ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                             'comment_id' => $comment->id,
                             'actor_type' => $actor->type,
                             'actor_id' => $actor->id,
@@ -136,7 +139,7 @@ final readonly class SetCommentReactionAction
                         }
 
                         $reaction = null;
-                        Comment::query()
+                        $this->boundary->query(Comment::query(), 'comments.comments')
                             ->whereKey($comment->id)
                             ->where('reaction_count', '>', 0)
                             ->decrement('reaction_count');

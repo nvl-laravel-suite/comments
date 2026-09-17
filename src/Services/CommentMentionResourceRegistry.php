@@ -11,6 +11,7 @@ use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
 use Nvl\Comments\Contracts\CommentMentionUrlResolver;
+use Nvl\Comments\Contracts\CommentMentionTenantProjection;
 use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
@@ -31,7 +32,7 @@ final class CommentMentionResourceRegistry
     private const int MAXIMUM_DECLARATIVE_FIELD_NAME_BYTES = 64;
 
     /**
-     * @var array<string, array{resolver: class-string<CommentMentionResourceResolver>|CommentMentionResourceResolver, public: bool}>
+     * @var array<string, array{resolver: class-string<CommentMentionResourceResolver>|CommentMentionResourceResolver|array<string,mixed>, public: bool}>
      */
     private array $resources = [];
 
@@ -97,6 +98,7 @@ final class CommentMentionResourceRegistry
                 'label_field',
                 'authorization',
                 'url_resolver',
+                'tenant_projection',
                 'public',
             ]) !== []) {
                 throw new InvalidArgumentException(
@@ -117,6 +119,12 @@ final class CommentMentionResourceRegistry
         bool $public = false,
     ): void {
         $this->assertNewAlias($alias);
+
+        if (! is_string($resolver) && config('tenancy.enabled') === true) {
+            throw new InvalidArgumentException(
+                'Enabled tenant mention resources must register a resolver class.',
+            );
+        }
 
         if (is_string($resolver)
             && ! is_a($resolver, CommentMentionResourceResolver::class, true)) {
@@ -169,6 +177,7 @@ final class CommentMentionResourceRegistry
         $labelField = $definition['label_field'] ?? null;
         $authorizationClass = $definition['authorization'] ?? null;
         $urlResolverClass = $definition['url_resolver'] ?? null;
+        $tenantProjectionClass = $definition['tenant_projection'] ?? null;
         $public = $definition['public'] ?? null;
 
         if (! is_string($modelClass) || ! is_a($modelClass, Model::class, true)) {
@@ -228,16 +237,6 @@ final class CommentMentionResourceRegistry
             );
         }
 
-        $authorization = $this->container->make($authorizationClass);
-
-        if (! $authorization instanceof CommentMentionResourceAuthorization) {
-            throw new InvalidArgumentException(
-                'The configured comment mention resource authorization is invalid.',
-            );
-        }
-
-        $urlResolver = null;
-
         if ($urlResolverClass !== null) {
             if (! is_string($urlResolverClass)
                 || ! is_a($urlResolverClass, CommentMentionUrlResolver::class, true)) {
@@ -245,25 +244,26 @@ final class CommentMentionResourceRegistry
                     'The configured comment mention URL resolver is invalid.',
                 );
             }
+        }
 
-            $urlResolver = $this->container->make($urlResolverClass);
-
-            if (! $urlResolver instanceof CommentMentionUrlResolver) {
-                throw new InvalidArgumentException(
-                    'The configured comment mention URL resolver is invalid.',
-                );
-            }
+        if ($tenantProjectionClass !== null
+            && (! is_string($tenantProjectionClass)
+                || ! is_a($tenantProjectionClass, CommentMentionTenantProjection::class, true))) {
+            throw new InvalidArgumentException(
+                'The configured comment mention tenant projection is invalid.',
+            );
         }
 
         $this->resources[$alias] = [
-            'resolver' => new EloquentCommentMentionResourceResolver(
-                modelClass: $modelClass,
-                searchableFields: $searchable,
-                exposedFields: $exposed,
-                labelField: $labelField,
-                authorization: $authorization,
-                urlResolver: $urlResolver,
-            ),
+            'resolver' => [
+                'model' => $modelClass,
+                'searchable' => $searchable,
+                'exposed' => $exposed,
+                'label' => $labelField,
+                'authorization' => $authorizationClass,
+                'url_resolver' => $urlResolverClass,
+                'tenant_projection' => $tenantProjectionClass,
+            ],
             'public' => $public,
         ];
         ksort($this->resources);
@@ -450,9 +450,11 @@ final class CommentMentionResourceRegistry
         }
 
         try {
-            $resolver = is_string($registered)
-                ? $this->container->make($registered)
-                : $registered;
+            $resolver = match (true) {
+                is_string($registered) => $this->container->make($registered),
+                is_array($registered) => $this->eloquentResolver($registered),
+                default => $registered,
+            };
         } catch (Throwable) {
             throw new InvalidArgumentException(
                 'The configured comment mention resource resolver is invalid.',
@@ -466,6 +468,38 @@ final class CommentMentionResourceRegistry
         }
 
         return $resolver;
+    }
+
+    /** @param array<string,mixed> $definition */
+    private function eloquentResolver(array $definition): CommentMentionResourceResolver
+    {
+        $authorization = $this->container->make($definition['authorization']);
+        $urlResolver = is_string($definition['url_resolver'])
+            ? $this->container->make($definition['url_resolver'])
+            : null;
+        $tenantProjection = is_string($definition['tenant_projection'])
+            ? $this->container->make($definition['tenant_projection'])
+            : null;
+
+        if (! $authorization instanceof CommentMentionResourceAuthorization
+            || ($urlResolver !== null && ! $urlResolver instanceof CommentMentionUrlResolver)
+            || ($tenantProjection !== null && ! $tenantProjection instanceof CommentMentionTenantProjection)) {
+            throw new InvalidArgumentException('The configured comment mention dependencies are invalid.');
+        }
+
+        return new EloquentCommentMentionResourceResolver(
+            modelClass: $definition['model'],
+            searchableFields: $definition['searchable'],
+            exposedFields: $definition['exposed'],
+            labelField: $definition['label'],
+            authorization: $authorization,
+            urlResolver: $urlResolver,
+            tenantProjection: $tenantProjection,
+            tenantContext: $this->container->make(\Nvl\Tenancy\Contracts\TenantContext::class),
+            boundary: $this->container->make(\Nvl\Tenancy\Services\TenantBoundary::class),
+            resources: $this->container->make(\Nvl\Tenancy\Services\TenantResourceRegistry::class),
+            config: $this->container->make(\Illuminate\Contracts\Config\Repository::class),
+        );
     }
 
     /**

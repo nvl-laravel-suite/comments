@@ -27,6 +27,7 @@ use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Media\Models\MediaAssociation;
 use Spatie\LaravelData\Optional;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Builds batched public and member comment projections without per-row queries.
@@ -40,6 +41,7 @@ final readonly class CommentProjectionFactory
         private CommentQueryScope $queryScope,
         private CommentMentionProjectionFactory $mentions,
         private CommentMetadataRegistry $metadata,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -430,7 +432,7 @@ final readonly class CommentProjectionFactory
         $parentColumn = (new Comment)->qualifyColumn('parent_id');
         $identity = CommentTargetIdentifier::canonical($target);
 
-        $query = Comment::query()
+        $query = $this->boundary->query(Comment::query(), 'comments.comments')
             ->withTrashed()
             ->where(
                 'commentable_identity_hash',
@@ -543,7 +545,7 @@ final readonly class CommentProjectionFactory
             $typesByHash[CommentIdentity::value('reaction-type', $type)] = $type;
         }
 
-        $rows = CommentReaction::query()
+        $rows = $this->boundary->query(CommentReaction::query(), 'comments.reactions')
             ->whereIn('comment_id', $commentIds)
             ->whereIn('type_hash', array_keys($typesByHash))
             ->select(['comment_id', 'type_hash'])
@@ -590,7 +592,7 @@ final readonly class CommentProjectionFactory
             $typesByHash[CommentIdentity::value('reaction-type', $type)] = $type;
         }
 
-        $rows = CommentReaction::query()
+        $rows = $this->boundary->query(CommentReaction::query(), 'comments.reactions')
             ->whereIn('comment_id', $commentIds)
             ->whereIn('type_hash', array_keys($typesByHash))
             ->where(

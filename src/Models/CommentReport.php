@@ -44,6 +44,7 @@ final class CommentReport extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'tenant_id',
         'comment_id',
         'reporter_type',
         'reporter_id',

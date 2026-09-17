@@ -31,6 +31,7 @@ use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Media\Enums\MimeType;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Audits denormalized counters and thread lineage with race-safe optional repairs.
@@ -46,6 +47,7 @@ final readonly class CommentStateReconciler
         private CommentDocumentNormalizer $documents,
         private CommentMentionWriter $mentions,
         private CommentMutationLock $mutationLock,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -417,7 +419,7 @@ final readonly class CommentStateReconciler
                 ->all();
             $existingIds = $candidateIds === []
                 ? []
-                : Comment::query()
+                : $this->boundary->query(Comment::query(), 'comments.comments')
                     ->withTrashed()
                     ->whereIn((new Comment)->getKeyName(), $candidateIds)
                     ->pluck((new Comment)->getKeyName())
@@ -444,7 +446,7 @@ final readonly class CommentStateReconciler
      */
     private function query(?Model $target, int $maximumDepth): Builder
     {
-        $query = Comment::query()
+        $query = $this->boundary->query(Comment::query(), 'comments.comments')
             ->withTrashed()
             ->with('mentions')
             ->with('metadataValues')
@@ -630,7 +632,7 @@ final readonly class CommentStateReconciler
             function () use ($comment, $expectedDocument): bool {
                 return DB::connection($comment->getConnectionName())->transaction(
                     function () use ($comment, $expectedDocument): bool {
-                        $current = Comment::query()
+                        $current = $this->boundary->query(Comment::query(), 'comments.comments')
                             ->withTrashed()
                             ->with('mentions')
                             ->whereKey($comment->id)
@@ -683,7 +685,7 @@ final readonly class CommentStateReconciler
      */
     private function orphanMentionRows(): int
     {
-        return CommentMention::query()->whereDoesntHave('comment')->count();
+        return $this->boundary->query(CommentMention::query(), 'comments.mentions')->whereDoesntHave('comment')->count();
     }
 
     /**
@@ -797,7 +799,7 @@ final readonly class CommentStateReconciler
             return [$mismatchedCommentIds, $mismatches];
         }
 
-        $reactions = CommentReaction::query()
+        $reactions = $this->boundary->query(CommentReaction::query(), 'comments.reactions')
             ->whereIn('comment_id', $commentIds)
             ->get([
                 'comment_id',
@@ -828,7 +830,7 @@ final readonly class CommentStateReconciler
             $mismatches++;
         }
 
-        $reports = CommentReport::query()
+        $reports = $this->boundary->query(CommentReport::query(), 'comments.reports')
             ->whereIn('comment_id', $commentIds)
             ->get([
                 'comment_id',
@@ -1167,7 +1169,7 @@ final readonly class CommentStateReconciler
             $grammar->wrap($association->qualifyColumn('associable_id')),
             $driver,
         );
-        $query = Comment::query()
+        $query = $this->boundary->query(Comment::query(), 'comments.comments')
             ->withTrashed()
             ->selectRaw('1')
             ->whereRaw(new TextColumnComparison(
@@ -1279,7 +1281,7 @@ final readonly class CommentStateReconciler
         $repaired = $this->mutationLock->execute(
             $comment->id,
             function () use ($comment, $updates): bool {
-                $query = Comment::query()->withTrashed()->whereKey($comment->id);
+                $query = $this->boundary->query(Comment::query(), 'comments.comments')->withTrashed()->whereKey($comment->id);
 
                 foreach (array_keys($updates) as $column) {
                     $original = $comment->getRawOriginal($column);
@@ -1373,7 +1375,7 @@ final readonly class CommentStateReconciler
                 $comment->id,
                 fn (): bool => DB::connection((new Comment)->getConnectionName())
                     ->transaction(function () use ($comment): bool {
-                        $locked = Comment::query()
+                        $locked = $this->boundary->query(Comment::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($comment->id)
                             ->lockForUpdate()
