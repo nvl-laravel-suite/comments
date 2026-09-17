@@ -4,6 +4,11 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Added canonical target tenant inheritance, membership-safe global mentions,
+  tenant-bound attachments/cache validators, and package adoption.
+
 ### Fixed
 
 - Reload latest-comment targets before authorization and apply the Delete query

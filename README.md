@@ -882,4 +882,11 @@ run the complete contributor suite on Linux or macOS.
 
 ## License
 
+## Tenant ownership
+
+Comments, revisions, reactions, reports, metadata, mentions, and attachments
+inherit the canonical target tenant. Global-principal mentions require the
+host projection contract and active membership; public cache validators and
+signed attachment capabilities include tenant/site/host identity.
+
 NVL Comments is released under the MIT License.

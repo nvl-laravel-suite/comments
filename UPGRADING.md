@@ -1,5 +1,11 @@
 # Upgrading NVL Comments
 
+## Tenant adoption
+
+Register every target type and its ownership before adoption. Map canonical
+comment roots through their targets; replies, revisions, reactions, reports,
+mentions, and metadata derive ownership and cannot be assigned independently.
+
 ## To 1.0
 
 There is no supported pre-1.0 compatibility contract. Back up development data

@@ -9,6 +9,10 @@ Treat Comments as a headless domain boundary. Comment text is author-owned
 source content with an optional locale; do not create centrally editable
 translated variants. The package stores but does not render Markdown.
 
+Resolve canonical target ownership before host scopes or authorization. Global
+mention catalogs require a host membership projection; attachments, public
+caches, idempotency, locks, retention, and restoration remain tenant-bound.
+
 ## Install and configure the consumer
 
 Run the required install and only the publish commands for assets the consumer
