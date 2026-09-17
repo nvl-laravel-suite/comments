@@ -155,3 +155,6 @@ and coordinate target deletion with comment retention/anonymization.
 
 Do not add a Comments-specific tenant column or accept tenant/member scope from
 request input. Derive scope from the canonical target and consumer contracts.
+
+<!-- tenancy-program-p2 -->
+Configurable-tenancy implementation and adoption documentation are present. The final consolidated verification matrix is pending; do not treat this package as release-ready until that gate passes.

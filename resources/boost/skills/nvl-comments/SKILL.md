@@ -288,3 +288,10 @@ names. Custom connections or names require disabled bundled migrations and an
 application-owned schema preserving the same columns, critical types, explicit
 lengths, nullability, defaults, constraints, and indexes. Treat any strict
 Doctor `column_definition.*` failure as a deployment blocker.
+
+## Configurable-tenancy release discipline
+
+- Preserve disabled compatibility and package independence; tenant support never creates an undeclared Auth or Suite dependency.
+- Use registered package-owned resources, adoption adapters, Actions, and lifecycle APIs. Never add a generic tenant delete-all path or raw cross-package cleanup.
+- Treat mapping/configuration hashes, interruption checkpoints, conservation evidence, worker context, tenant-leading queries, and standalone consumption as release contracts.
+- The P2 implementation is present, but consolidated runtime verification is pending. Do not claim release readiness until the complete matrix passes.

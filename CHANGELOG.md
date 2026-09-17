@@ -143,3 +143,6 @@ All notable changes to `nvl/comments` are documented here.
 ## [1.0.0] - 2026-08-08
 
 - Initial coordinated package-family release for Laravel 12–13.
+
+<!-- tenancy-program-p2 -->
+Configurable-tenancy implementation and adoption documentation are present. The final consolidated verification matrix is pending; do not treat this package as release-ready until that gate passes.

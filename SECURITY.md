@@ -125,3 +125,6 @@ Reconciliation is read-only by default. Production repair requires
 and after repair. Reconciliation never deletes evidence and must not emit user
 events. Identity fingerprint mismatches are deployment blockers and are never
 auto-repaired; correct the application-owned import or migration explicitly.
+
+<!-- tenancy-program-p2 -->
+The configurable-tenancy implementation is present; its consolidated verification matrix remains pending and no release-readiness claim is made.
