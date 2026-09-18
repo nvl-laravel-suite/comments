@@ -17,6 +17,7 @@ use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Filterable\Data\FilterSet;
 use Nvl\Filterable\Services\EloquentFilterApplier;
 use Nvl\Tenancy\Services\TenantBoundary;

@@ -18,8 +18,8 @@ use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaConfiguredVariationService;
 use Nvl\Media\Services\MediaLocaleResolver;
-use RuntimeException;
 use Nvl\Tenancy\Services\TenantBoundary;
+use RuntimeException;
 
 /**
  * Builds privacy-safe comment attachment projections from authorized Media associations.

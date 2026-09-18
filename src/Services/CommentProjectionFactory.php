@@ -26,8 +26,8 @@ use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Media\Models\MediaAssociation;
-use Spatie\LaravelData\Optional;
 use Nvl\Tenancy\Services\TenantBoundary;
+use Spatie\LaravelData\Optional;
 
 /**
  * Builds batched public and member comment projections without per-row queries.

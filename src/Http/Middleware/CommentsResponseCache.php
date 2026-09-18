@@ -9,9 +9,10 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
+use Nvl\Tenancy\Contracts\TenantContext;
+use Nvl\Tenancy\ValueObjects\TenantContextSnapshot;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
-use Nvl\Tenancy\Contracts\TenantContext;
 
 /**
  * Enforces private caching for viewer-aware, mutation, error, and asset responses.
@@ -34,11 +35,12 @@ final readonly class CommentsResponseCache
         $snapshot = $this->context?->snapshot();
         $request->headers->set(
             'X-Nvl-Comments-Tenant',
-            hash('sha256', $snapshot?->tenantId?->value ?? $snapshot?->mode->value ?? 'disabled'),
+            hash('sha256', $this->tenantPartition($snapshot)),
         );
+        $site = $this->site($request->attributes->get('site'));
         $request->headers->set(
             'X-Nvl-Comments-Site',
-            hash('sha256', $request->getHost().'\0'.(string) ($request->attributes->get('site') ?? '')),
+            hash('sha256', $request->getHost().'\0'.$site),
         );
 
         try {
@@ -51,10 +53,8 @@ final readonly class CommentsResponseCache
         if ($this->isSuccessfulPublicRead($request, $response)) {
             $route = $request->route();
             $partition = hash('sha256', json_encode([
-                'tenant' => $this->context?->snapshot()->tenantId?->value
-                    ?? $this->context?->snapshot()->mode->value
-                    ?? 'disabled',
-                'site' => (string) ($request->attributes->get('site') ?? $request->header('X-Site', '')),
+                'tenant' => $this->tenantPartition($this->context?->snapshot()),
+                'site' => $site !== '' ? $site : $this->site($request->header('X-Site', '')),
                 'host' => $request->getHost(),
                 'route' => $route instanceof Route ? $route->getName() : null,
                 'parameters' => $route instanceof Route ? $route->parameters() : [],
@@ -104,5 +104,23 @@ final readonly class CommentsResponseCache
             ],
             true,
         );
+    }
+
+    /** Resolve one stable cache partition from an optional tenant snapshot. */
+    private function tenantPartition(?TenantContextSnapshot $snapshot): string
+    {
+        if ($snapshot === null) {
+            return 'disabled';
+        }
+
+        return $snapshot->tenantId !== null
+            ? $snapshot->tenantId->value
+            : $snapshot->mode->value;
+    }
+
+    /** Normalize an untrusted route/header value without accepting compound input. */
+    private function site(mixed $site): string
+    {
+        return is_string($site) || is_numeric($site) ? (string) $site : '';
     }
 }

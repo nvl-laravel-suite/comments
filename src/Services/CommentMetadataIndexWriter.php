@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Str;
@@ -12,7 +13,6 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Illuminate\Contracts\Config\Repository;
 use Nvl\Tenancy\Services\TenantBoundary;
 
 /**

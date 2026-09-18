@@ -70,6 +70,7 @@ use Nvl\Media\Enums\MediaType;
 use Nvl\Media\Enums\MediaVisibility;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Tenancy\Services\TenantInstallationState;
 use Nvl\Translatable\Services\ContentLocale;
 
 /**
@@ -2009,6 +2010,7 @@ it('delivers a signed attachment authorized in the owning comment context', func
 });
 
 it('keeps populated public member and management projection queries constant from one to twenty five comments', function (): void {
+    app(TenantInstallationState::class)->assertUsable('comments.comments');
     config()->set('comments.attachments.allow_public_media', true);
 
     $singleTarget = TestCommentTarget::query()->create(['name' => 'Single projection']);

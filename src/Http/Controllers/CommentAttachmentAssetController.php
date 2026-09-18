@@ -12,10 +12,10 @@ use Nvl\Comments\Services\CommentAttachmentAssetResponder;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Services\MediaConfiguredVariationService;
 use Nvl\Media\Services\MediaQueryService;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Nvl\Tenancy\Contracts\TenantContext;
 use Nvl\Tenancy\Enums\TenantContextMode;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Serves signed association-scoped assets without placing Media internals in URLs.
@@ -61,7 +61,7 @@ final class CommentAttachmentAssetController extends Controller
         if ($snapshot->mode !== TenantContextMode::Disabled) {
             $expected = hash(
                 'sha256',
-                $snapshot->mode->value."\0".($snapshot->tenantId?->value ?? ''),
+                $snapshot->mode->value."\0".($snapshot->tenantId !== null ? $snapshot->tenantId->value : ''),
             );
             abort_unless(hash_equals($expected, (string) $request->query('partition')), 404);
         }

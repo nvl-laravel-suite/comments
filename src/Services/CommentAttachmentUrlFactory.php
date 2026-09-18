@@ -10,9 +10,9 @@ use Nvl\Comments\Exceptions\CommentAttachmentDeliveryUnavailableException;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Media\Models\MediaAssociation;
-use Throwable;
 use Nvl\Tenancy\Contracts\TenantContext;
 use Nvl\Tenancy\Enums\TenantContextMode;
+use Throwable;
 
 /**
  * Generates short-lived association-scoped URLs without exposing Media internals.
@@ -81,7 +81,7 @@ final class CommentAttachmentUrlFactory
         if ($snapshot->mode !== TenantContextMode::Disabled) {
             $parameters['partition'] = hash(
                 'sha256',
-                $snapshot->mode->value."\0".($snapshot->tenantId?->value ?? ''),
+                $snapshot->mode->value."\0".($snapshot->tenantId !== null ? $snapshot->tenantId->value : ''),
             );
         }
 

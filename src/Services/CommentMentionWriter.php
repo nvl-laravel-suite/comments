@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Str;
 use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
-use Illuminate\Contracts\Config\Repository;
 use Nvl\Tenancy\Services\TenantBoundary;
 
 /**

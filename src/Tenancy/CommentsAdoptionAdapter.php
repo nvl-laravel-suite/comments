@@ -68,6 +68,7 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
             : new TenantBackfillResult($assignments[array_key_last($assignments)]->recordId, count($assignments));
     }
 
+    /** @phpstan-impure */
     public function verify(TenantAdoptionPlan $plan): TenantVerification
     {
         $connection = $this->connection($plan);
@@ -88,6 +89,14 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
             }
         }
         foreach ($connection->table($commentTable)->orderBy('id')->limit(101)->get() as $row) {
+            if (! is_string($row->commentable_type ?? null)
+                || ! is_string($row->commentable_id ?? null)
+                || ! is_string($row->tenant_id ?? null)
+                || ! is_string($row->id ?? null)) {
+                $errors[] = 'comments.target_ownership:invalid-row';
+
+                continue;
+            }
             try {
                 $types = $this->targets->types();
                 $class = $types[$row->commentable_type] ?? null;
@@ -109,15 +118,19 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
 
     public function activate(TenantAdoptionPlan $plan): void
     {
-        if (! $this->verify($plan)->passed()) {
-            throw new TenantBoundaryViolation('Comments tenant ownership did not verify.');
-        }
+        $this->assertVerified($plan, 'Comments tenant ownership did not verify.');
         $this->migrator->usingConnection(
             $plan->connection,
             fn () => $this->migrator->run([dirname(__DIR__, 2).'/database/tenancy'], ['force' => true]),
         );
-        if (! $this->verify($plan)->passed()) {
-            throw new TenantBoundaryViolation('Comments tenant ownership failed after constraint activation.');
+        $this->assertVerified($plan, 'Comments tenant ownership failed after constraint activation.');
+    }
+
+    /** Require a fresh persisted verification at one activation checkpoint. */
+    private function assertVerified(TenantAdoptionPlan $plan, string $message): void
+    {
+        if ($this->verify($plan)->errors !== []) {
+            throw new TenantBoundaryViolation($message);
         }
     }
 

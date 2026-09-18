@@ -4,24 +4,30 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
-use Nvl\Comments\Contracts\CommentMentionUrlResolver;
 use Nvl\Comments\Contracts\CommentMentionTenantProjection;
+use Nvl\Comments\Contracts\CommentMentionUrlResolver;
 use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
+use Nvl\Tenancy\Contracts\TenantContext;
+use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Throwable;
 
 /**
  * Routes bounded mention work to explicitly registered custom or Eloquent resources.
+ *
+ * @phpstan-type EloquentResolverDefinition array{model: class-string<Model>, searchable: list<string>, exposed: list<string>, label: string, authorization: class-string<CommentMentionResourceAuthorization>, url_resolver: class-string<CommentMentionUrlResolver>|null, tenant_projection: class-string<CommentMentionTenantProjection>|null}
  */
 final class CommentMentionResourceRegistry
 {
@@ -32,7 +38,7 @@ final class CommentMentionResourceRegistry
     private const int MAXIMUM_DECLARATIVE_FIELD_NAME_BYTES = 64;
 
     /**
-     * @var array<string, array{resolver: class-string<CommentMentionResourceResolver>|CommentMentionResourceResolver|array<string,mixed>, public: bool}>
+     * @var array<string, array{resolver: class-string<CommentMentionResourceResolver>|CommentMentionResourceResolver|EloquentResolverDefinition, public: bool}>
      */
     private array $resources = [];
 
@@ -450,11 +456,13 @@ final class CommentMentionResourceRegistry
         }
 
         try {
-            $resolver = match (true) {
-                is_string($registered) => $this->container->make($registered),
-                is_array($registered) => $this->eloquentResolver($registered),
-                default => $registered,
-            };
+            if (is_string($registered)) {
+                $resolver = $this->container->make($registered);
+            } elseif (is_array($registered)) {
+                $resolver = $this->eloquentResolver($registered);
+            } else {
+                $resolver = $registered;
+            }
         } catch (Throwable) {
             throw new InvalidArgumentException(
                 'The configured comment mention resource resolver is invalid.',
@@ -470,7 +478,7 @@ final class CommentMentionResourceRegistry
         return $resolver;
     }
 
-    /** @param array<string,mixed> $definition */
+    /** @param EloquentResolverDefinition $definition */
     private function eloquentResolver(array $definition): CommentMentionResourceResolver
     {
         $authorization = $this->container->make($definition['authorization']);
@@ -495,10 +503,10 @@ final class CommentMentionResourceRegistry
             authorization: $authorization,
             urlResolver: $urlResolver,
             tenantProjection: $tenantProjection,
-            tenantContext: $this->container->make(\Nvl\Tenancy\Contracts\TenantContext::class),
-            boundary: $this->container->make(\Nvl\Tenancy\Services\TenantBoundary::class),
-            resources: $this->container->make(\Nvl\Tenancy\Services\TenantResourceRegistry::class),
-            config: $this->container->make(\Illuminate\Contracts\Config\Repository::class),
+            tenantContext: $this->container->make(TenantContext::class),
+            boundary: $this->container->make(TenantBoundary::class),
+            resources: $this->container->make(TenantResourceRegistry::class),
+            config: $this->container->make(Repository::class),
         );
     }
 

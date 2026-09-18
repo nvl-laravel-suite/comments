@@ -16,6 +16,7 @@ use Nvl\Comments\Support\CommentsConfiguration;
  * Immutable snapshot of comment content before an edit.
  *
  * @property string $id
+ * @property string|null $tenant_id
  * @property string $comment_id
  * @property int $revision
  * @property string $body

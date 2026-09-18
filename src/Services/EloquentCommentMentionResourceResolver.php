@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
-use Nvl\Comments\Contracts\CommentMentionUrlResolver;
 use Nvl\Comments\Contracts\CommentMentionTenantProjection;
+use Nvl\Comments\Contracts\CommentMentionUrlResolver;
 use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
-use Illuminate\Contracts\Config\Repository;
 use Nvl\Tenancy\Contracts\TenantContext;
 use Nvl\Tenancy\Services\TenantBoundary;
 use Nvl\Tenancy\Services\TenantResourceRegistry;

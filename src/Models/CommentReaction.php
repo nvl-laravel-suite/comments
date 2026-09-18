@@ -16,6 +16,7 @@ use Nvl\Comments\Support\CommentsConfiguration;
  * One actor's idempotent reaction type on a comment.
  *
  * @property string $id
+ * @property string|null $tenant_id
  * @property string $comment_id
  * @property string $actor_type
  * @property string $actor_id
