@@ -14,7 +14,7 @@ use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Tenancy\Contracts\TenantAdoptionAdapter;
 use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\TenantAdoptionSupport;
+use Nvl\Tenancy\Services\TenantAdoptionBoundary;
 use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Tenancy\ValueObjects\TenantAdoptionPlan;
 use Nvl\Tenancy\ValueObjects\TenantBackfillResult;
@@ -25,7 +25,7 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
 {
     public function __construct(
         private Migrator $migrator,
-        private TenantAdoptionSupport $adoption,
+        private TenantAdoptionBoundary $adoption,
         private TenantResourceRegistry $resources,
         private CommentTenantParentResolver $targets,
     ) {}
