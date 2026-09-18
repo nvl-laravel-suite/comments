@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Tenancy;
 
-use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Migrations\Migrator;
 use Nvl\Comments\Models\Comment;
@@ -15,7 +14,7 @@ use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Tenancy\Contracts\TenantAdoptionAdapter;
 use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\TenantAdoptionMappings;
+use Nvl\Tenancy\Services\TenantAdoptionSupport;
 use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Tenancy\ValueObjects\TenantAdoptionPlan;
 use Nvl\Tenancy\ValueObjects\TenantBackfillResult;
@@ -26,7 +25,7 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
 {
     public function __construct(
         private Migrator $migrator,
-        private TenantAdoptionMappings $mappings,
+        private TenantAdoptionSupport $adoption,
         private TenantResourceRegistry $resources,
         private CommentTenantParentResolver $targets,
     ) {}
@@ -39,7 +38,7 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
 
     public function prepare(TenantAdoptionPlan $plan): void
     {
-        $this->connection($plan);
+        $this->adoption->connection($plan, 'comments.comments');
         $this->migrator->usingConnection(
             $plan->connection,
             fn () => $this->migrator->run([dirname(__DIR__, 2).'/database/tenancy-migrations'], ['force' => true]),
@@ -48,30 +47,29 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
 
     public function backfill(TenantAdoptionPlan $plan, ?string $cursor, int $limit): TenantBackfillResult
     {
-        $connection = $this->connection($plan);
-        $assignments = $this->mappings->assignments($plan, 'comments.comments', $cursor, $limit);
+        $connection = $this->adoption->connection($plan, 'comments.comments');
+        $assignments = $this->adoption->assignments($plan, 'comments.comments', $cursor, $limit);
         $connection->transaction(function () use ($assignments, $connection): void {
             foreach ($assignments as $assignment) {
+                $ownership = $this->adoption->ownership($assignment, 'comments.comments');
                 $connection->table((new Comment)->getTable())
                     ->where('id', $assignment->recordId)
-                    ->update(['tenant_id' => $assignment->tenantId->value]);
+                    ->update($ownership);
                 foreach ($this->children() as $child) {
                     $connection->table($child->getTable())
                         ->where('comment_id', $assignment->recordId)
-                        ->update(['tenant_id' => $assignment->tenantId->value]);
+                        ->update(['tenant_id' => $ownership['tenant_id']]);
                 }
             }
         });
 
-        return $assignments === []
-            ? new TenantBackfillResult(null, 0)
-            : new TenantBackfillResult($assignments[array_key_last($assignments)]->recordId, count($assignments));
+        return $this->adoption->result($assignments);
     }
 
     /** @phpstan-impure */
     public function verify(TenantAdoptionPlan $plan): TenantVerification
     {
-        $connection = $this->connection($plan);
+        $connection = $this->adoption->connection($plan, 'comments.comments');
         $errors = [];
         $commentTable = (new Comment)->getTable();
         foreach ([new Comment, ...$this->children()] as $model) {
@@ -138,15 +136,5 @@ final readonly class CommentsAdoptionAdapter implements TenantAdoptionAdapter
     private function children(): array
     {
         return [new CommentReaction, new CommentRevision, new CommentReport, new CommentMetadataValue, new CommentMention];
-    }
-
-    private function connection(TenantAdoptionPlan $plan): Connection
-    {
-        $connection = (new Comment)->setConnection($plan->connection)->getConnection();
-        if ($connection->getName() !== $plan->connection) {
-            throw new TenantBoundaryViolation('Comments adoption requires canonical storage.');
-        }
-
-        return $connection;
     }
 }
