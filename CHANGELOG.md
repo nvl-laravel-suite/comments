@@ -4,6 +4,8 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-21
+
 ### Added
 
 - Added canonical target tenant inheritance, membership-safe global mentions,
