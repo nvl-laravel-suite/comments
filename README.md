@@ -5,6 +5,8 @@
 For support, [open an issue](https://github.com/nvl-laravel-suite/comments/issues). For vulnerabilities, use
 [private reporting](https://github.com/nvl-laravel-suite/comments/security/advisories/new). See [Contributing](CONTRIBUTING.md).
 
+See the [installation and publishing guide](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/INSTALLATION.md) for Composer setup, configuration, migration ownership, and agent skills.
+
 ## Quick reference
 
 | Item | Value |
