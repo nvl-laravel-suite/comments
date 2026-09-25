@@ -823,8 +823,8 @@ Human output is a table; use `--format=json` for automation.
 
 ## Adoption and privacy
 
-This is an unreleased v1 contract. Back up development data and re-migrate the
-clean schema, or write an application-owned bridge. Do not carry pre-v1
+For adoption from development or older schemas, back up data and re-migrate the
+clean schema, or write an application-owned bridge. Do not carry obsolete
 compatibility shims into production.
 
 For imports, disable automatic migrations, normalize polymorphic identifiers to

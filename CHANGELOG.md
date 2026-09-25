@@ -4,6 +4,12 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-09-25
+
+### Documentation
+
+- Clarify adoption guidance for the published package.
+
 ## [2.2.0] - 2026-09-25
 
 ### Changed
