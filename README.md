@@ -1,12 +1,12 @@
 # NVL Comments — API and usage
 
-[← NVL Laravel Suite](../../../README.md)
+[← NVL Laravel Suite](https://github.com/nvl-laravel-suite)
 
 ## Quick reference
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/laravel-suite:^2.0` |
+| Installed through | `composer require nvl/comments:^2.0` |
 | Module identifier | `nvl/comments` |
 | PHP namespace | `Nvl\Comments` |
 | Service provider | `Nvl\Comments\Providers\CommentsServiceProvider` |
@@ -46,13 +46,13 @@ UI.
   persistence and normalized current mention references; applications own the
   registered resource resolvers and their authorization policy.
 
-`nvl/comments` declares `nvl/data`, `nvl/filterable`, and `nvl/media`; attachment
+`nvl/comments` declares `nvl/core`, `nvl/filterable`, and `nvl/media`; attachment
 support is a first-class integration.
 
 ## Install
 
 ```bash
-composer require nvl/laravel-suite:^2.0
+composer require nvl/comments:^2.0
 php artisan migrate
 ```
 

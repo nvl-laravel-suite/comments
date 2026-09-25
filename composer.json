@@ -10,10 +10,9 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^13.0",
-        "nvl/data": "^2.0",
+        "nvl/core": "^2.0",
         "nvl/filterable": "^2.0",
         "nvl/media": "^2.0",
-        "nvl/support": "^2.0",
         "nvl/tenancy": "^2.0",
         "spatie/laravel-data": "^4.23",
         "spatie/typescript-transformer": "^3.3",
@@ -64,7 +63,7 @@
         "sort-packages": true
     },
     "archive": {
-        "exclude": ["/.temp", "/build", "/coverage", "/.phpunit.cache", "/.phpunit.result.cache"]
+        "exclude": ["/.temp", "/build", "/coverage", "/.phpunit.cache", "/.phpunit.result.cache", "/phpstan.neon.dist", "/phpunit.xml.dist", "/tests"]
     },
     "minimum-stability": "stable",
     "prefer-stable": true

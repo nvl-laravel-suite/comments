@@ -4,6 +4,10 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Prepare `nvl/comments` for independent Composer and Git publication; require `nvl/core` for shared Support and Data services.
+
 ## [2.0.1] - 2026-09-22
 
 ### Added
