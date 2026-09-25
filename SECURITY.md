@@ -1,5 +1,7 @@
 # Security Policy
 
+Submit reports through [this package's private vulnerability reporting form](https://github.com/nvl-laravel-suite/comments/security/advisories/new).
+
 Coordinated security fixes are provided for the current `2.x` release line on
 PHP 8.3–8.4 and Laravel 13. Comments also supports PHP 8.5 at runtime and
 tests it in CI, but PHP 8.5 is not yet in the coordinated package-family

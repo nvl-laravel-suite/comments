@@ -2,6 +2,9 @@
 
 [← NVL Laravel Suite](https://github.com/nvl-laravel-suite)
 
+For support, [open an issue](https://github.com/nvl-laravel-suite/comments/issues). For vulnerabilities, use
+[private reporting](https://github.com/nvl-laravel-suite/comments/security/advisories/new). See [Contributing](CONTRIBUTING.md).
+
 ## Quick reference
 
 | Item | Value |
@@ -840,21 +843,18 @@ for actor-wide erasure.
 
 ## Development and release checks
 
-From the monorepo root:
+From a standalone checkout of the public Comments repository:
 
 ```bash
-vendor/bin/pint --format agent packages/nvl/comments
-vendor/bin/phpstan analyse \
-    packages/nvl/comments/src \
-    packages/nvl/comments/tests/Fixtures \
-    --level=max \
-    --memory-limit=2G
-vendor/bin/pest \
-    --test-directory=packages/nvl/comments/tests \
-    --configuration=packages/nvl/comments/phpunit.xml.dist \
-    --bootstrap=vendor/autoload.php \
-    --compact \
-    packages/nvl/comments/tests
+composer install
+composer quality
+```
+
+Maintainer CI also runs package-family, dependency, archive, and contract checks from the private source workbench. In a consuming Laravel application, run `php artisan nvl:comments:doctor --strict --format=json` after configuring the package.
+
+For maintainers with access to the source workbench, the release gate also runs:
+
+```bash
 php artisan nvl:data:types:generate
 php artisan nvl:data:types:check
 composer packages:validate

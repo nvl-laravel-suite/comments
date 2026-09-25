@@ -4,6 +4,12 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-09-26
+
+### Documentation
+
+- Clarify public support, contribution, and private security reporting paths.
+
 ## [2.2.1] - 2026-09-25
 
 ### Documentation
