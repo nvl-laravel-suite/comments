@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\RestoreCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\RestoreCommentData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -23,6 +24,7 @@ use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -30,7 +32,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class RestoreCommentAction
+final readonly class RestoreCommentAction implements RestoreCommentContract
 {
     /**
      * Create the comment restoration action.
@@ -43,6 +45,7 @@ final readonly class RestoreCommentAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -168,14 +171,14 @@ final readonly class RestoreCommentAction
                         }
 
                         $comment->refresh();
-                        CommentChanged::dispatch(
+                        $this->domainEvents->dispatch(new CommentChanged(
                             $comment->id,
                             $comment->commentable_type,
                             $comment->commentable_id,
                             CommentChangeOperation::Restored,
                             $comment->revision,
                             $actor,
-                        );
+                        ), $comment->getConnection());
 
                         return $comment;
                     }, attempts: CommentsConfiguration::positiveInteger(

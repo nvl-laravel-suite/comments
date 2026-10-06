@@ -5,23 +5,24 @@ declare(strict_types=1);
 namespace Nvl\Comments\Exceptions;
 
 use Illuminate\Contracts\Debug\ShouldntReport;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use InvalidArgumentException;
+use Nvl\Comments\Enums\CommentsResponseCode;
+use Nvl\Support\Contracts\RespondableException;
+use Nvl\Support\Exceptions\ExceptionResponse;
+use Nvl\Support\Traits\InteractsWithPackageFailure;
 
 /**
+ * @api
+
  * Raised when validated transport data violates a comment-domain invariant.
  */
-final class InvalidCommentMutationException extends InvalidArgumentException implements ShouldntReport
+final class InvalidCommentMutationException extends InvalidArgumentException implements RespondableException, ShouldntReport
 {
-    /**
-     * Render the invalid mutation through a stable JSON response.
-     */
-    public function render(Request $request): JsonResponse
+    use InteractsWithPackageFailure;
+
+    /** Resolve safe package response metadata. */
+    protected function exceptionResponse(): ExceptionResponse
     {
-        return response()->json([
-            'message' => $this->getMessage(),
-            'code' => 'invalid_comment_mutation',
-        ], 422);
+        return new ExceptionResponse('comments', CommentsResponseCode::InvalidCommentMutation, 422);
     }
 }

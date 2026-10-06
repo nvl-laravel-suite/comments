@@ -7,6 +7,7 @@ namespace Nvl\Comments\Actions;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
+use Nvl\Comments\Contracts\ListCommentsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
@@ -22,7 +23,7 @@ use Nvl\Filterable\Services\EloquentFilterApplier;
  *
  * @api
  */
-final readonly class ListCommentsAction
+final readonly class ListCommentsAction implements ListCommentsContract
 {
     public function __construct(
         private CommentReadService $reads,

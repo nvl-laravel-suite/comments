@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\RestoreCommentRevisionContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\RestoreCommentRevisionData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -28,6 +29,7 @@ use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -35,7 +37,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class RestoreCommentRevisionAction
+final readonly class RestoreCommentRevisionAction implements RestoreCommentRevisionContract
 {
     /**
      * Create the historical revision restoration action.
@@ -51,6 +53,7 @@ final readonly class RestoreCommentRevisionAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -208,25 +211,25 @@ final readonly class RestoreCommentRevisionAction
 
                         if ($mentionChanges['added'] !== []
                             || $mentionChanges['removed'] !== []) {
-                            CommentMentionsChanged::dispatch(
+                            $this->domainEvents->dispatch(new CommentMentionsChanged(
                                 $comment->id,
                                 $comment->commentable_type,
                                 $comment->commentable_id,
                                 $comment->revision,
                                 $mentionChanges['added'],
                                 $mentionChanges['removed'],
-                            );
+                            ), $comment->getConnection());
                         }
 
                         $comment->refresh();
-                        CommentChanged::dispatch(
+                        $this->domainEvents->dispatch(new CommentChanged(
                             $comment->id,
                             $comment->commentable_type,
                             $comment->commentable_id,
                             CommentChangeOperation::RevisionRestored,
                             $comment->revision,
                             $actor,
-                        );
+                        ), $comment->getConnection());
 
                         return $comment;
                     }, attempts: CommentsConfiguration::positiveInteger(

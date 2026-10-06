@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
 use Nvl\Comments\Data\CommentActorData;
+use Nvl\Support\Contracts\DomainEvent;
 
 /**
  * Announces a durable reaction toggle.
+ *
+ * @api
  */
-final class CommentReactionChanged implements ShouldDispatchAfterCommit
+final class CommentReactionChanged implements DomainEvent
 {
-    use Dispatchable;
-
     public function __construct(
         public readonly string $commentId,
         public readonly string $type,
@@ -22,4 +21,10 @@ final class CommentReactionChanged implements ShouldDispatchAfterCommit
         public readonly CommentActorData $actor,
         public readonly int $schemaVersion = 1,
     ) {}
+
+    /** Return the immutable event payload schema version. */
+    public function schemaVersion(): int
+    {
+        return $this->schemaVersion;
+    }
 }

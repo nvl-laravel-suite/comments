@@ -10,11 +10,36 @@ use Illuminate\Database\DatabaseTransactionsManager;
 use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
+use Nvl\Comments\Actions\AnonymizeCommentAction;
 use Nvl\Comments\Actions\AttachCommentMediaAction;
+use Nvl\Comments\Actions\CreateCommentAction;
+use Nvl\Comments\Actions\CreateRichCommentAction;
+use Nvl\Comments\Actions\DeleteCommentAction;
+use Nvl\Comments\Actions\DeleteLatestTargetCommentAction;
 use Nvl\Comments\Actions\DetachCommentMediaAction;
+use Nvl\Comments\Actions\FindLatestTargetCommentAction;
+use Nvl\Comments\Actions\GetCommentAction;
+use Nvl\Comments\Actions\ListCommentAttachmentsAction;
+use Nvl\Comments\Actions\ListCommentReportsAction;
+use Nvl\Comments\Actions\ListCommentRevisionsAction;
+use Nvl\Comments\Actions\ListCommentsAction;
+use Nvl\Comments\Actions\ListModerationCommentsAction;
 use Nvl\Comments\Actions\ListOwnerCommentSummariesAction;
+use Nvl\Comments\Actions\ListTargetCommentReportsAction;
+use Nvl\Comments\Actions\ModerateCommentAction;
+use Nvl\Comments\Actions\ReportCommentAction;
+use Nvl\Comments\Actions\ResolveCommentMentionsAction;
+use Nvl\Comments\Actions\ResolveCommentReportAction;
+use Nvl\Comments\Actions\RestoreCommentAction;
+use Nvl\Comments\Actions\RestoreCommentRevisionAction;
+use Nvl\Comments\Actions\SetCommentReactionAction;
+use Nvl\Comments\Actions\SuggestCommentMentionResourcesAction;
+use Nvl\Comments\Actions\UpdateCommentAction;
+use Nvl\Comments\Actions\UpdateRichCommentAction;
 use Nvl\Comments\Console\CommentsDoctorCommand;
 use Nvl\Comments\Console\CommentsReconcileCommand;
+use Nvl\Comments\Contracts\AnonymizeCommentContract;
+use Nvl\Comments\Contracts\AttachCommentMediaContract;
 use Nvl\Comments\Contracts\CommentActorResolver;
 use Nvl\Comments\Contracts\CommentAttachmentLifecycle;
 use Nvl\Comments\Contracts\CommentAttachmentProjection;
@@ -23,7 +48,30 @@ use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
+use Nvl\Comments\Contracts\CreateCommentContract;
+use Nvl\Comments\Contracts\CreateRichCommentContract;
+use Nvl\Comments\Contracts\DeleteCommentContract;
+use Nvl\Comments\Contracts\DeleteLatestTargetCommentContract;
+use Nvl\Comments\Contracts\DetachCommentMediaContract;
+use Nvl\Comments\Contracts\FindLatestTargetCommentContract;
+use Nvl\Comments\Contracts\GetCommentContract;
+use Nvl\Comments\Contracts\ListCommentAttachmentsContract;
+use Nvl\Comments\Contracts\ListCommentReportsContract;
+use Nvl\Comments\Contracts\ListCommentRevisionsContract;
+use Nvl\Comments\Contracts\ListCommentsContract;
+use Nvl\Comments\Contracts\ListModerationCommentsContract;
 use Nvl\Comments\Contracts\ListOwnerCommentSummariesContract;
+use Nvl\Comments\Contracts\ListTargetCommentReportsContract;
+use Nvl\Comments\Contracts\ModerateCommentContract;
+use Nvl\Comments\Contracts\ReportCommentContract;
+use Nvl\Comments\Contracts\ResolveCommentMentionsContract;
+use Nvl\Comments\Contracts\ResolveCommentReportContract;
+use Nvl\Comments\Contracts\RestoreCommentContract;
+use Nvl\Comments\Contracts\RestoreCommentRevisionContract;
+use Nvl\Comments\Contracts\SetCommentReactionContract;
+use Nvl\Comments\Contracts\SuggestCommentMentionResourcesContract;
+use Nvl\Comments\Contracts\UpdateCommentContract;
+use Nvl\Comments\Contracts\UpdateRichCommentContract;
 use Nvl\Comments\Integrations\MediaCommentAttachmentLifecycle;
 use Nvl\Comments\Integrations\MediaCommentAttachmentProjection;
 use Nvl\Comments\Integrations\MediaCommentRelations;
@@ -42,6 +90,7 @@ use Nvl\Comments\Tenancy\CommentsResourceRegistrar;
 use Nvl\Data\Services\TypeScriptSourceRegistry;
 use Nvl\Media\Providers\MediaServiceProvider;
 use Nvl\Support\Doctor\PackageDoctorContributor;
+use Nvl\Support\Globals\GlobalNames;
 use Nvl\Support\Integrations\OptionalIntegration;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Support\Providers\TenantServiceProvider;
@@ -60,6 +109,32 @@ final class CommentsServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->app->bindIf(AnonymizeCommentContract::class, AnonymizeCommentAction::class);
+        $this->app->bindIf(AttachCommentMediaContract::class, AttachCommentMediaAction::class);
+        $this->app->bindIf(CreateCommentContract::class, CreateCommentAction::class);
+        $this->app->bindIf(CreateRichCommentContract::class, CreateRichCommentAction::class);
+        $this->app->bindIf(DeleteCommentContract::class, DeleteCommentAction::class);
+        $this->app->bindIf(DeleteLatestTargetCommentContract::class, DeleteLatestTargetCommentAction::class);
+        $this->app->bindIf(DetachCommentMediaContract::class, DetachCommentMediaAction::class);
+        $this->app->bindIf(FindLatestTargetCommentContract::class, FindLatestTargetCommentAction::class);
+        $this->app->bindIf(GetCommentContract::class, GetCommentAction::class);
+        $this->app->bindIf(ListCommentAttachmentsContract::class, ListCommentAttachmentsAction::class);
+        $this->app->bindIf(ListCommentReportsContract::class, ListCommentReportsAction::class);
+        $this->app->bindIf(ListCommentRevisionsContract::class, ListCommentRevisionsAction::class);
+        $this->app->bindIf(ListCommentsContract::class, ListCommentsAction::class);
+        $this->app->bindIf(ListModerationCommentsContract::class, ListModerationCommentsAction::class);
+        $this->app->bindIf(ListTargetCommentReportsContract::class, ListTargetCommentReportsAction::class);
+        $this->app->bindIf(ModerateCommentContract::class, ModerateCommentAction::class);
+        $this->app->bindIf(ReportCommentContract::class, ReportCommentAction::class);
+        $this->app->bindIf(ResolveCommentMentionsContract::class, ResolveCommentMentionsAction::class);
+        $this->app->bindIf(ResolveCommentReportContract::class, ResolveCommentReportAction::class);
+        $this->app->bindIf(RestoreCommentContract::class, RestoreCommentAction::class);
+        $this->app->bindIf(RestoreCommentRevisionContract::class, RestoreCommentRevisionAction::class);
+        $this->app->bindIf(SetCommentReactionContract::class, SetCommentReactionAction::class);
+        $this->app->bindIf(SuggestCommentMentionResourcesContract::class, SuggestCommentMentionResourcesAction::class);
+        $this->app->bindIf(UpdateCommentContract::class, UpdateCommentAction::class);
+        $this->app->bindIf(UpdateRichCommentContract::class, UpdateRichCommentAction::class);
+
         $this->app->register(SupportServiceProvider::class);
         PackageDoctorContributor::register($this->app, 'nvl/comments', fn (): array => PackageDoctorContributor::reportChecks($this->app->make(CommentsDoctor::class)->inspect(), 'nvl:comments:doctor'));
 
@@ -129,6 +204,10 @@ final class CommentsServiceProvider extends ServiceProvider
         CommentMetadataRegistry $metadata,
         Dispatcher $events,
     ): void {
+        $this->app->make(GlobalNames::class)->translations('comments', __DIR__.'/../../lang', $this->app->make('translation.loader'));
+        $this->publishes([
+            __DIR__.'/../../lang' => lang_path('vendor/nvl-comments'),
+        ], 'nvl-comments-translations');
         $typeScriptSources->register(__DIR__.'/..', 'nvl/comments');
         $this->registerTargets($targets);
         if ($this->app->make(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class)) {
@@ -218,12 +297,12 @@ final class CommentsServiceProvider extends ServiceProvider
     /** Keep base projections and cleanup independent of unavailable Media services. */
     private function registerAttachmentAdapters(): void
     {
-        $this->app->bind(CommentAttachmentProjection::class, static function (Application $app): CommentAttachmentProjection {
+        $this->app->bindIf(CommentAttachmentProjection::class, static function (Application $app): CommentAttachmentProjection {
             return $app->make(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class)
                 ? $app->make(MediaCommentAttachmentProjection::class)
                 : new UnavailableCommentAttachments;
         });
-        $this->app->bind(CommentAttachmentLifecycle::class, static function (Application $app): CommentAttachmentLifecycle {
+        $this->app->bindIf(CommentAttachmentLifecycle::class, static function (Application $app): CommentAttachmentLifecycle {
             $app->make(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class);
 
             return ($app->getLoadedProviders()[MediaServiceProvider::class] ?? false) === true
@@ -231,7 +310,7 @@ final class CommentsServiceProvider extends ServiceProvider
                 : new UnavailableCommentAttachments;
         });
         foreach ([AttachCommentMediaAction::class, DetachCommentMediaAction::class] as $action) {
-            $this->app->bind($action, static function (Application $app) use ($action): object {
+            $this->app->bindIf($action, static function (Application $app) use ($action): object {
                 $app->make(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class, requested: true);
 
                 return $app->build($action);

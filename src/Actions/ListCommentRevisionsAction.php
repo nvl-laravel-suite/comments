@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Nvl\Comments\Contracts\ListCommentRevisionsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -21,7 +22,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ListCommentRevisionsAction
+final readonly class ListCommentRevisionsAction implements ListCommentRevisionsContract
 {
     /**
      * Create the comment revision listing action.

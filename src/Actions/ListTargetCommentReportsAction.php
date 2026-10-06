@@ -7,6 +7,7 @@ namespace Nvl\Comments\Actions;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Contracts\CommentQueryScope;
+use Nvl\Comments\Contracts\ListTargetCommentReportsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -27,7 +28,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ListTargetCommentReportsAction
+final readonly class ListTargetCommentReportsAction implements ListTargetCommentReportsContract
 {
     public function __construct(
         private CommentAccessService $access,

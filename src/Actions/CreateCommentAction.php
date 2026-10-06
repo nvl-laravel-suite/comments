@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\Model;
+use Nvl\Comments\Contracts\CreateCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
 use Nvl\Comments\Enums\CommentAudience;
@@ -16,7 +17,7 @@ use Nvl\Comments\Services\CommentCreationWriter;
  *
  * @api
  */
-final readonly class CreateCommentAction
+final readonly class CreateCommentAction implements CreateCommentContract
 {
     /**
      * Create the plain comment creation action.

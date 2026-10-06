@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\UpdateCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\UpdateCommentData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -23,6 +24,7 @@ use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Spatie\LaravelData\Optional;
 
 /**
@@ -30,7 +32,7 @@ use Spatie\LaravelData\Optional;
  *
  * @api
  */
-final readonly class UpdateCommentAction
+final readonly class UpdateCommentAction implements UpdateCommentContract
 {
     public function __construct(
         private CommentAccessService $access,
@@ -39,6 +41,7 @@ final readonly class UpdateCommentAction
         private CommentMetadataIndexWriter $metadataIndex,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -149,14 +152,14 @@ final readonly class UpdateCommentAction
 
                     $this->metadataIndex->synchronize($comment, $metadata);
 
-                    CommentChanged::dispatch(
+                    $this->domainEvents->dispatch(new CommentChanged(
                         $comment->id,
                         $comment->commentable_type,
                         $comment->commentable_id,
                         CommentChangeOperation::Updated,
                         $comment->revision,
                         $actor,
-                    );
+                    ), $comment->getConnection());
 
                     return $comment->refresh();
                 }, attempts: CommentsConfiguration::positiveInteger(

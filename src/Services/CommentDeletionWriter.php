@@ -16,6 +16,7 @@ use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -37,6 +38,7 @@ final readonly class CommentDeletionWriter
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -143,14 +145,14 @@ final readonly class CommentDeletionWriter
                         }
 
                         $comment->refresh();
-                        CommentChanged::dispatch(
+                        $this->domainEvents->dispatch(new CommentChanged(
                             $comment->id,
                             $comment->commentable_type,
                             $comment->commentable_id,
                             CommentChangeOperation::Deleted,
                             $comment->revision,
                             $actor,
-                        );
+                        ), $comment->getConnection());
 
                         return true;
                     }, attempts: CommentsConfiguration::positiveInteger(

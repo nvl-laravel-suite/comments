@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Nvl\Comments\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Nvl\Comments\Database\Factories\CommentRevisionFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Support\CommentsConfiguration;
@@ -35,6 +37,9 @@ use Nvl\Support\Config\PackageStorage;
  */
 final class CommentRevision extends Model
 {
+    /** @use HasFactory<CommentRevisionFactory> */
+    use HasFactory;
+
     use HasUuids;
 
     public const null UPDATED_AT = null;
@@ -90,5 +95,15 @@ final class CommentRevision extends Model
     public function comment(): BelongsTo
     {
         return $this->belongsTo(Comment::class)->withTrashed();
+    }
+
+    /**
+     * Return the package's runtime fixture factory.
+     *
+     * @internal
+     */
+    protected static function newFactory(): CommentRevisionFactory
+    {
+        return CommentRevisionFactory::new();
     }
 }

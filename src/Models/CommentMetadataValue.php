@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Nvl\Comments\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Nvl\Comments\Database\Factories\CommentMetadataValueFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Config\PackageStorage;
@@ -24,9 +26,16 @@ use Nvl\Support\Config\PackageStorage;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Comment $comment
+ *
+ * @api
+ *
+ * @nvl-consumer-read id
  */
 final class CommentMetadataValue extends Model
 {
+    /** @use HasFactory<CommentMetadataValueFactory> */
+    use HasFactory;
+
     use HasUuids;
 
     /** @var list<string> */
@@ -63,5 +72,15 @@ final class CommentMetadataValue extends Model
     public function comment(): BelongsTo
     {
         return $this->belongsTo(Comment::class);
+    }
+
+    /**
+     * Return the package's runtime fixture factory.
+     *
+     * @internal
+     */
+    protected static function newFactory(): CommentMetadataValueFactory
+    {
+        return CommentMetadataValueFactory::new();
     }
 }

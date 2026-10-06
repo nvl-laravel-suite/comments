@@ -7,6 +7,7 @@ namespace Nvl\Comments\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use LogicException;
+use Nvl\Comments\Database\Factories\CommentFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
@@ -114,6 +116,9 @@ use Nvl\Support\Config\PackageStorage;
  */
 final class Comment extends Model
 {
+    /** @use HasFactory<CommentFactory> */
+    use HasFactory;
+
     use HasUuids;
     use SoftDeletes;
 
@@ -542,5 +547,15 @@ final class Comment extends Model
                 'visibility_hash',
                 CommentIdentity::value('comment-visibility', CommentVisibility::Public),
             );
+    }
+
+    /**
+     * Return the package's runtime fixture factory.
+     *
+     * @internal
+     */
+    protected static function newFactory(): CommentFactory
+    {
+        return CommentFactory::new();
     }
 }

@@ -1,10 +1,19 @@
 # Changelog
 
+## Unreleased — consumer runtime integration
+
+- Added focused consumer contract/testing guidance and shipped-factory usage limits.
+- Versioned committed event payloads and documented canonical aliases, source connections, failure metadata and optional safe rendering.
+- Added explicit first-use/installer and deployment guidance; new acceptance checks remain pending.
+
+
 All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
 ### Added
+
+- Added focused injectable contracts for all 26 selected public workflows, with native signatures and conditional defaults preserving host bindings.
 
 - Add container-bound, SQL-authorized many-owner comment summaries with native
   identity maps, visible counts and latest rows bounded before hydration.

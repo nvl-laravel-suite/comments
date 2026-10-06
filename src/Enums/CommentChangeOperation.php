@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Stable durable operations announced by comment change events.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentChangeOperation: string

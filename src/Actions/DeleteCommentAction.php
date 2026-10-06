@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Actions;
 
+use Nvl\Comments\Contracts\DeleteCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Enums\CommentAudience;
@@ -15,7 +16,7 @@ use Nvl\Comments\Services\CommentDeletionWriter;
  *
  * @api
  */
-final readonly class DeleteCommentAction
+final readonly class DeleteCommentAction implements DeleteCommentContract
 {
     /**
      * Create the comment deletion action.

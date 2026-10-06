@@ -7,6 +7,7 @@ namespace Nvl\Comments\Actions;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Nvl\Comments\Contracts\AttachCommentMediaContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -33,7 +34,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class AttachCommentMediaAction
+final readonly class AttachCommentMediaAction implements AttachCommentMediaContract
 {
     public function __construct(
         private CommentAccessService $access,

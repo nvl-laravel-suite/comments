@@ -16,6 +16,7 @@ use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyPlatformAccess;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResource;
 use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Filterable\Providers\FilterableServiceProvider;
+use Nvl\Support\Providers\LocaleServiceProvider;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Tenancy\Contracts\PlatformAccess;
 use Nvl\Tenancy\Contracts\TenantDirectory;
@@ -39,7 +40,8 @@ abstract class CommentBatchTenancyTestCase extends Orchestra
     /** @return list<class-string> */
     protected function getPackageProviders($app): array
     {
-        return [DataServiceProvider::class, SupportServiceProvider::class, TenancyServiceProvider::class, CommentBatchTenancyFixtureServiceProvider::class, FilterableServiceProvider::class, CommentsServiceProvider::class];
+        return [
+            LocaleServiceProvider::class, DataServiceProvider::class, SupportServiceProvider::class, TenancyServiceProvider::class, CommentBatchTenancyFixtureServiceProvider::class, FilterableServiceProvider::class, CommentsServiceProvider::class];
     }
 
     /** Configure enabled tenancy before providers validate ownership. */

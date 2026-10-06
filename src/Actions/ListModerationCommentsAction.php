@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Contracts\CommentQueryScope;
+use Nvl\Comments\Contracts\ListModerationCommentsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -27,7 +28,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ListModerationCommentsAction
+final readonly class ListModerationCommentsAction implements ListModerationCommentsContract
 {
     public function __construct(
         private CommentAccessService $access,

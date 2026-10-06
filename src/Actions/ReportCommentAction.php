@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\ReportCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\ReportCommentData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -22,6 +23,7 @@ use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -29,7 +31,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ReportCommentAction
+final readonly class ReportCommentAction implements ReportCommentContract
 {
     public function __construct(
         private CommentAccessService $access,
@@ -38,6 +40,7 @@ final readonly class ReportCommentAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -154,7 +157,7 @@ final readonly class ReportCommentAction
                         );
                     }
 
-                    CommentReported::dispatch($comment->id, $report->id, $actor);
+                    $this->domainEvents->dispatch(new CommentReported($comment->id, $report->id, $actor), $comment->getConnection());
 
                     return $report->refresh();
                 }, attempts: CommentsConfiguration::positiveInteger(

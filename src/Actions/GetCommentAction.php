@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Actions;
 
+use Nvl\Comments\Contracts\GetCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
@@ -14,7 +15,7 @@ use Nvl\Comments\Services\CommentReadService;
  *
  * @api
  */
-final readonly class GetCommentAction
+final readonly class GetCommentAction implements GetCommentContract
 {
     public function __construct(private CommentReadService $reads) {}
 

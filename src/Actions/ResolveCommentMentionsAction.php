@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Nvl\Comments\Contracts\ResolveCommentMentionsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentMentionData;
 use Nvl\Comments\Enums\CommentAudience;
@@ -20,7 +21,7 @@ use Spatie\LaravelData\Optional;
  *
  * @api
  */
-final readonly class ResolveCommentMentionsAction
+final readonly class ResolveCommentMentionsAction implements ResolveCommentMentionsContract
 {
     /**
      * Create the current mention resolution action.

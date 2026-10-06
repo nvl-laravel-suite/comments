@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\AnonymizeCommentContract;
 use Nvl\Comments\Contracts\CommentAttachmentLifecycle;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
@@ -29,6 +30,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -36,7 +38,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class AnonymizeCommentAction
+final readonly class AnonymizeCommentAction implements AnonymizeCommentContract
 {
     /**
      * Create the terminal comment anonymization action.
@@ -51,6 +53,7 @@ final readonly class AnonymizeCommentAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -287,23 +290,23 @@ final readonly class AnonymizeCommentAction
                         $comment->refresh();
 
                         if ($mentionRemovals !== []) {
-                            CommentMentionsChanged::dispatch(
+                            $this->domainEvents->dispatch(new CommentMentionsChanged(
                                 $comment->id,
                                 $comment->commentable_type,
                                 $comment->commentable_id,
                                 $comment->revision,
                                 [],
                                 $mentionRemovals,
-                            );
+                            ), $comment->getConnection());
                         }
-                        CommentChanged::dispatch(
+                        $this->domainEvents->dispatch(new CommentChanged(
                             $comment->id,
                             $comment->commentable_type,
                             $comment->commentable_id,
                             CommentChangeOperation::Anonymized,
                             $comment->revision,
                             $actor,
-                        );
+                        ), $comment->getConnection());
 
                         return $comment;
                     }, attempts: CommentsConfiguration::positiveInteger(

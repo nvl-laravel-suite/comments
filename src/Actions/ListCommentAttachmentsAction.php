@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Support\Collection;
 use Nvl\Comments\Contracts\CommentAttachmentProjection;
+use Nvl\Comments\Contracts\ListCommentAttachmentsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -20,7 +21,7 @@ use Nvl\Comments\Services\CommentTargetLocator;
  *
  * @api
  */
-final readonly class ListCommentAttachmentsAction
+final readonly class ListCommentAttachmentsAction implements ListCommentAttachmentsContract
 {
     public function __construct(
         private CommentAccessService $access,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\ModerateCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\ModerateCommentData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -21,6 +22,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -28,7 +30,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ModerateCommentAction
+final readonly class ModerateCommentAction implements ModerateCommentContract
 {
     public function __construct(
         private CommentAccessService $access,
@@ -37,6 +39,7 @@ final readonly class ModerateCommentAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -110,14 +113,14 @@ final readonly class ModerateCommentAction
                         );
                     }
 
-                    CommentChanged::dispatch(
+                    $this->domainEvents->dispatch(new CommentChanged(
                         $comment->id,
                         $comment->commentable_type,
                         $comment->commentable_id,
                         CommentChangeOperation::Moderated,
                         $comment->revision,
                         $actor,
-                    );
+                    ), $comment->getConnection());
 
                     return $this->boundary->query(Comment::query(), 'comments.comments')
                         ->withTrashed()

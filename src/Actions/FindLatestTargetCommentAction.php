@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\Model;
+use Nvl\Comments\Contracts\FindLatestTargetCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentManagementData;
 use Nvl\Comments\Data\MemberCommentData;
@@ -22,7 +23,7 @@ use Nvl\Comments\Support\CommentIdentity;
  *
  * @api
  */
-final readonly class FindLatestTargetCommentAction
+final readonly class FindLatestTargetCommentAction implements FindLatestTargetCommentContract
 {
     /**
      * Create the latest-comment action.

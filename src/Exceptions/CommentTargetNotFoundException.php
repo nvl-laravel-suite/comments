@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Nvl\Comments\Exceptions;
 
 use Illuminate\Contracts\Debug\ShouldntReport;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
+ * @api
+
  * Raised when an API-safe comment target alias or identifier cannot be resolved.
  */
 final class CommentTargetNotFoundException extends CommentsException implements ShouldntReport
@@ -27,16 +27,5 @@ final class CommentTargetNotFoundException extends CommentsException implements 
     public static function forIdentifier(string $alias, string $identifier): self
     {
         return new self("Comment target [{$alias}:{$identifier}] does not exist.");
-    }
-
-    /**
-     * Render the missing target through a stable JSON response.
-     */
-    public function render(Request $request): JsonResponse
-    {
-        return response()->json([
-            'message' => $this->getMessage(),
-            'code' => 'comment_target_not_found',
-        ], 404);
     }
 }

@@ -7,6 +7,7 @@ namespace Nvl\Comments\Actions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Nvl\Comments\Contracts\CommentQueryScope;
+use Nvl\Comments\Contracts\DeleteLatestTargetCommentContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Data\Queries\CommentSelectorData;
@@ -25,7 +26,7 @@ use Nvl\Comments\Support\CommentsConfiguration;
  *
  * @api
  */
-final readonly class DeleteLatestTargetCommentAction
+final readonly class DeleteLatestTargetCommentAction implements DeleteLatestTargetCommentContract
 {
     /**
      * Create the package-owned latest-match deletion action.

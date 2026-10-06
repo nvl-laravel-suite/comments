@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Nvl\Comments\Contracts\SuggestCommentMentionResourcesContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Data\CommentMentionSuggestionData;
@@ -21,7 +22,7 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
  *
  * @api
  */
-final readonly class SuggestCommentMentionResourcesAction
+final readonly class SuggestCommentMentionResourcesAction implements SuggestCommentMentionResourcesContract
 {
     /**
      * Create the mention suggestion action.

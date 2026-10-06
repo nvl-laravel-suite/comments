@@ -7,6 +7,7 @@ namespace Nvl\Comments\Tests;
 use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Filterable\Providers\FilterableServiceProvider;
+use Nvl\Support\Providers\LocaleServiceProvider;
 
 /** Exercises required Comments providers without discovering optional integrations. */
 abstract class StandaloneCommentsTestCase extends TestCase
@@ -18,6 +19,7 @@ abstract class StandaloneCommentsTestCase extends TestCase
      */
     protected function getPackageProviders($app): array
     {
-        return [CommentsServiceProvider::class, FilterableServiceProvider::class, DataServiceProvider::class];
+        return [
+            LocaleServiceProvider::class, CommentsServiceProvider::class, FilterableServiceProvider::class, DataServiceProvider::class];
     }
 }

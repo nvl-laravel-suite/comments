@@ -6,6 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\SetCommentReactionContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -19,6 +20,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -26,7 +28,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class SetCommentReactionAction
+final readonly class SetCommentReactionAction implements SetCommentReactionContract
 {
     public function __construct(
         private CommentAccessService $access,
@@ -34,6 +36,7 @@ final readonly class SetCommentReactionAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -149,12 +152,12 @@ final readonly class SetCommentReactionAction
                     }
 
                     if ($changed) {
-                        CommentReactionChanged::dispatch(
+                        $this->domainEvents->dispatch(new CommentReactionChanged(
                             $comment->id,
                             $type,
                             $active,
                             $actor,
-                        );
+                        ), $comment->getConnection());
                     }
 
                     return $reaction;

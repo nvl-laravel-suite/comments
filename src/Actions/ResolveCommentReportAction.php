@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\ResolveCommentReportContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\ResolveCommentReportData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -22,6 +23,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
@@ -29,7 +31,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ResolveCommentReportAction
+final readonly class ResolveCommentReportAction implements ResolveCommentReportContract
 {
     public function __construct(
         private CommentAccessService $access,
@@ -39,6 +41,7 @@ final readonly class ResolveCommentReportAction
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
         private TenantBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -138,14 +141,14 @@ final readonly class ResolveCommentReportAction
                         );
                     }
 
-                    CommentChanged::dispatch(
+                    $this->domainEvents->dispatch(new CommentChanged(
                         $comment->id,
                         $comment->commentable_type,
                         $comment->commentable_id,
                         CommentChangeOperation::ReportReviewed,
                         $comment->revision,
                         $actor,
-                    );
+                    ), $comment->getConnection());
 
                     return $report->refresh()->load('comment');
                 }, attempts: CommentsConfiguration::positiveInteger(

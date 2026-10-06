@@ -27,6 +27,7 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
@@ -54,6 +55,7 @@ final readonly class CommentCreationWriter
         private TenantBoundary $boundary,
         private TenantResourceRegistry $resources,
         private Repository $config,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -335,14 +337,14 @@ final readonly class CommentCreationWriter
                                 $changes = $this->mentions->changes(null, $document);
 
                                 if ($changes['added'] !== [] || $changes['removed'] !== []) {
-                                    CommentMentionsChanged::dispatch(
+                                    $this->domainEvents->dispatch(new CommentMentionsChanged(
                                         $comment->id,
                                         $comment->commentable_type,
                                         $comment->commentable_id,
                                         $comment->revision,
                                         $changes['added'],
                                         $changes['removed'],
-                                    );
+                                    ), $comment->getConnection());
                                 }
                             }
 
@@ -352,14 +354,14 @@ final readonly class CommentCreationWriter
                                 );
                             }
 
-                            CommentChanged::dispatch(
+                            $this->domainEvents->dispatch(new CommentChanged(
                                 $comment->id,
                                 $comment->commentable_type,
                                 $comment->commentable_id,
                                 CommentChangeOperation::Created,
                                 $comment->revision,
                                 $actor,
-                            );
+                            ), $comment->getConnection());
 
                             return $document instanceof CommentDocumentData
                                 ? $comment->refresh()

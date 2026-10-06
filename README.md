@@ -1,5 +1,28 @@
 # NVL Comments — API and usage
 
+## Quickstart
+
+```sh
+composer require nvl/comments:^5.0
+php artisan nvl:install comments --dry-run
+php artisan nvl:install comments
+```
+
+Required NVL dependencies: `nvl/core` (`^5.0`), `nvl/filterable` (`^5.0`). Register a native persisted owner and CommentTargetResolver; bind CommentAuthorization, CommentQueryScope and CommentBatchQueryScope. The article and CommentActorData come from trusted host state.
+Review the published common config, select one migration owner, and run schema preflight before existing-table upgrades. The installer does not enable features or run migrations. Follow the detailed installation and capability sections below before invoking a storage/provider operation.
+
+Inject `Nvl\Comments\Contracts\ListOwnerCommentSummariesContract` in a host service. After supplying the trusted inputs described above, the first public call is:
+
+```php
+use Nvl\Comments\Contracts\ListOwnerCommentSummariesContract;
+
+/** @var ListOwnerCommentSummariesContract $capability */
+$result = $capability->execute([$article], $actor);
+```
+
+Use the [event catalog](docs/events.md) and [Testing your app](#testing-your-app) below. The suite [getting-started guide](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/docs/getting-started.md) provides a complete Comments host fixture; package archives retain their own local references.
+
+
 [← NVL Laravel Suite](https://github.com/nvl-laravel-suite)
 
 For support, [open an issue](https://github.com/nvl-laravel-suite/comments/issues). For vulnerabilities, use
@@ -66,6 +89,7 @@ Laravel auto-discovers
 consumer needs to own:
 
 ```bash
+php artisan vendor:publish --tag=nvl-comments-translations
 php artisan vendor:publish --tag=nvl-comments-config
 php artisan vendor:publish --tag=nvl-comments-migrations
 php artisan vendor:publish --tag=nvl-comments-skills
@@ -1026,6 +1050,67 @@ The development suite uses `ext-pcntl` for Unix process/concurrency coverage.
 Production consumers install with `--no-dev` and do not require that extension;
 run the complete contributor suite on Linux or macOS.
 
+## Injectable workflow contracts
+
+Constructor-inject focused interfaces from `Nvl\Comments\Contracts` when composing host workflows. Each interface retains the native Action’s complete `execute` parameters, defaults, return type, and documented generic/shape result. Concrete Actions remain directly usable in major 5.
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Nvl\Comments\Contracts\CreateCommentContract;
+use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Data\Mutations\CreateCommentData;
+use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Models\Comment;
+
+final readonly class CreateCommentWorkflow
+{
+    public function __construct(private CreateCommentContract $workflow) {}
+
+    public function execute(
+        Model $target,
+        CreateCommentData $data,
+        CommentActorData $actor,
+        CommentAudience $audience = CommentAudience::Public,
+    ): Comment
+    {
+        return $this->workflow->execute($target, $data, $actor, $audience);
+    }
+}
+```
+
+The provider installs conditional transient defaults (`bindIf`) for the following selected workflows. A host interface binding registered before package discovery is retained; a later binding/instance replacement is used by newly resolved host services. Keep authorization, validation, query ownership, and mutation behavior inside the owning package workflow.
+
+| Contract | Native implementation |
+| --- | --- |
+| `AnonymizeCommentContract` | `AnonymizeCommentAction` |
+| `AttachCommentMediaContract` | `AttachCommentMediaAction` |
+| `CreateCommentContract` | `CreateCommentAction` |
+| `CreateRichCommentContract` | `CreateRichCommentAction` |
+| `DeleteCommentContract` | `DeleteCommentAction` |
+| `DeleteLatestTargetCommentContract` | `DeleteLatestTargetCommentAction` |
+| `DetachCommentMediaContract` | `DetachCommentMediaAction` |
+| `FindLatestTargetCommentContract` | `FindLatestTargetCommentAction` |
+| `GetCommentContract` | `GetCommentAction` |
+| `ListCommentAttachmentsContract` | `ListCommentAttachmentsAction` |
+| `ListCommentReportsContract` | `ListCommentReportsAction` |
+| `ListCommentRevisionsContract` | `ListCommentRevisionsAction` |
+| `ListCommentsContract` | `ListCommentsAction` |
+| `ListModerationCommentsContract` | `ListModerationCommentsAction` |
+| `ListOwnerCommentSummariesContract` | `ListOwnerCommentSummariesAction` |
+| `ListTargetCommentReportsContract` | `ListTargetCommentReportsAction` |
+| `ModerateCommentContract` | `ModerateCommentAction` |
+| `ReportCommentContract` | `ReportCommentAction` |
+| `ResolveCommentMentionsContract` | `ResolveCommentMentionsAction` |
+| `ResolveCommentReportContract` | `ResolveCommentReportAction` |
+| `RestoreCommentContract` | `RestoreCommentAction` |
+| `RestoreCommentRevisionContract` | `RestoreCommentRevisionAction` |
+| `SetCommentReactionContract` | `SetCommentReactionAction` |
+| `SuggestCommentMentionResourcesContract` | `SuggestCommentMentionResourcesAction` |
+| `UpdateCommentContract` | `UpdateCommentAction` |
+| `UpdateRichCommentContract` | `UpdateRichCommentAction` |
+
+The attachment contract defaults retain the optional Media availability gates. Host bindings for `CommentAttachmentProjection`, `CommentAttachmentLifecycle`, `AttachCommentMediaContract`, and `DetachCommentMediaContract` survive provider registration; the concrete attachment Action factories also retain host bindings.
+
 ## Supported PHP usage
 
 The source `@api` declarations identify supported workflows, extension contracts, and value types. Public members marked `@internal` and untagged implementation types remain package-owned. Concrete Actions retain their existing constructors, qualifiers, and `execute()` signatures.
@@ -1033,8 +1118,6 @@ The source `@api` declarations identify supported workflows, extension contracts
 A package model returned or accepted by a public workflow is an identity/result handle. Use its declared type and `getKey()`, `getKeyName()`, `getMorphClass()`, `getRouteKey()`, `getRouteKeyName()`, `is()`, `isNot()`, and `relationLoaded()`. Read only explicitly declared in-memory `@nvl-consumer-read` fields; ordinary model PHPDocs and fillable attributes do not grant consumer reads. Obtain display projections through public reads. Persistence, additional model queries, relation access/loading, and generic model serialization are outside this contract. Host-model queries remain available, while traversal or aggregates of package capability relations require the package public reader or authorized adapter.
 
 The current readable handle fields are `Comment`: `id`, `format`, `locale`, `status`, `visibility`, `revision`, `reply_count`, `reaction_count`, `report_count`, `open_report_count`, `is_pinned`, `created_at`, `updated_at`, `deleted_at`. All other package model handles have no readable attribute grant.
-
-## License
 
 ## Tenant ownership
 
@@ -1112,3 +1195,77 @@ Owned cache and lock identities follow `nvl:<package>:<purpose>:…`. Comment mu
 ## Canonical configuration ownership
 
 Use `nvl-comments` settings in `config/nvl-comments.php` and canonical package environment names. Old generic roots are foreign unless an upgrading NVL host explicitly selects them in Core's default-off compatibility. Canonical false/null/empty values win; no old roots are populated or written back. Keep logical package/resource IDs unchanged. Review [Core's rename inventory and cache/worker cutover](https://github.com/nvl-laravel-suite/core/blob/main/UPGRADING.md#major-5-canonical-configuration-and-environment).
+
+## Testing your app
+
+Inject the supported contract rather than constructing its concrete Action or querying package tables. Replace `Nvl\Comments\Contracts\ListOwnerCommentSummariesContract` in Laravel's native container for a host-workflow test:
+
+```php
+use Nvl\Comments\Contracts\ListOwnerCommentSummariesContract;
+
+$double = Mockery::mock(ListOwnerCommentSummariesContract::class);
+$this->app->instance(ListOwnerCommentSummariesContract::class, $double);
+// Configure the exact execute arguments and documented return value for your host case.
+```
+
+The package's conditional native binding preserves host substitutions. Production uses the real contract; test doubles do not prove its storage/authorization behavior.
+
+A detached fixture for a returned identity/data handle is:
+
+```php
+use Nvl\Comments\Models\Comment;
+$fixture = Comment::factory()->withoutParents()->make();
+```
+
+Ordinary `make()` may persist declared package parents. `withoutParents()->make()` disables parent expansion/admission for detached fixtures; use explicit persisted parents/owners and matching effective connections for a real `create()`. Factories do not authorize workflows, call Stripe, create backing Media objects or publish Template artifacts. Enabled tenancy requires explicit admitted persisted tenants/parents. Your host test installation supplies Faker; no test runner is a runtime package dependency.
+
+For owned persistence use `Comment::factory()->forOwner($persistedArticle)->create()`. Read summaries through `ListOwnerCommentSummariesContract`; use `CommentBatchQueryScope` for a supported SQL authorization extension rather than querying `comments()` in application code.
+
+Use Laravel `Event::fake()`, `Queue::fake()`, `Mail::fake()` or `Storage::fake()` only for the effects the host test intends to isolate. Use real commits/listeners for timing proof. Add the optional Core consumer boundary rules to host PHPStan:
+
+```neon
+includes:
+    - vendor/nvl/core/support/consumer-audit.neon
+parameters:
+    nvlConsumer:
+        testPaths: [tests]
+        tableNames: []
+        exceptions: []
+```
+
+Rules read installed public metadata without suite boot. They flag internal symbols, package model queries/writes, capability relations and owned tables; they cannot prove dynamic code or runtime authorization. Exact exceptions require `file`, `identifier`, `symbol`, and a documented `reason`. New C3/C4/E tests, archives and guide execution remain pending until the integration phase records results.
+
+### Shipped factory states
+
+These runtime builders keep Laravel's native Factory API. The listed methods name explicit supported parent/owner/lifecycle states; follow each factory's native admission requirements. Detached examples above do not assert persistence validity.
+
+| Factory | Explicit states |
+| --- | --- |
+| [`CommentFactory`](database/factories/CommentFactory.php) | `forOwner(Model $owner)` |
+| [`CommentMentionFactory`](database/factories/CommentMentionFactory.php) | `forComment(Comment $parent)`, `forOwner(Model $owner)`, `forResource(string $alias, string $identifier, string $label)` |
+| [`CommentMetadataValueFactory`](database/factories/CommentMetadataValueFactory.php) | `forComment(Comment $parent)`, `forOwner(Model $owner)` |
+| [`CommentReactionFactory`](database/factories/CommentReactionFactory.php) | `forComment(Comment $parent)`, `forOwner(Model $owner)` |
+| [`CommentReportFactory`](database/factories/CommentReportFactory.php) | `forComment(Comment $parent)`, `forOwner(Model $owner)` |
+| [`CommentRevisionFactory`](database/factories/CommentRevisionFactory.php) | `forComment(Comment $parent)`, `forOwner(Model $owner)` |
+
+## Error codes and events
+
+All recognized package failures implement `Nvl\Support\Contracts\PackageException`; only `RespondableException` opts into safe response metadata. Keep native PHP programmer errors and Laravel/SDK exceptions distinct. The optional `PackageExceptionRenderer` is registered by the host in `withExceptions`; it leaves unrelated, marker-only and non-JSON handling to the host. Its JSON envelope is `{message:string, code:string, context:object}`. Request locale is host-owned; diagnostics/previous exceptions are not public copy. Event schemas and source connections are documented in [events](docs/events.md).
+
+The table lists enum discriminators, including any successful codes retained for compatibility. A code is not itself an HTTP status; the throwing exception's `suggestedStatus()` is authoritative, especially legacy/custom constructors. Empty context renders as `{}`; only documented JSON-safe context is presented.
+
+| Code | Suggested status | Public context | Translation key |
+| --- | --- | --- | --- |
+| `operation_failed` | Exception-defined; see `suggestedStatus()` | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.operation_failed` |
+| `comment_target_not_found` | 404 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.comment_target_not_found` |
+| `comment_attachment_delivery_unavailable` | 503 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.comment_attachment_delivery_unavailable` |
+| `comment_mutation_busy` | 409 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.comment_mutation_busy` |
+| `comment_idempotency_conflict` | 409 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.comment_idempotency_conflict` |
+| `stale_comment` | 409 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.stale_comment` |
+| `invalid_comment_lifecycle` | 422 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.invalid_comment_lifecycle` |
+| `invalid_comment_mutation` | 422 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.invalid_comment_mutation` |
+| `invalid_configuration` | 500 | {} | `nvl-comments::responsecode.invalid_configuration` |
+| `batch_read_unavailable` | 500 | Declared safe scalar/array map; otherwise `{}` | `nvl-comments::responsecode.batch_read_unavailable` |
+
+
+## License

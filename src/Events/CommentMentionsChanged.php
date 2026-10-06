@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
 use InvalidArgumentException;
 use Nvl\Comments\Data\CommentMentionChangeData;
+use Nvl\Support\Contracts\DomainEvent;
 
 /**
  * Announces one durable bounded diff of registered comment mention identities.
+ *
+ * @api
  */
-final class CommentMentionsChanged implements ShouldDispatchAfterCommit
+final class CommentMentionsChanged implements DomainEvent
 {
-    use Dispatchable;
-
     /**
      * Create one after-commit mention change fact.
      *
@@ -48,5 +47,11 @@ final class CommentMentionsChanged implements ShouldDispatchAfterCommit
         if (! $change instanceof CommentMentionChangeData) {
             throw new InvalidArgumentException('Comment mention change facts are invalid.');
         }
+    }
+
+    /** Return the immutable event payload schema version. */
+    public function schemaVersion(): int
+    {
+        return $this->schemaVersion;
     }
 }

@@ -1,0 +1,548 @@
+{
+  "schema_version": 1,
+  "package": "nvl/comments",
+  "documentation": "docs/events.md",
+  "implementation_status": "implemented; executable acceptance proof pending",
+  "events": [
+    {
+      "class": "Nvl\\Comments\\Events\\CommentChanged",
+      "source": "packages/nvl/comments/src/Events/CommentChanged.php",
+      "constructor_fields": [
+        {
+          "name": "commentId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "targetType",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "targetId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "operation",
+          "type": "Nvl\\Comments\\Enums\\CommentChangeOperation",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "revision",
+          "type": "int",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "actor",
+          "type": "Nvl\\Comments\\Data\\CommentActorData",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "commentId",
+          "type": "string"
+        },
+        {
+          "name": "targetType",
+          "type": "string"
+        },
+        {
+          "name": "targetId",
+          "type": "string"
+        },
+        {
+          "name": "operation",
+          "type": "Nvl\\Comments\\Enums\\CommentChangeOperation"
+        },
+        {
+          "name": "revision",
+          "type": "int"
+        },
+        {
+          "name": "actor",
+          "type": "Nvl\\Comments\\Data\\CommentActorData"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Comment lifecycle/revision changed.",
+      "aliases": [],
+      "producers": [
+        {
+          "path": "packages/nvl/comments/src/Actions/AnonymizeCommentAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Anonymized, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/ModerateCommentAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Moderated, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/ResolveCommentReportAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::ReportReviewed, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/RestoreCommentAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Restored, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/RestoreCommentRevisionAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::RevisionRestored, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/UpdateCommentAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Updated, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/UpdateRichCommentAction.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Updated, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Services/CommentCreationWriter.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Created, $comment->revision, $actor, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Services/CommentDeletionWriter.php",
+          "trigger": "Comment lifecycle/revision changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, CommentChangeOperation::Deleted, $comment->revision, $actor, )"
+        }
+      ],
+      "security_notes": [
+        "Actor/morph target identities, revisions and bounded mention identity changes. No body, private report text or mentioned-resource labels. added and removed each contain at most 100 CommentMentionChangeData objects."
+      ],
+      "no_op_semantics": "Facts follow successful mutation branches; unchanged rich-body/mention differences produce no added/removed mention fact. Rejected authorization, revision or validation paths produce no committed mutation fact. No generic request deduplication is added."
+    },
+    {
+      "class": "Nvl\\Comments\\Events\\CommentMentionsChanged",
+      "source": "packages/nvl/comments/src/Events/CommentMentionsChanged.php",
+      "constructor_fields": [
+        {
+          "name": "commentId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "targetType",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "targetId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "revision",
+          "type": "int",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "added",
+          "type": "array",
+          "visibility": "public",
+          "required": true,
+          "phpdoc_type": "list<Nvl\\Comments\\Data\\CommentMentionChangeData>"
+        },
+        {
+          "name": "removed",
+          "type": "array",
+          "visibility": "public",
+          "required": true,
+          "phpdoc_type": "list<Nvl\\Comments\\Data\\CommentMentionChangeData>"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "commentId",
+          "type": "string"
+        },
+        {
+          "name": "targetType",
+          "type": "string"
+        },
+        {
+          "name": "targetId",
+          "type": "string"
+        },
+        {
+          "name": "revision",
+          "type": "int"
+        },
+        {
+          "name": "added",
+          "type": "array",
+          "phpdoc_type": "list<Nvl\\Comments\\Data\\CommentMentionChangeData>"
+        },
+        {
+          "name": "removed",
+          "type": "array",
+          "phpdoc_type": "list<Nvl\\Comments\\Data\\CommentMentionChangeData>"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Bounded mention identity diff persisted.",
+      "aliases": [],
+      "producers": [
+        {
+          "path": "packages/nvl/comments/src/Actions/AnonymizeCommentAction.php",
+          "trigger": "Bounded mention identity diff persisted.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentMentionsChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, $comment->revision, [], $mentionRemovals, )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/RestoreCommentRevisionAction.php",
+          "trigger": "Bounded mention identity diff persisted.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentMentionsChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, $comment->revision, $mentionChanges['added'], $mentionChanges['removed'], )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Actions/UpdateRichCommentAction.php",
+          "trigger": "Bounded mention identity diff persisted.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentMentionsChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, $comment->revision, $mentionChanges['added'], $mentionChanges['removed'], )"
+        },
+        {
+          "path": "packages/nvl/comments/src/Services/CommentCreationWriter.php",
+          "trigger": "Bounded mention identity diff persisted.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentMentionsChanged( $comment->id, $comment->commentable_type, $comment->commentable_id, $comment->revision, $changes['added'], $changes['removed'], )"
+        }
+      ],
+      "security_notes": [
+        "Actor/morph target identities, revisions and bounded mention identity changes. No body, private report text or mentioned-resource labels. added and removed each contain at most 100 CommentMentionChangeData objects."
+      ],
+      "no_op_semantics": "Facts follow successful mutation branches; unchanged rich-body/mention differences produce no added/removed mention fact. Rejected authorization, revision or validation paths produce no committed mutation fact. No generic request deduplication is added."
+    },
+    {
+      "class": "Nvl\\Comments\\Events\\CommentReactionChanged",
+      "source": "packages/nvl/comments/src/Events/CommentReactionChanged.php",
+      "constructor_fields": [
+        {
+          "name": "commentId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "actor",
+          "type": "Nvl\\Comments\\Data\\CommentActorData",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "commentId",
+          "type": "string"
+        },
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "name": "active",
+          "type": "bool"
+        },
+        {
+          "name": "actor",
+          "type": "Nvl\\Comments\\Data\\CommentActorData"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Reaction active state changed.",
+      "aliases": [],
+      "producers": [
+        {
+          "path": "packages/nvl/comments/src/Actions/SetCommentReactionAction.php",
+          "trigger": "Reaction active state changed.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentReactionChanged( $comment->id, $type, $active, $actor, )"
+        }
+      ],
+      "security_notes": [
+        "Actor/morph target identities, revisions and bounded mention identity changes. No body, private report text or mentioned-resource labels. added and removed each contain at most 100 CommentMentionChangeData objects."
+      ],
+      "no_op_semantics": "Facts follow successful mutation branches; unchanged rich-body/mention differences produce no added/removed mention fact. Rejected authorization, revision or validation paths produce no committed mutation fact. No generic request deduplication is added."
+    },
+    {
+      "class": "Nvl\\Comments\\Events\\CommentReported",
+      "source": "packages/nvl/comments/src/Events/CommentReported.php",
+      "constructor_fields": [
+        {
+          "name": "commentId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "reportId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "actor",
+          "type": "Nvl\\Comments\\Data\\CommentActorData",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "commentId",
+          "type": "string"
+        },
+        {
+          "name": "reportId",
+          "type": "string"
+        },
+        {
+          "name": "actor",
+          "type": "Nvl\\Comments\\Data\\CommentActorData"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Moderation report persisted.",
+      "aliases": [],
+      "producers": [
+        {
+          "path": "packages/nvl/comments/src/Actions/ReportCommentAction.php",
+          "trigger": "Moderation report persisted.",
+          "connection": "$comment->getConnection()",
+          "construction_expression": "new CommentReported($comment->id, $report->id, $actor)"
+        }
+      ],
+      "security_notes": [
+        "Actor/morph target identities, revisions and bounded mention identity changes. No body, private report text or mentioned-resource labels. added and removed each contain at most 100 CommentMentionChangeData objects."
+      ],
+      "no_op_semantics": "Facts follow successful mutation branches; unchanged rich-body/mention differences produce no added/removed mention fact. Rejected authorization, revision or validation paths produce no committed mutation fact. No generic request deduplication is added."
+    }
+  ],
+  "value_types": [
+    {
+      "class": "Nvl\\Comments\\Data\\CommentActorData",
+      "source": "packages/nvl/comments/src/Data/CommentActorData.php",
+      "constructor_fields": [
+        {
+          "name": "type",
+          "type": "?string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "?string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "system",
+          "type": "bool",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "false"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "type",
+          "type": "?string"
+        },
+        {
+          "name": "id",
+          "type": "?string"
+        },
+        {
+          "name": "system",
+          "type": "bool"
+        }
+      ],
+      "kind": "value_object"
+    },
+    {
+      "class": "Nvl\\Comments\\Data\\CommentMentionChangeData",
+      "source": "packages/nvl/comments/src/Data/CommentMentionChangeData.php",
+      "constructor_fields": [
+        {
+          "name": "resourceAlias",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "resourceId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "tokenId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "resourceAlias",
+          "type": "string"
+        },
+        {
+          "name": "resourceId",
+          "type": "string"
+        },
+        {
+          "name": "tokenId",
+          "type": "string"
+        }
+      ],
+      "kind": "value_object"
+    },
+    {
+      "class": "Nvl\\Comments\\Enums\\CommentChangeOperation",
+      "source": "packages/nvl/comments/src/Enums/CommentChangeOperation.php",
+      "constructor_fields": [],
+      "public_fields": [],
+      "kind": "enum",
+      "backing_type": "string",
+      "cases": [
+        {
+          "name": "Created",
+          "value": "created"
+        },
+        {
+          "name": "Updated",
+          "value": "updated"
+        },
+        {
+          "name": "Deleted",
+          "value": "deleted"
+        },
+        {
+          "name": "Restored",
+          "value": "restored"
+        },
+        {
+          "name": "Anonymized",
+          "value": "anonymized"
+        },
+        {
+          "name": "Moderated",
+          "value": "moderated"
+        },
+        {
+          "name": "ReportReviewed",
+          "value": "report_reviewed"
+        },
+        {
+          "name": "RevisionRestored",
+          "value": "revision_restored"
+        }
+      ]
+    }
+  ],
+  "aliases": [],
+  "publication": {
+    "publication": "The native host dispatcher receives the captured event after the supplied source connection outer commit, or immediately when that connection has no active transaction.",
+    "rollback": "Callbacks attach to the matching native connection and current nesting record; native outer/savepoint rollback discards the corresponding callbacks.",
+    "registration_failure": "Missing source transaction records fail before commit; Mail Notifications reports and drops unusable observations.",
+    "host_policy": "Host after-commit listeners and queue after_commit policies can add their own deferral after publication. Host transaction infrastructure and dispatcher bindings are preserved.",
+    "delivery_limit": "Local callbacks are not an outbox. Process exit between commit and callback can lose delivery; no crash durability or exactly-once delivery is promised.",
+    "cardinality": "One canonical object is dispatched per qualifying producer call. This is local publication, not cross-process deduplication or a guarantee that repeated observations are unique.",
+    "manual_producers": "Use Nvl\\Support\\Events\\DomainEventDispatcher::dispatch($event, $writerConnection). Native Event::dispatch() is immediate and has no package interception."
+  },
+  "security_notes": [
+    "Actor/morph target identities, revisions and bounded mention identity changes. No body, private report text or mentioned-resource labels. added and removed each contain at most 100 CommentMentionChangeData objects."
+  ],
+  "no_op_semantics": "Facts follow successful mutation branches; unchanged rich-body/mention differences produce no added/removed mention fact. Rejected authorization, revision or validation paths produce no committed mutation fact. No generic request deduplication is added.",
+  "notes": [
+    "CommentMentionsChanged validates list members and hard bounds at construction; actor and mention DTO fields are scalar identities."
+  ]
+}

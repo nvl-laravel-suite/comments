@@ -2,7 +2,8 @@
     "schema_version": 1,
     "package": "nvl/comments",
     "psr4": {
-        "Nvl\\Comments\\": "src"
+        "Nvl\\Comments\\": "src",
+        "Nvl\\Comments\\Database\\Factories\\": "database/factories"
     },
     "symbols": {
         "Nvl\\Comments\\Actions\\AnonymizeCommentAction": {
@@ -265,6 +266,24 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Contracts\\AnonymizeCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/AnonymizeCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\AttachCommentMediaContract": {
+            "kind": "interface",
+            "file": "src/Contracts/AttachCommentMediaContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Contracts\\CommentActorResolver": {
             "kind": "interface",
             "file": "src/Contracts/CommentActorResolver.php",
@@ -391,6 +410,69 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Contracts\\CreateCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/CreateCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\CreateRichCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/CreateRichCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\DeleteCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/DeleteCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\DeleteLatestTargetCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/DeleteLatestTargetCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\DetachCommentMediaContract": {
+            "kind": "interface",
+            "file": "src/Contracts/DetachCommentMediaContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\FindLatestTargetCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/FindLatestTargetCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\GetCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/GetCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Contracts\\HasComments": {
             "kind": "interface",
             "file": "src/Contracts/HasComments.php",
@@ -398,9 +480,153 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Contracts\\ListCommentAttachmentsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListCommentAttachmentsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ListCommentReportsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListCommentReportsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ListCommentRevisionsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListCommentRevisionsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ListCommentsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListCommentsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ListModerationCommentsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListModerationCommentsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Contracts\\ListOwnerCommentSummariesContract": {
             "kind": "interface",
             "file": "src/Contracts/ListOwnerCommentSummariesContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ListTargetCommentReportsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListTargetCommentReportsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ModerateCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ModerateCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ReportCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ReportCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ResolveCommentMentionsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ResolveCommentMentionsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\ResolveCommentReportContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ResolveCommentReportContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\RestoreCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/RestoreCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\RestoreCommentRevisionContract": {
+            "kind": "interface",
+            "file": "src/Contracts/RestoreCommentRevisionContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\SetCommentReactionContract": {
+            "kind": "interface",
+            "file": "src/Contracts/SetCommentReactionContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\SuggestCommentMentionResourcesContract": {
+            "kind": "interface",
+            "file": "src/Contracts/SuggestCommentMentionResourcesContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\UpdateCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/UpdateCommentContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Contracts\\UpdateRichCommentContract": {
+            "kind": "interface",
+            "file": "src/Contracts/UpdateRichCommentContract.php",
             "methods": [
                 "execute"
             ],
@@ -572,6 +798,26 @@
                 "tags",
                 "updatedAt",
                 "visibility"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Data\\CommentMentionChangeData": {
+            "kind": "class",
+            "file": "src/Data/CommentMentionChangeData.php",
+            "methods": [
+                "__construct",
+                "scopedRules",
+                "toArray",
+                "toModel",
+                "toModelFiltered",
+                "toModelPatch",
+                "translatedAttributes",
+                "translatedMessages"
+            ],
+            "properties": [
+                "resourceAlias",
+                "resourceId",
+                "tokenId"
             ],
             "constants": []
         },
@@ -1140,6 +1386,72 @@
             ],
             "constants": []
         },
+        "Nvl\\Comments\\Database\\Factories\\CommentFactory": {
+            "kind": "class",
+            "file": "database/factories/CommentFactory.php",
+            "methods": [
+                "definition",
+                "forOwner"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Database\\Factories\\CommentMentionFactory": {
+            "kind": "class",
+            "file": "database/factories/CommentMentionFactory.php",
+            "methods": [
+                "definition",
+                "forComment",
+                "forOwner",
+                "forResource"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Database\\Factories\\CommentMetadataValueFactory": {
+            "kind": "class",
+            "file": "database/factories/CommentMetadataValueFactory.php",
+            "methods": [
+                "definition",
+                "forComment",
+                "forOwner"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Database\\Factories\\CommentReactionFactory": {
+            "kind": "class",
+            "file": "database/factories/CommentReactionFactory.php",
+            "methods": [
+                "definition",
+                "forComment",
+                "forOwner"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Database\\Factories\\CommentReportFactory": {
+            "kind": "class",
+            "file": "database/factories/CommentReportFactory.php",
+            "methods": [
+                "definition",
+                "forComment",
+                "forOwner"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Database\\Factories\\CommentRevisionFactory": {
+            "kind": "class",
+            "file": "database/factories/CommentRevisionFactory.php",
+            "methods": [
+                "definition",
+                "forComment",
+                "forOwner"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Definitions\\CommentMetadataField": {
             "kind": "class",
             "file": "src/Definitions/CommentMetadataField.php",
@@ -1205,6 +1517,29 @@
                 "Management",
                 "Member",
                 "Public"
+            ]
+        },
+        "Nvl\\Comments\\Enums\\CommentChangeOperation": {
+            "kind": "enum",
+            "file": "src/Enums/CommentChangeOperation.php",
+            "methods": [
+                "cases",
+                "from",
+                "tryFrom"
+            ],
+            "properties": [
+                "name",
+                "value"
+            ],
+            "constants": [
+                "Anonymized",
+                "Created",
+                "Deleted",
+                "Moderated",
+                "ReportReviewed",
+                "Restored",
+                "RevisionRestored",
+                "Updated"
             ]
         },
         "Nvl\\Comments\\Enums\\CommentFormat": {
@@ -1318,6 +1653,252 @@
                 "Public"
             ]
         },
+        "Nvl\\Comments\\Enums\\CommentsResponseCode": {
+            "kind": "enum",
+            "file": "src/Enums/CommentsResponseCode.php",
+            "methods": [
+                "cases",
+                "from",
+                "tryFrom"
+            ],
+            "properties": [
+                "name",
+                "value"
+            ],
+            "constants": [
+                "BatchReadUnavailable",
+                "CommentAttachmentDeliveryUnavailable",
+                "CommentIdempotencyConflict",
+                "CommentMutationBusy",
+                "CommentTargetNotFound",
+                "InvalidCommentLifecycle",
+                "InvalidCommentMutation",
+                "InvalidConfiguration",
+                "OperationFailed",
+                "StaleComment"
+            ]
+        },
+        "Nvl\\Comments\\Events\\CommentChanged": {
+            "kind": "class",
+            "file": "src/Events/CommentChanged.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "actor",
+                "commentId",
+                "operation",
+                "revision",
+                "schemaVersion",
+                "targetId",
+                "targetType"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Events\\CommentMentionsChanged": {
+            "kind": "class",
+            "file": "src/Events/CommentMentionsChanged.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "added",
+                "commentId",
+                "removed",
+                "revision",
+                "schemaVersion",
+                "targetId",
+                "targetType"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Events\\CommentReactionChanged": {
+            "kind": "class",
+            "file": "src/Events/CommentReactionChanged.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "active",
+                "actor",
+                "commentId",
+                "schemaVersion",
+                "type"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Events\\CommentReported": {
+            "kind": "class",
+            "file": "src/Events/CommentReported.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "actor",
+                "commentId",
+                "reportId",
+                "schemaVersion"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentAttachmentDeliveryUnavailableException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentAttachmentDeliveryUnavailableException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentBatchReadException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentBatchReadException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentIdempotencyConflictException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentIdempotencyConflictException.php",
+            "methods": [
+                "forKey",
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentMutationBusyException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentMutationBusyException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentMutationLockConfigurationException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentMutationLockConfigurationException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentTargetNotFoundException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentTargetNotFoundException.php",
+            "methods": [
+                "forAlias",
+                "forIdentifier",
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\CommentsException": {
+            "kind": "class",
+            "file": "src/Exceptions/CommentsException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\InvalidCommentLifecycleException": {
+            "kind": "class",
+            "file": "src/Exceptions/InvalidCommentLifecycleException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\InvalidCommentMutationException": {
+            "kind": "class",
+            "file": "src/Exceptions/InvalidCommentMutationException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Exceptions\\StaleCommentException": {
+            "kind": "class",
+            "file": "src/Exceptions/StaleCommentException.php",
+            "methods": [
+                "forComment",
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Models\\Comment": {
             "kind": "class",
             "file": "src/Models/Comment.php",
@@ -1346,6 +1927,42 @@
                 "status",
                 "updated_at",
                 "visibility"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Models\\CommentMention": {
+            "kind": "class",
+            "file": "src/Models/CommentMention.php",
+            "methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "properties": [
+                "id"
+            ],
+            "constants": []
+        },
+        "Nvl\\Comments\\Models\\CommentMetadataValue": {
+            "kind": "class",
+            "file": "src/Models/CommentMetadataValue.php",
+            "methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "properties": [
+                "id"
             ],
             "constants": []
         },
@@ -1461,6 +2078,38 @@
                 "status",
                 "updated_at",
                 "visibility"
+            ],
+            "identity_methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "capability_relations": []
+        },
+        "Nvl\\Comments\\Models\\CommentMention": {
+            "read": [
+                "id"
+            ],
+            "identity_methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "capability_relations": []
+        },
+        "Nvl\\Comments\\Models\\CommentMetadataValue": {
+            "read": [
+                "id"
             ],
             "identity_methods": [
                 "getKey",

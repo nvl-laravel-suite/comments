@@ -8,6 +8,7 @@ use Nvl\Comments\Http\Controllers\CommentsManagementController;
 use Nvl\Comments\Http\Controllers\MemberCommentsController;
 use Nvl\Comments\Http\Controllers\PublicCommentsController;
 use Nvl\Comments\Http\Middleware\CommentsResponseCache;
+use Nvl\Comments\Http\Middleware\RenderCommentsExceptions;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Media\Providers\MediaServiceProvider;
 use Nvl\Support\Integrations\OptionalIntegration;
@@ -21,6 +22,7 @@ if ($attachmentsEnabled
     Route::prefix(CommentsRouteConfiguration::path('attachments'))
         ->name($attachmentRouteName)
         ->middleware([
+            RenderCommentsExceptions::class,
             CommentsResponseCache::class,
             ...CommentsRouteConfiguration::middleware('attachments'),
             'signed',
@@ -45,6 +47,7 @@ if (config('nvl-comments.routes.public.enabled', false) === true) {
     Route::prefix(CommentsRouteConfiguration::path('public'))
         ->name(CommentsRouteConfiguration::name('public'))
         ->middleware([
+            RenderCommentsExceptions::class,
             CommentsResponseCache::class,
             ...CommentsRouteConfiguration::middleware('public'),
         ])
@@ -95,6 +98,7 @@ if (config('nvl-comments.routes.member.enabled', false) === true) {
     Route::prefix(CommentsRouteConfiguration::path('member'))
         ->name(CommentsRouteConfiguration::name('member'))
         ->middleware([
+            RenderCommentsExceptions::class,
             CommentsResponseCache::class,
             ...CommentsRouteConfiguration::middleware('member'),
         ])
@@ -178,6 +182,7 @@ if (config('nvl-comments.routes.management.enabled', false) === true) {
     Route::prefix(CommentsRouteConfiguration::path('management'))
         ->name(CommentsRouteConfiguration::name('management'))
         ->middleware([
+            RenderCommentsExceptions::class,
             CommentsResponseCache::class,
             ...CommentsRouteConfiguration::middleware('management'),
         ])

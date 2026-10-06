@@ -11,15 +11,14 @@
         "moderation"
     ],
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "ext-filter": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "laravel/framework": "^13.0",
+        "laravel/framework": "^12.0 || ^13.0",
         "nvl/core": "^5.0",
         "nvl/filterable": "^5.0",
         "spatie/laravel-data": "^4.23",
-        "spatie/typescript-transformer": "^3.3",
         "symfony/http-foundation": "^7.2 || ^8.0",
         "symfony/polyfill-intl-normalizer": "^1.33"
     },
@@ -31,13 +30,15 @@
         "nvl/media": "^5.0",
         "nvl/tenancy": "^5.0",
         "nvl/translatable": "^5.0",
-        "orchestra/testbench": "^11.0",
+        "orchestra/testbench": "^10.0 || ^11.0",
         "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-laravel": "^4.0"
+        "pestphp/pest-plugin-laravel": "^4.0",
+        "spatie/typescript-transformer": "^3.3"
     },
     "autoload": {
         "psr-4": {
-            "Nvl\\Comments\\": "src/"
+            "Nvl\\Comments\\": "src/",
+            "Nvl\\Comments\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
@@ -83,17 +84,37 @@
             "/phpunit.xml.dist",
             "/tests",
             "/.DS_Store",
-            "/**/.DS_Store"
+            "/**/.DS_Store",
+            "/.gitattributes",
+            "/**/.gitattributes",
+            "/.gitignore",
+            "/**/.gitignore",
+            "/**/.gitkeep"
         ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
     "suggest": {
         "nvl/media": "Enables private authorized comment attachments, signed asset delivery, and historical attachment cleanup.",
-        "nvl/tenancy": "Enables enforcing tenant ownership, scoped execution, adoption, and captured tenant queue contexts."
+        "nvl/tenancy": "Enables enforcing tenant ownership, scoped execution, adoption, and captured tenant queue contexts.",
+        "spatie/typescript-transformer": "Consume the declared TypeScript attributes and metadata (^3.3); Core retains the runtime transformation engine."
     },
     "conflict": {
         "nvl/media": "<5.0 || >=6.0",
         "nvl/tenancy": "<5.0 || >=6.0"
+    },
+    "homepage": "https://github.com/nvl-laravel-suite/comments",
+    "authors": [
+        {
+            "name": "Nicolas Vlachos",
+            "homepage": "https://github.com/nicolasvlachos",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "source": "https://github.com/nvl-laravel-suite/comments",
+        "docs": "https://github.com/nvl-laravel-suite/comments#readme",
+        "issues": "https://github.com/nvl-laravel-suite/comments/issues",
+        "security": "https://github.com/nvl-laravel-suite/comments/security/policy"
     }
 }

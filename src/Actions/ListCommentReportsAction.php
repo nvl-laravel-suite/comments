@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Nvl\Comments\Contracts\ListCommentReportsContract;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -23,7 +24,7 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
  *
  * @api
  */
-final readonly class ListCommentReportsAction
+final readonly class ListCommentReportsAction implements ListCommentReportsContract
 {
     public function __construct(
         private CommentAccessService $access,
