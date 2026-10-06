@@ -47,6 +47,39 @@ php artisan migrate
 - Rebuild configuration/routes after changes, generate TypeScript declarations,
   and complete both strict Doctors plus consumer HTTP smoke tests before traffic.
 
+## List-page summaries
+
+- Resolve `ListOwnerCommentSummariesContract` for many-owner count/latest reads;
+  do not loop single-owner Actions or query package relationships in consumers.
+- Supply a finite list of at most 100 persisted models and explicit actor/audience;
+  latest limits are 1–10. Native morph/key maps remain objects for numeric keys,
+  retain `order`, and include explicit empty summaries. Direct PHP inputs do not
+  require HTTP target aliases or `HasComments`.
+- Canonical reloads retain host global/soft-delete scope and package connection.
+  Enabled Tenancy requires registered owner resources and exact
+  `nvl-comments.tenancy.target_types`. Reject foreign/missing/deleted owners before
+  Comment SQL and never switch tenant context during a batch.
+- The same SQL predicate feeds visible counts and latest rows; rank after tenant,
+  moderation and deletion constraints by created-at/id descending. Three domain
+  queries cover 1/25/100 owners of one class, plus a separate cold installation
+  probe; extra concrete classes add owner reloads. At most 1,000 latest rows cross
+  storage. Latest DTOs expose only id/body/format/timestamps; anonymized body and
+  format are omitted. Deleted comments stay excluded even for system actors.
+- Bind query-free `CommentBatchQueryScope` when custom imperative policies cannot
+  express batches. Derive custom scope only from the same active instance serving
+  authorization, single-target SQL scope and batch scope; two stateless configured
+  defaults are compatible. Never infer compatibility from a config class or two
+  independently stateful custom instances. Unsupported policies fail closed on use.
+- Its exact methods are `authorizeOwners(OwnerBatch, CommentActorData,
+  CommentAudience)`, `scopeBatchComments(Builder, OwnerBatch, CommentActorData,
+  CommentAudience)` and `scopeHostComments(Builder, Model, CommentActorData,
+  CommentAudience)`. Add predicates only, without queries or per-owner resolvers;
+  host scope also admits the audience. Never let nested ORs reopen package guards.
+- Owners with `InteractsWithComments` may use
+  `withNvlVisibleCommentCount($actor, $audience, $policy = null)` while retaining
+  host selections and global scopes. Use byte-exact correlated native identity,
+  including integer/UUID text casts. Resolve fresh readers after context changes.
+
 ## Start with audience and canonical scope
 
 - Select `CommentAudience::Public`, `CommentAudience::Member`, or

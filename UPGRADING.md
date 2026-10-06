@@ -1,5 +1,25 @@
 # Upgrading NVL Comments
 
+## Many-owner list reads
+
+Replace per-owner latest/count loops with the container-bound
+`ListOwnerCommentSummariesContract`. Supply at most 100 persisted models and an
+explicit actor/audience; latest limits are 1–10. Results are native morph/key JSON
+objects with first-request `order`, explicit empty owner summaries and safe latest
+scalar DTOs. Anonymized body/format are omitted and deleted comments are excluded
+for every audience, including system management reads. Existing list tombstones
+remain unchanged.
+
+Custom authorization/query-scope bindings require one shared compatible instance
+or an explicit query-free `CommentBatchQueryScope` adapter. Package default scope
+selection uses the current container bindings, not just configured class names.
+Unsupported policies fail closed when used. The optional
+`withNvlVisibleCommentCount` host scope adds an authorized count without replacing
+selected host columns or scopes. Register exact target resources and
+`nvl-comments.tenancy.target_types` when enabling Tenancy. See the README for the
+adapter example, measured three-query domain budget, cold installation probe and
+1,000-row latest transfer ceiling.
+
 ## Tenant adoption
 
 Register every target type and its ownership before adoption. Map canonical

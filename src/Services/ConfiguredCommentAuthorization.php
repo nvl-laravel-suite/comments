@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Contracts\CommentAuthorization;
+use Nvl\Comments\Contracts\CommentBatchQueryScope;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -15,6 +17,7 @@ use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentIdentity;
+use Nvl\Support\Owners\OwnerBatch;
 
 /**
  * Conservative baseline policy suitable for a public discussion surface.
@@ -22,8 +25,39 @@ use Nvl\Comments\Support\CommentIdentity;
  * Applications with tenant, role, private-thread, or moderator rules should bind
  * their own CommentAuthorization implementation.
  */
-final class ConfiguredCommentAuthorization implements CommentAuthorization, CommentQueryScope
+final class ConfiguredCommentAuthorization implements CommentAuthorization, CommentBatchQueryScope, CommentQueryScope
 {
+    /** Admit the baseline audience without per-owner storage or policy callbacks. */
+    public function authorizeOwners(OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void
+    {
+        if (! $this->allows(CommentAbility::List, $actor, audience: $audience)) {
+            throw new AuthorizationException('This actor cannot list comments for the requested audience.');
+        }
+    }
+
+    /**
+     * Apply the default List audience predicate to the complete admitted batch.
+     *
+     * @param  Builder<Comment>  $query
+     */
+    public function scopeBatchComments(Builder $query, OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void
+    {
+        $this->scopeComments($query, $actor, $query->getModel(), $audience, CommentAbility::List);
+    }
+
+    /**
+     * Admit the audience and apply the same predicate to a correlated host count.
+     *
+     * @param  Builder<Comment>  $query
+     */
+    public function scopeHostComments(Builder $query, Model $ownerPrototype, CommentActorData $actor, CommentAudience $audience): void
+    {
+        if (! $this->allows(CommentAbility::List, $actor, audience: $audience)) {
+            throw new AuthorizationException('This actor cannot list comments for the requested audience.');
+        }
+        $this->scopeComments($query, $actor, $ownerPrototype, $audience, CommentAbility::List);
+    }
+
     /**
      * Determine whether package-safe defaults permit an operation.
      *

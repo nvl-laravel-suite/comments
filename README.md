@@ -371,6 +371,141 @@ identity. `CommentAccessService` turns denials into consistent behavior:
 inaccessible public/member and cross-target identifiers are 404; management
 permission failures may be 403.
 
+## Batched owner summaries
+
+Use the bound reader for a list page rather than calling a single-owner Action in
+a loop:
+
+```php
+use Nvl\Comments\Contracts\ListOwnerCommentSummariesContract;
+use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Enums\CommentAudience;
+
+$owners = Article::query()->limit(100)->get()->all();
+$summaries = app(ListOwnerCommentSummariesContract::class)->execute(
+    $owners,
+    CommentActorData::anonymous(),
+    CommentAudience::Public,
+    latestLimit: 3,
+);
+foreach ($owners as $owner) {
+    $summary = $summaries->owners->{$owner->getMorphClass()}->{(string) $owner->getKey()};
+    // $summary->visibleCount and $summary->latest are ready DTO values.
+}
+```
+
+Inputs are lists of at most 100 persisted models, including duplicates; latest
+limits are 1–10. Identity uses the exact native morph class and string-normalized
+key, with separate JSON object levels even for `0` and `007`. `order` retains the
+first requested identity order. Admitted owners without visible comments return
+`visibleCount: 0` and `latest: []`; empty input returns an empty object map and
+executes no queries. Invalid bounds or ambiguous duplicate attributes fail before
+queries. Missing, deleted, host-scoped, foreign-connection and foreign-tenant
+owners fail before Comment storage is read. Direct PHP callers need neither an
+HTTP target alias nor the optional relationship trait.
+
+For one concrete owner class, 1, 25 and 100 owners each use **three domain
+queries**: one canonical owner reload, one visible aggregate and one ranked latest
+query. Mixed classes add one reload per additional class. With Tenancy disabled,
+the first use on a connection also performs one separate installation safety
+probe. After installation/context admission, enabled Tenancy also measures exactly
+three total reader queries at 1/25/100 owners; installation/runtime probes are
+separate from that admitted read. Disabled-Tenancy reads measure four total
+queries cold and three warm. Latest ranking occurs after authorization, tenant and
+soft-delete constraints, ordered by `created_at DESC, id DESC`. At most 100 count
+rows and 1,000 latest rows cross storage, regardless of thread size. SQLite,
+PostgreSQL, MySQL and MariaDB require window-function support; unsupported drivers
+raise `CommentBatchReadException`.
+
+Both outputs share the same authorized predicate. Default public scope includes
+approved public comments; member scope also includes that actor's own pending,
+rejected or private comments. Own hidden public comments remain excluded; own
+hidden private comments remain included. Ordinary actors cannot use management
+scope. System actors bypass moderation but batch summaries still exclude deleted
+rows. Latest DTOs contain only `id`, `body`, `format`, `createdAt`, and `updatedAt`;
+anonymized body/format are omitted. They carry no actor identities, rich document,
+metadata, attachments, reactions or private delivery details. Existing single-owner
+list tombstone behavior is unchanged.
+
+`CommentBatchQueryScope` is a query-free SQL policy contract. Its
+`authorizeOwners(OwnerBatch, CommentActorData, CommentAudience)` receives canonical
+reloaded models; `scopeBatchComments(Builder, OwnerBatch, CommentActorData,
+CommentAudience)` constrains counts and latest; `scopeHostComments(Builder, Model,
+CommentActorData, CommentAudience)` authorizes and constrains correlated counts.
+Each scope only adds predicates inside package-owned ownership, tenant and
+deletion constraints. Hosts must express target-dependent authorization in SQL,
+without per-owner queries or single-target resolver callbacks. For example, a
+public-only adapter can preserve the baseline scope while restricting its audience:
+
+```php
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Nvl\Comments\Contracts\CommentBatchQueryScope;
+use Nvl\Comments\Data\CommentActorData;
+use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Services\ConfiguredCommentAuthorization;
+use Nvl\Support\Owners\OwnerBatch;
+
+final readonly class PublicThreadBatchScope implements CommentBatchQueryScope
+{
+    public function __construct(private ConfiguredCommentAuthorization $baseline) {}
+
+    public function authorizeOwners(OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void
+    {
+        $this->authorizeAudience($audience);
+        $this->baseline->authorizeOwners($owners, $actor, $audience);
+    }
+
+    public function scopeBatchComments(Builder $query, OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void
+    {
+        $this->baseline->scopeBatchComments($query, $owners, $actor, $audience);
+    }
+
+    public function scopeHostComments(Builder $query, Model $ownerPrototype, CommentActorData $actor, CommentAudience $audience): void
+    {
+        $this->authorizeAudience($audience);
+        $this->baseline->scopeHostComments($query, $ownerPrototype, $actor, $audience);
+    }
+
+    private function authorizeAudience(CommentAudience $audience): void
+    {
+        if ($audience !== CommentAudience::Public) {
+            throw new AuthorizationException('Public thread summaries require the public audience.');
+        }
+    }
+}
+
+$this->app->bind(CommentBatchQueryScope::class, PublicThreadBatchScope::class);
+```
+
+Bind an adapter matching your actual authorization rules. The package derives a
+batch scope from the **active** authorization/query-scope bindings only when both
+are stateless configured defaults, or both resolve to the **same** compatible
+custom instance implementing all three contracts. Independently constructed
+stateful policies require an explicit `CommentBatchQueryScope` binding; config
+class names alone never establish compatibility. Early and late explicit bindings
+are retained. Unsupported policies fail on nonempty reads or host counts with an
+actionable package exception; empty reads remain usable.
+
+Owners using `InteractsWithComments` can request a correlated visible count:
+
+```php
+$articles = Article::query()
+    ->select('id', 'title')
+    ->withNvlVisibleCommentCount(CommentActorData::anonymous(), CommentAudience::Public)
+    ->get();
+// Each article includes integer nvl_visible_comment_count.
+```
+
+Pass an explicit compatible policy as the third scope argument when needed. The
+scope retains host selections/global scopes and uses byte-exact text correlation,
+including integer/UUID casts and case/trailing-space-sensitive keys. Under enabled
+Tenancy, register every concrete owner resource and its exact morph mapping in
+`nvl-comments.tenancy.target_types`; package ownership remains enforced when
+callers remove host global scopes. Resolve new readers after policy/context
+changes and do not reuse results across tenant, actor or audience boundaries.
+
 ## Response contracts
 
 - `PublicCommentData` contains content, thread structure, safe author

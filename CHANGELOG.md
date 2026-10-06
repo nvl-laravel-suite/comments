@@ -4,6 +4,15 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Add container-bound, SQL-authorized many-owner comment summaries with native
+  identity maps, visible counts and latest rows bounded before hydration.
+- Add query-free batch policy adapters and the optional
+  `withNvlVisibleCommentCount` host scope, preserving selected columns and host
+  scopes while enforcing canonical target, tenant and deletion boundaries.
+
+
 ### Changed
 
 - Isolate owned cache and lock keys under `nvl:comments:`; preserve generic host entries and explicit store choices.

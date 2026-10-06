@@ -12,6 +12,7 @@ use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 use Nvl\Comments\Actions\AttachCommentMediaAction;
 use Nvl\Comments\Actions\DetachCommentMediaAction;
+use Nvl\Comments\Actions\ListOwnerCommentSummariesAction;
 use Nvl\Comments\Console\CommentsDoctorCommand;
 use Nvl\Comments\Console\CommentsReconcileCommand;
 use Nvl\Comments\Contracts\CommentActorResolver;
@@ -19,8 +20,10 @@ use Nvl\Comments\Contracts\CommentAttachmentLifecycle;
 use Nvl\Comments\Contracts\CommentAttachmentProjection;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentAuthorPresenter;
+use Nvl\Comments\Contracts\CommentBatchQueryScope;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
+use Nvl\Comments\Contracts\ListOwnerCommentSummariesContract;
 use Nvl\Comments\Integrations\MediaCommentAttachmentLifecycle;
 use Nvl\Comments\Integrations\MediaCommentAttachmentProjection;
 use Nvl\Comments\Integrations\MediaCommentRelations;
@@ -33,6 +36,7 @@ use Nvl\Comments\Services\CommentsDoctor;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
 use Nvl\Comments\Services\SafeCommentAuthorPresenter;
+use Nvl\Comments\Services\UnsupportedCommentBatchQueryScope;
 use Nvl\Comments\Support\CommentActorFactory;
 use Nvl\Comments\Tenancy\CommentsResourceRegistrar;
 use Nvl\Data\Services\TypeScriptSourceRegistry;
@@ -86,6 +90,11 @@ final class CommentsServiceProvider extends ServiceProvider
             'nvl-comments.query_scope.class',
             $authorization,
         );
+        $this->app->bindIf(CommentBatchQueryScope::class, fn (Application $app): CommentBatchQueryScope => $this->batchScope(
+            $app->make(CommentAuthorization::class),
+            $app->make(CommentQueryScope::class),
+        ));
+        $this->app->bindIf(ListOwnerCommentSummariesContract::class, ListOwnerCommentSummariesAction::class);
         $this->bindConfiguredContract(
             CommentActorResolver::class,
             'nvl-comments.actor_resolver.class',
@@ -191,6 +200,19 @@ final class CommentsServiceProvider extends ServiceProvider
                     ->releaseAfterRollback($event);
             },
         );
+    }
+
+    /** Derive SQL authorization only from compatible currently active bindings. */
+    private function batchScope(CommentAuthorization $authorization, CommentQueryScope $scope): CommentBatchQueryScope
+    {
+        if ($authorization instanceof ConfiguredCommentAuthorization && $scope instanceof ConfiguredCommentAuthorization) {
+            return $authorization;
+        }
+        if ($authorization === $scope && $authorization instanceof CommentBatchQueryScope) {
+            return $authorization;
+        }
+
+        return new UnsupportedCommentBatchQueryScope;
     }
 
     /** Keep base projections and cleanup independent of unavailable Media services. */
