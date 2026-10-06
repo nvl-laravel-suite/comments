@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Support;
 
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * Typed access to Comments persistence and limits.
@@ -16,9 +17,7 @@ final class CommentsConfiguration
      */
     public static function connection(): ?string
     {
-        $connection = config('comments.connection');
-
-        return is_string($connection) && $connection !== '' ? $connection : null;
+        return PackageStorage::connection('comments');
     }
 
     /**

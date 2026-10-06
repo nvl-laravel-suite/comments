@@ -190,61 +190,80 @@ it('upgrades released schemas and rolls rich storage back safely', function (): 
     config()->set('comments.connection', null);
 
     foreach ([
-        '2026_07_27_110001_create_comments_table.php',
-        '2026_07_27_110002_create_comment_reactions_table.php',
-        '2026_07_27_110003_create_comment_revisions_table.php',
-        '2026_07_27_110004_create_comment_reports_table.php',
+        '2026_07_27_110001_nvl_comments_create_comments_table.php',
+        '2026_07_27_110002_nvl_comments_create_comment_reactions_table.php',
+        '2026_07_27_110003_nvl_comments_create_comment_revisions_table.php',
+        '2026_07_27_110004_nvl_comments_create_comment_reports_table.php',
     ] as $migration) {
         (require __DIR__."/../../database/migrations/{$migration}")->up();
     }
 
     $documents = require __DIR__
-        .'/../../database/migrations/2026_08_28_000001_add_comment_documents.php';
+        .'/../../database/migrations/2026_08_28_000001_nvl_comments_add_comment_documents.php';
     $mentions = require __DIR__
-        .'/../../database/migrations/2026_08_28_000002_create_comment_mentions_table.php';
+        .'/../../database/migrations/2026_08_28_000002_nvl_comments_create_comment_mentions_table.php';
     $documents->up();
     $mentions->up();
 
-    expect(Schema::connection('comments_rich_upgrade')->hasColumn('comments', 'document'))
+    expect(Schema::connection('comments_rich_upgrade')->hasColumn(CommentsTables::get(CommentsTables::Comments), 'document'))
         ->toBeTrue()
-        ->and(Schema::connection('comments_rich_upgrade')->hasColumn('comment_revisions', 'document'))
+        ->and(Schema::connection('comments_rich_upgrade')->hasColumn(CommentsTables::get(CommentsTables::Revisions), 'document'))
         ->toBeTrue()
-        ->and(Schema::connection('comments_rich_upgrade')->hasTable('comment_mentions'))
+        ->and(Schema::connection('comments_rich_upgrade')->hasTable(CommentsTables::get(CommentsTables::Mentions)))
         ->toBeTrue();
 
     $mentions->down();
     $documents->down();
 
-    expect(Schema::connection('comments_rich_upgrade')->hasTable('comment_mentions'))
+    expect(Schema::connection('comments_rich_upgrade')->hasTable(CommentsTables::get(CommentsTables::Mentions)))
         ->toBeFalse()
-        ->and(Schema::connection('comments_rich_upgrade')->hasColumn('comments', 'document'))
+        ->and(Schema::connection('comments_rich_upgrade')->hasColumn(CommentsTables::get(CommentsTables::Comments), 'document'))
         ->toBeFalse()
-        ->and(Schema::connection('comments_rich_upgrade')->hasColumn('comment_revisions', 'document'))
+        ->and(Schema::connection('comments_rich_upgrade')->hasColumn(CommentsTables::get(CommentsTables::Revisions), 'document'))
         ->toBeFalse();
 
     config()->set('database.default', $defaultConnection);
 });
 
-it('refuses vendor rich migrations for application-owned table names', function (): void {
-    Schema::create('tenant_comments', function (Blueprint $table): void {
-        $table->uuid('id')->primary();
-    });
-    Schema::create('tenant_comment_revisions', function (Blueprint $table): void {
-        $table->uuid('id')->primary();
-    });
+it('upgrades and rolls back rich storage on configured table names and connection', function (): void {
+    config()->set('database.connections.comments_rich_custom', [
+        'driver' => 'sqlite',
+        'database' => ':memory:',
+        'prefix' => '',
+        'foreign_key_constraints' => true,
+    ]);
+    config()->set('comments.connection', 'comments_rich_custom');
     config()->set('comments.tables.comments', 'tenant_comments');
     config()->set('comments.tables.comment_revisions', 'tenant_comment_revisions');
     config()->set('comments.tables.comment_mentions', 'tenant_comment_mentions');
+    foreach ([
+        '2026_07_27_110001_nvl_comments_create_comments_table.php',
+        '2026_07_27_110002_nvl_comments_create_comment_reactions_table.php',
+        '2026_07_27_110003_nvl_comments_create_comment_revisions_table.php',
+        '2026_07_27_110004_nvl_comments_create_comment_reports_table.php',
+    ] as $migration) {
+        (require __DIR__."/../../database/migrations/{$migration}")->up();
+    }
     $documents = require __DIR__
-        .'/../../database/migrations/2026_08_28_000001_add_comment_documents.php';
+        .'/../../database/migrations/2026_08_28_000001_nvl_comments_add_comment_documents.php';
     $mentions = require __DIR__
-        .'/../../database/migrations/2026_08_28_000002_create_comment_mentions_table.php';
+        .'/../../database/migrations/2026_08_28_000002_nvl_comments_create_comment_mentions_table.php';
 
-    expect(fn () => $documents->up())->toThrow(LogicException::class, 'canonical tables')
-        ->and(fn () => $mentions->up())->toThrow(LogicException::class, 'canonical tables')
-        ->and(Schema::hasColumn('tenant_comments', 'document'))->toBeFalse()
-        ->and(Schema::hasColumn('tenant_comment_revisions', 'document'))->toBeFalse()
-        ->and(Schema::hasTable('tenant_comment_mentions'))->toBeFalse();
+    $documents->up();
+    $mentions->up();
+    $schema = Schema::connection('comments_rich_custom');
+
+    expect($schema->hasColumn('tenant_comments', 'document'))->toBeTrue()
+        ->and($schema->hasColumn('tenant_comment_revisions', 'document'))->toBeTrue()
+        ->and($schema->hasTable('tenant_comment_mentions'))->toBeTrue();
+
+    $mentions->down();
+    $documents->down();
+
+    expect($schema->hasColumn('tenant_comments', 'document'))->toBeFalse()
+        ->and($schema->hasColumn('tenant_comment_revisions', 'document'))->toBeFalse()
+        ->and($schema->hasTable('tenant_comment_mentions'))->toBeFalse()
+        ->and(Schema::hasColumn(CommentsTables::Comments, 'document'))->toBeTrue();
 });
 
 it('writes every mention field to application-owned compatible storage', function (): void {
@@ -259,7 +278,7 @@ it('writes every mention field to application-owned compatible storage', functio
         $table->string('label_snapshot', 255);
         $table->unsignedSmallInteger('position');
         $table->timestamps();
-        $table->foreign('comment_id')->references('id')->on('comments')->cascadeOnDelete();
+        $table->foreign('comment_id')->references('id')->on(CommentsTables::get(CommentsTables::Comments))->cascadeOnDelete();
         $table->unique(['comment_id', 'token_id']);
         $table->index(
             ['resource_alias', 'resource_identity_hash'],

@@ -29,10 +29,8 @@ use Nvl\Filterable\Definitions\FilterSchema;
 use Nvl\Filterable\Definitions\SortDefinition;
 use Nvl\Filterable\Enums\FilterOperator;
 use Nvl\Filterable\Enums\FilterValueType;
-use Nvl\Media\Contracts\HasMedia;
-use Nvl\Media\Enums\MimeType;
 use Nvl\Media\Models\MediaAssociation;
-use Nvl\Media\Traits\InteractsWithMedia;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * Polymorphic user-authored comment or reply.
@@ -93,11 +91,13 @@ use Nvl\Media\Traits\InteractsWithMedia;
  * @property-read Collection<int, CommentMetadataValue> $metadataValues
  * @property-read Collection<int, CommentMention> $mentions
  * @property-read Collection<int, MediaAssociation> $attachmentAssociations
+ *
+ * @method MorphMany<MediaAssociation, $this> attachmentAssociations()
+ * @method MorphMany<MediaAssociation, $this> mediaAssociations()
  */
-final class Comment extends Model implements HasMedia
+final class Comment extends Model
 {
     use HasUuids;
-    use InteractsWithMedia;
     use SoftDeletes;
 
     /** @var list<string> */
@@ -226,12 +226,12 @@ final class Comment extends Model implements HasMedia
 
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::Comments);
+        return CommentsConfiguration::table(CommentsTables::get(CommentsTables::Comments));
     }
 
     public function getConnectionName(): ?string
     {
-        return CommentsConfiguration::connection() ?? parent::getConnectionName();
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('comments') ?? parent::getConnectionName());
     }
 
     /**
@@ -373,41 +373,6 @@ final class Comment extends Model implements HasMedia
     public function mentions(): HasMany
     {
         return $this->hasMany(CommentMention::class)->orderBy('position');
-    }
-
-    /**
-     * Media associations belonging to the public comment attachment slot.
-     *
-     * @return MorphMany<MediaAssociation, $this>
-     */
-    public function attachmentAssociations(): MorphMany
-    {
-        return $this->mediaAssociations()
-            ->where('collection', 'attachments')
-            ->where('is_active', true);
-    }
-
-    /**
-     * Comment attachments are private and isolated by default.
-     */
-    public function registerMediaSlots(): void
-    {
-        $maximum = CommentsConfiguration::positiveInteger(
-            'comments.attachments.maximum_per_comment',
-            5,
-        );
-        $maximumFileBytes = CommentsConfiguration::positiveInteger(
-            'comments.attachments.maximum_file_bytes',
-            10 * 1024 * 1024,
-        );
-        $this->addMediaSlot('attachments')
-            ->privateExclusive()
-            ->onlyKeepLatest($maximum)
-            ->maxFileSize($maximumFileBytes)
-            ->acceptsMimeTypes([
-                ...MimeType::images(),
-                ...MimeType::documents(),
-            ]);
     }
 
     /**

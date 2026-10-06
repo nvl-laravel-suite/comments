@@ -155,3 +155,47 @@ and coordinate target deletion with comment retention/anonymization.
 
 Do not add a Comments-specific tenant column or accept tenant/member scope from
 request input. Derive scope from the canonical target and consumer contracts.
+
+## Shared owner registry compatibility
+
+Move model identity declarations to `nvl-core.owners` and reference the alias from `comments` capability configuration as described in the [README](README.md#shared-owner-identity). Preserve package contracts, resolvers/handlers, visibility scopes, and mutation authorization. Core does not grant package capabilities. Conflicting aliases or multiple canonical aliases for one model fail before use.
+
+Legacy class inputs remain accepted for one major cycle and are reported through Core diagnostics. Existing Content, Taxonomy, and Metafields mappings keep their established aliases. Legacy SEO, Media, Comments, Templates, Pages, and Translatable class-backed behavior does not automatically create a new morph alias. Existing host morph mappings are respected.
+
+Adding a canonical Core alias changes Laravel's write-time morph type for that model. Before adding it to an existing class-backed deployment, explicitly convert the known package-owned morph columns and reconcile every other affected host relationship. Keep unrelated rows and host-owned morph tables unchanged. This release performs no automatic owner-data conversion and does not ship `nvl:owners:upgrade`. Preserve existing aliases when no conversion is required, rebuild configuration caches, and restart workers after the cutover.
+
+## Shared Doctor integration
+
+The loaded package provider now contributes its existing inspection checks to Core's `nvl:doctor --strict --format=json`. The package command remains available. The shared gate fails errors and, in strict mode, warnings; no data upgrade is required for diagnostics.
+
+## Optional Media in the coordinated major
+
+Media moves from a required dependency to a suggested integration. Install it
+explicitly if the host uses comment attachments. The new default
+`comments.attachments.enabled=null` selects a loaded Media provider; existing
+published `true` values continue to require it, while `false` disables the
+attachment surface. Rebuild config and route caches after changing provider
+discovery or this switch, then run `nvl:comments:doctor --strict --format=json`.
+
+Replace calls to Media trait helpers on `Comment` with the Comments attach and
+detach actions. The model retains adapter-backed attachment relations when
+Media is loaded and has no unconditional foreign traits or interfaces. Keep
+Media loaded during historical attachment reconciliation and anonymization,
+including when new attachments are disabled. Removing the provider does not
+rewrite or delete stored attachment rows.
+
+## Next major: isolated schema identities
+
+This is a breaking schema identity change. Back up storage and migration history, pause writes/workers, install this code with automatic package migrations disabled, and select one owner for migrations (vendor or published).
+
+```sh
+php artisan nvl:doctor --strict --format=json
+php artisan nvl:schema:upgrade --package=comments --claim-legacy --dry-run --format=json
+php artisan nvl:schema:upgrade --package=comments --claim-legacy --format=json
+```
+
+The command validates released columns and relational keys plus creating migration history, renames owned legacy tables to the effective `tables.*` targets and rewrites exact package migration identities while retaining batches and unrelated host records. It refuses foreign/incomplete shapes and conflicting targets. Explicit old table mappings retain those names; remove them when choosing new defaults. A second run is empty.
+
+Unmodified published files, including changed timestamps, map by verified checksum to the exact vendor migration identity and current package migration implementation. Modified host copies remain host-owned. Disable vendor loading when retaining a published owner; duplicate ownership fails before migration. No migration files or stored morph types are rewritten.
+
+DDL transactions are driver dependent and per connection. Inspect dry-run warnings for MySQL/MariaDB or split storage; after a failure, inspect completed steps before resuming. Schema-qualified rename targets require an explicit host schema move first. Re-enable your selected migration owner, migrate remaining package changes and rerun Doctor before resuming writes. See the suite upgrade guide for shared owner/locale inputs, Core option defaults and one-major deprecation rules.

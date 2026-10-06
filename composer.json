@@ -3,7 +3,13 @@
     "description": "Polymorphic threaded comments, reactions, moderation, reports, revisions, and media attachments for Laravel",
     "type": "library",
     "license": "MIT",
-    "keywords": ["laravel", "comments", "threads", "reactions", "moderation"],
+    "keywords": [
+        "laravel",
+        "comments",
+        "threads",
+        "reactions",
+        "moderation"
+    ],
     "require": {
         "php": "^8.3",
         "ext-filter": "*",
@@ -12,8 +18,6 @@
         "laravel/framework": "^13.0",
         "nvl/core": "^2.0",
         "nvl/filterable": "^2.0",
-        "nvl/media": "^2.0",
-        "nvl/tenancy": "^2.0",
         "spatie/laravel-data": "^4.23",
         "spatie/typescript-transformer": "^3.3",
         "symfony/http-foundation": "^7.2 || ^8.0",
@@ -24,6 +28,8 @@
         "larastan/larastan": "^3.10",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
+        "nvl/media": "^2.0",
+        "nvl/tenancy": "^2.0",
         "nvl/translatable": "^2.0",
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
@@ -43,7 +49,11 @@
         "analyse": "phpstan analyse --memory-limit=2G",
         "format": "pint --parallel --format agent",
         "format:test": "pint --parallel --test --format agent",
-        "quality": ["@format:test", "@analyse", "@test"],
+        "quality": [
+            "@format:test",
+            "@analyse",
+            "@test"
+        ],
         "test": "pest --compact"
     },
     "extra": {
@@ -63,8 +73,21 @@
         "sort-packages": true
     },
     "archive": {
-        "exclude": ["/.temp", "/build", "/coverage", "/.phpunit.cache", "/.phpunit.result.cache", "/phpstan.neon.dist", "/phpunit.xml.dist", "/tests"]
+        "exclude": [
+            "/.temp",
+            "/build",
+            "/coverage",
+            "/.phpunit.cache",
+            "/.phpunit.result.cache",
+            "/phpstan.neon.dist",
+            "/phpunit.xml.dist",
+            "/tests"
+        ]
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "suggest": {
+        "nvl/media": "Enables private authorized comment attachments, signed asset delivery, and historical attachment cleanup.",
+        "nvl/tenancy": "Enables enforcing tenant ownership, scoped execution, adoption, and captured tenant queue contexts."
+    }
 }

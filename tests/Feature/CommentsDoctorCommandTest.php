@@ -37,6 +37,7 @@ use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\Tests\Fixtures\TestCommentTargetResolver;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Support\Schema\SchemaIdentities;
 
 /**
  * @return array{int, array<string, mixed>}
@@ -61,32 +62,32 @@ it('reports complete schema and dependency readiness by default', function (): v
     ]);
 
     expect($exitCode)->toBe(0)
-        ->and($report['table.comments'])->toBeTrue()
-        ->and($report['column.comments.body'])->toBeTrue()
-        ->and($report['column.comment_reactions.actor_id'])->toBeTrue()
-        ->and($report['column.comment_revisions.revision'])->toBeTrue()
-        ->and($report['column.comment_reports.status'])->toBeTrue()
-        ->and($report['column.comment_metadata_values.value_hash'])->toBeTrue()
-        ->and($report['column_definition.comments.commentable_identity_hash'])->toBeTrue()
-        ->and($report['column_definition.comments.root_id'])->toBeTrue()
-        ->and($report['column_definition.comments.reply_count'])->toBeTrue()
-        ->and($report['column_definition.comments.anonymized_at'])->toBeTrue()
-        ->and($report['column_definition.comment_reactions.actor_identity_hash'])->toBeTrue()
-        ->and($report['column_definition.comment_revisions.created_at'])->toBeTrue()
-        ->and($report['column_definition.comment_reports.status'])->toBeTrue()
-        ->and($report['index.comment_reactions.actor_type_unique'])->toBeTrue()
-        ->and($report['index.comment_revisions.number_unique'])->toBeTrue()
-        ->and($report['index.comment_reports.reporter_unique'])->toBeTrue()
-        ->and($report['index.comments.idempotency_unique'])->toBeTrue()
-        ->and($report['index.comment_metadata_values.owner_unique'])->toBeTrue()
-        ->and($report['index.comment_metadata_values.lookup'])->toBeTrue()
-        ->and($report['foreign_key.comments.parent'])->toBeTrue()
-        ->and($report['foreign_key.comment_reports.comment'])->toBeTrue()
-        ->and($report['foreign_key.comment_metadata_values.comment'])->toBeTrue()
-        ->and($report['table.comment_mentions'])->toBeTrue()
-        ->and($report['column.comment_mentions.resource_identity_hash'])->toBeTrue()
-        ->and($report['index.comment_mentions.token_unique'])->toBeTrue()
-        ->and($report['foreign_key.comment_mentions.comment'])->toBeTrue()
+        ->and($report['table.'.CommentsTables::Comments])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Comments.'.body'])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Reactions.'.actor_id'])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Revisions.'.revision'])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Reports.'.status'])->toBeTrue()
+        ->and($report['column.'.CommentsTables::MetadataValues.'.value_hash'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.commentable_identity_hash'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.root_id'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.reply_count'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.anonymized_at'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Reactions.'.actor_identity_hash'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Revisions.'.created_at'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Reports.'.status'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::Reactions.'.actor_type_unique'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::Revisions.'.number_unique'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::Reports.'.reporter_unique'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::Comments.'.idempotency_unique'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::MetadataValues.'.owner_unique'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::MetadataValues.'.lookup'])->toBeTrue()
+        ->and($report['foreign_key.'.CommentsTables::Comments.'.parent'])->toBeTrue()
+        ->and($report['foreign_key.'.CommentsTables::Reports.'.comment'])->toBeTrue()
+        ->and($report['foreign_key.'.CommentsTables::MetadataValues.'.comment'])->toBeTrue()
+        ->and($report['table.'.CommentsTables::Mentions])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Mentions.'.resource_identity_hash'])->toBeTrue()
+        ->and($report['index.'.CommentsTables::Mentions.'.token_unique'])->toBeTrue()
+        ->and($report['foreign_key.'.CommentsTables::Mentions.'.comment'])->toBeTrue()
         ->and($report['mentions.bounds_ready'])->toBeTrue()
         ->and($report['mentions.resources_ready'])->toBeTrue()
         ->and($report['mentions.aliases'])->toBe([])
@@ -292,9 +293,9 @@ it('registers timestamp-aware migration publishing and warns about duplicate own
     ))->not->toBeEmpty()
         ->and($publishableMigrationPaths)->toContain($migrationPath);
 
-    $published = database_path(
-        'migrations/2099_01_01_000000_create_comments_table.php',
-    );
+    $migration = SchemaIdentities::package('comments')['migrations']['2026_07_27_110001_create_comments_table']['name'];
+    $suffix = substr($migration, 18);
+    $published = database_path('migrations/2099_01_01_000000_'.$suffix.'.php');
     file_put_contents($published, "<?php\n");
 
     try {
@@ -307,7 +308,7 @@ it('registers timestamp-aware migration publishing and warns about duplicate own
                 'passed' => false,
             ])
             ->and($report['migrations.ownership']['message'])
-            ->toContain('create_comments_table');
+            ->toContain($suffix);
 
         [$strictExitCode, $strictReport] = runCommentsDoctor();
 
@@ -327,9 +328,9 @@ it('fails strict diagnostics when a configured package table lacks required colu
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['table.comments'])->toBeTrue()
-        ->and($report['column.comments.id'])->toBeTrue()
-        ->and($report['column.comments.body'])->toBeFalse()
+        ->and($report['table.'.CommentsTables::Comments])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Comments.'.id'])->toBeTrue()
+        ->and($report['column.'.CommentsTables::Comments.'.body'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 
@@ -349,8 +350,8 @@ it('fails strict diagnostics when a fingerprint column has the wrong type', func
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['column.comments.commentable_identity_hash'])->toBeTrue()
-        ->and($report['column_definition.comments.commentable_identity_hash'])->toBeFalse()
+        ->and($report['column.'.CommentsTables::Comments.'.commentable_identity_hash'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.commentable_identity_hash'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 
@@ -370,8 +371,8 @@ it('fails strict diagnostics when a UUID column has the wrong type', function ()
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['column.comments.root_id'])->toBeTrue()
-        ->and($report['column_definition.comments.root_id'])->toBeFalse()
+        ->and($report['column.'.CommentsTables::Comments.'.root_id'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.root_id'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 
@@ -383,8 +384,8 @@ it('fails strict diagnostics when identity nullability drifts', function (): voi
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['column.comment_reactions.actor_identity_hash'])->toBeTrue()
-        ->and($report['column_definition.comment_reactions.actor_identity_hash'])->toBeFalse()
+        ->and($report['column.'.CommentsTables::Reactions.'.actor_identity_hash'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Reactions.'.actor_identity_hash'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 
@@ -396,8 +397,8 @@ it('fails strict diagnostics when a counter default drifts', function (): void {
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['column.comments.reply_count'])->toBeTrue()
-        ->and($report['column_definition.comments.reply_count'])->toBeFalse()
+        ->and($report['column.'.CommentsTables::Comments.'.reply_count'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.reply_count'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 
@@ -409,8 +410,8 @@ it('fails strict diagnostics when a lifecycle timestamp has the wrong type', fun
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['column.comments.anonymized_at'])->toBeTrue()
-        ->and($report['column_definition.comments.anonymized_at'])->toBeFalse()
+        ->and($report['column.'.CommentsTables::Comments.'.anonymized_at'])->toBeTrue()
+        ->and($report['column_definition.'.CommentsTables::Comments.'.anonymized_at'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 
@@ -422,7 +423,7 @@ it('fails strict diagnostics when an idempotency constraint is missing', functio
     [$exitCode, $report] = runCommentsDoctor();
 
     expect($exitCode)->toBe(1)
-        ->and($report['index.comment_reactions.actor_type_unique'])->toBeFalse()
+        ->and($report['index.'.CommentsTables::Reactions.'.actor_type_unique'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 });
 

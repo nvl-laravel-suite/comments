@@ -41,8 +41,8 @@ use Nvl\Media\Enums\MediaVisibility;
 use Nvl\Media\Models\Media;
 
 it('installs the complete schema with both route groups disabled', function (): void {
-    $commentIndexes = Schema::getIndexListing('comments');
-    $reportIndexes = Schema::getIndexListing('comment_reports');
+    $commentIndexes = Schema::getIndexListing(CommentsTables::get(CommentsTables::Comments));
+    $reportIndexes = Schema::getIndexListing(CommentsTables::get(CommentsTables::Reports));
 
     expect(Schema::hasTable(CommentsTables::Comments))->toBeTrue()
         ->and(Schema::hasTable(CommentsTables::Reactions))->toBeTrue()
@@ -451,24 +451,24 @@ it('fails migration collisions without replacing a consumer table', function ():
     config()->set('database.default', 'comments_collision');
     config()->set('comments.connection', null);
 
-    Schema::connection('comments_collision')->create('comments', function (Blueprint $table): void {
+    Schema::connection('comments_collision')->create(CommentsTables::get(CommentsTables::Comments), function (Blueprint $table): void {
         $table->uuid('id')->primary();
         $table->string('consumer_marker');
     });
 
     $migration = require __DIR__
-        .'/../../database/migrations/2026_07_27_110001_create_comments_table.php';
+        .'/../../database/migrations/2026_07_27_110001_nvl_comments_create_comments_table.php';
 
     expect(fn () => $migration->up())->toThrow(QueryException::class)
         ->and(Schema::connection('comments_collision')->hasColumns(
-            'comments',
+            CommentsTables::get(CommentsTables::Comments),
             ['id', 'consumer_marker'],
         ))->toBeTrue();
 
     config()->set('database.default', $defaultConnection);
 });
 
-it('refuses mutable custom targets in package-managed migrations', function (): void {
+it('creates package-managed storage on an explicit package connection', function (): void {
     config()->set('database.connections.comments_custom', [
         'driver' => 'sqlite',
         'database' => ':memory:',
@@ -477,12 +477,16 @@ it('refuses mutable custom targets in package-managed migrations', function (): 
     ]);
     config()->set('comments.connection', 'comments_custom');
     $migration = require __DIR__
-        .'/../../database/migrations/2026_07_27_110001_create_comments_table.php';
+        .'/../../database/migrations/2026_07_27_110001_nvl_comments_create_comments_table.php';
 
-    expect(fn () => $migration->up())->toThrow(
-        LogicException::class,
-        'application-owned migrations',
-    )->and(Schema::connection('comments_custom')->hasTable('comments'))->toBeFalse();
+    $migration->up();
+
+    expect(Schema::connection('comments_custom')->hasTable(CommentsTables::get(CommentsTables::Comments)))->toBeTrue();
+
+    $migration->down();
+
+    expect(Schema::connection('comments_custom')->hasTable(CommentsTables::get(CommentsTables::Comments)))->toBeFalse()
+        ->and(Schema::hasTable(CommentsTables::get(CommentsTables::Comments)))->toBeTrue();
 });
 
 it('replaces consumer configuration lists atomically while retaining nested defaults', function (): void {
@@ -503,5 +507,5 @@ it('rejects a non-array comments configuration root', function (): void {
     config()->set('comments', 'invalid');
 
     expect(fn () => (new CommentsServiceProvider(app()))->register())
-        ->toThrow(RuntimeException::class, 'must contain an array');
+        ->toThrow(RuntimeException::class, 'must be a map');
 });

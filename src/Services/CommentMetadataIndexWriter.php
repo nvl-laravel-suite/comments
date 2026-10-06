@@ -13,7 +13,7 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Synchronizes and queries the hash-only registered metadata index.
@@ -79,7 +79,7 @@ final readonly class CommentMetadataIndexWriter
      */
     public function apply(Builder $query, array $criteria): void
     {
-        $table = CommentsConfiguration::table(CommentsTables::MetadataValues);
+        $table = CommentsConfiguration::table(CommentsTables::get(CommentsTables::MetadataValues));
         $commentId = (new Comment)->qualifyColumn('id');
 
         foreach ($this->registry->selectorRows($criteria) as $index => $row) {

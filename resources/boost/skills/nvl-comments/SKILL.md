@@ -26,11 +26,10 @@ php artisan vendor:publish --tag=comments-skills
 php artisan migrate
 ```
 
-- Keep automatic migrations only for the default connection and canonical
-  table names. If publishing the migrations, set
+- Use automatic migrations on the effective Comments/Core connection and
+  configured logical table names. If publishing the migrations, set
   `comments.migrations.enabled=false` before migrating so exactly one source
-  owns the tables; also disable them and ship application migrations for any
-  custom layout.
+  owns the tables. Use the verified schema upgrade for existing NVL storage.
 - Register target resolvers and the final Laravel morph map before the first
   write through `comments.targets`. When enforcing a morph map, include
   target/actor models and `Nvl\Comments\Models\Comment` for Media ownership.
@@ -42,9 +41,9 @@ php artisan migrate
   `comments.author_presenter.class`. Public, member, and management groups under
   `comments.routes` are disabled by default; add the documented throttling and
   authentication middleware.
-- Configure one shared mutation-lock store. Configure Media attachments, which
-  are enabled by default, completely or set `comments.attachments.enabled` to
-  exactly `false` before migration and route caching.
+- Configure one shared mutation-lock store. Treat Media as optional: `comments.attachments.enabled=null` selects its
+  loaded provider, `true` requires it, and `false` disables the surface. An
+  installed package with discovery disabled does not activate attachments.
 - Rebuild configuration/routes after changes, generate TypeScript declarations,
   and complete both strict Doctors plus consumer HTTP smoke tests before traffic.
 
@@ -294,3 +293,33 @@ Doctor `column_definition.*` failure as a deployment blocker.
 - Preserve disabled compatibility and package independence; tenant support never creates an undeclared Auth or Suite dependency.
 - Use registered package-owned resources, adoption adapters, Actions, and lifecycle APIs. Never add a generic tenant delete-all path or raw cross-package cleanup.
 - Treat mapping/configuration hashes, interruption checkpoints, conservation evidence, worker context, tenant-leading queries, and standalone consumption as release contracts.
+
+## Shared owner identities
+
+- Declare canonical owner identity once in `nvl-core.owners`; reference its alias in `comments` capability configuration.
+- Keep the target resolver and its visibility/identifier checks. The route alias may differ from the shared owner alias. A resolver must return the exact model declared by its owner reference.
+- Keep the package allowlist and authorization independent of Core registration. Never authorize a model merely because Core knows it.
+- Accept legacy class/resolver/handler inputs during the documented one-major compatibility cycle. Report deprecated host identity inputs through `nvl:doctor`; preserve established write-time morph types.
+- Before introducing an alias for historical FQCN-backed data, explicitly convert reviewed package-owned columns and reconcile affected host relations. Never silently rewrite host morph tables or enable `enforceMorphMap()` globally.
+
+## Shared consumer diagnostics
+
+Run `php artisan nvl:doctor --strict --format=json` to combine checks from loaded NVL providers. Retain the package Doctor command for its detailed report; both paths reuse the package-owned inspection service.
+
+## Optional attachment adapter
+
+- Keep base Comments operations independent of Media installation and provider
+  discovery. Use `CommentAttachmentProjection` and `CommentAttachmentLifecycle`
+  for package extension points; neither contract exposes Media persistence types.
+- `Comment` has no foreign Media interface or trait. Its optional relations are
+  provider-backed; replace Media trait helper calls with the Comments attach and
+  detach actions. Preserve slot privacy, size/MIME/count rules, dual authorization,
+  lock ordering, and the same-connection requirement.
+- Keep Media loaded when anonymizing or reconciling historical attachment state,
+  even if new attachments are disabled. Removing discovery does not convert or
+  delete persisted associations. Rebuild config/routes after changing discovery
+  or the `null`/`true`/`false` integration switch.
+
+### Brownfield storage identities
+
+Resolve all package tables through the table helper and canonical `comments.tables.*`, connections through `comments.connection` with Core/Laravel inheritance. Defaults use `nvl_comments_*`; migration filenames include that package slug. Never silently adopt a matching table or generic migration filename. Run shared `nvl:doctor --strict --format=json` and the explicit `nvl:schema:upgrade --package=comments --claim-legacy --dry-run --format=json` before upgrading owned legacy storage. Validate the complete plan and choose one migration owner. Preserve host records, constraint names and stored morph values. Deprecated config inputs last one major; canonical options take precedence.

@@ -67,7 +67,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
                 && $this->isVisibleToActor($actor, $comment, $audience)
                 && ! $this->isDeleted($comment)
                 && ! $this->isAnonymized($comment),
-            CommentAbility::Attach => config('comments.attachments.enabled', true) === true
+            CommentAbility::Attach => config('comments.attachments.enabled') !== false
                 && $actor->id !== null
                 && $this->isMutableAuthor($actor, $comment),
             CommentAbility::Detach => $actor->id !== null

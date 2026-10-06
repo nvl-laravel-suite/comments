@@ -65,7 +65,6 @@ final class MemberCommentsController extends Controller
     public function __construct(
         private readonly CommentAccessService $access,
         private readonly CommentReadService $reads,
-        private readonly MediaQueryService $mediaQueries,
     ) {}
 
     /**
@@ -442,6 +441,7 @@ final class MemberCommentsController extends Controller
         CommentAttachmentDataFactory $attachments,
         CommentAttachmentUrlFactory $attachmentUrls,
         CommentTargetLocator $targets,
+        MediaQueryService $mediaQueries,
     ): JsonResponse {
         $attachmentUrls->assertAvailable();
         $actor = $actors->fromRequest($request);
@@ -458,7 +458,7 @@ final class MemberCommentsController extends Controller
             CommentAudience::Member,
             withTrashed: false,
         );
-        $association = $this->mediaQueries->activeAssociation(
+        $association = $mediaQueries->activeAssociation(
             $association->id,
             $comment->getMorphClass(),
             'attachments',

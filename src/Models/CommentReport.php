@@ -17,6 +17,7 @@ use Nvl\Filterable\Definitions\FilterSchema;
 use Nvl\Filterable\Definitions\SortDefinition;
 use Nvl\Filterable\Enums\FilterOperator;
 use Nvl\Filterable\Enums\FilterValueType;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * One actor's reviewable report against a comment.
@@ -87,7 +88,7 @@ final class CommentReport extends Model
      */
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::Reports);
+        return CommentsConfiguration::table(CommentsTables::get(CommentsTables::Reports));
     }
 
     /**
@@ -95,7 +96,7 @@ final class CommentReport extends Model
      */
     public function getConnectionName(): ?string
     {
-        return CommentsConfiguration::connection() ?? parent::getConnectionName();
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('comments') ?? parent::getConnectionName());
     }
 
     /**

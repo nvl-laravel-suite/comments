@@ -6,9 +6,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('comments');
+    }
+
     /**
      * Create the portable hash-only registered metadata lookup index.
      */
@@ -16,7 +23,7 @@ return new class extends Migration
     {
         $this->assertCanonicalManagedStorage();
 
-        Schema::create(CommentsTables::MetadataValues, function (Blueprint $table): void {
+        Schema::connection(PackageStorage::connection('comments'))->create(CommentsTables::get(CommentsTables::MetadataValues), function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('comment_id');
             $table->string('schema_namespace', 100);
@@ -27,7 +34,7 @@ return new class extends Migration
 
             $table->foreign('comment_id')
                 ->references('id')
-                ->on(CommentsTables::Comments)
+                ->on(CommentsTables::get(CommentsTables::Comments))
                 ->cascadeOnDelete();
             $table->unique(
                 ['comment_id', 'schema_namespace', 'field_name'],
@@ -45,7 +52,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(CommentsTables::MetadataValues);
+        Schema::connection(PackageStorage::connection('comments'))->dropIfExists(CommentsTables::get(CommentsTables::MetadataValues));
     }
 
     /**
@@ -53,12 +60,6 @@ return new class extends Migration
      */
     private function assertCanonicalManagedStorage(): void
     {
-        if (config('comments.connection') !== null
-            || CommentsTables::get(CommentsTables::Comments) !== CommentsTables::Comments
-            || CommentsTables::get(CommentsTables::MetadataValues) !== CommentsTables::MetadataValues) {
-            throw new LogicException(
-                'The package-managed Comments migrations only own canonical tables on the default connection.',
-            );
-        }
+        PackageStorage::connection('comments');
     }
 };

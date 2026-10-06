@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * Hash-only lookup row for one registered queryable comment metadata value.
@@ -43,7 +44,7 @@ final class CommentMetadataValue extends Model
      */
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::MetadataValues);
+        return CommentsConfiguration::table(CommentsTables::get(CommentsTables::MetadataValues));
     }
 
     /**
@@ -51,7 +52,7 @@ final class CommentMetadataValue extends Model
      */
     public function getConnectionName(): ?string
     {
-        return CommentsConfiguration::connection() ?? parent::getConnectionName();
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('comments') ?? parent::getConnectionName());
     }
 
     /**

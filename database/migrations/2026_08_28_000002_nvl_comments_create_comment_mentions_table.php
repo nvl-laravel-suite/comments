@@ -6,9 +6,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('comments');
+    }
+
     /**
      * Create current normalized comment mention references.
      */
@@ -16,7 +23,7 @@ return new class extends Migration
     {
         $this->assertCanonicalManagedStorage();
 
-        Schema::create(CommentsTables::Mentions, function (Blueprint $table): void {
+        Schema::connection(PackageStorage::connection('comments'))->create(CommentsTables::get(CommentsTables::Mentions), function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('comment_id');
             $table->uuid('token_id');
@@ -29,7 +36,7 @@ return new class extends Migration
 
             $table->foreign('comment_id')
                 ->references('id')
-                ->on(CommentsTables::Comments)
+                ->on(CommentsTables::get(CommentsTables::Comments))
                 ->cascadeOnDelete();
             $table->unique(['comment_id', 'token_id'], 'comment_mentions_token_unique');
             $table->index(
@@ -45,7 +52,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(CommentsTables::Mentions);
+        Schema::connection(PackageStorage::connection('comments'))->dropIfExists(CommentsTables::get(CommentsTables::Mentions));
     }
 
     /**
@@ -53,12 +60,6 @@ return new class extends Migration
      */
     private function assertCanonicalManagedStorage(): void
     {
-        if (config('comments.connection') !== null
-            || CommentsTables::get(CommentsTables::Comments) !== CommentsTables::Comments
-            || CommentsTables::get(CommentsTables::Mentions) !== CommentsTables::Mentions) {
-            throw new LogicException(
-                'The package-managed Comments migrations only own canonical tables on the default connection.',
-            );
-        }
+        PackageStorage::connection('comments');
     }
 };

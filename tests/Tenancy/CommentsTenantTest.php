@@ -8,8 +8,8 @@ use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
-use Nvl\Tenancy\Enums\TenantResourceKind;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\Enums\TenantResourceKind;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 it('registers target-derived ownership for every independently queried comment row', function (): void {
     $resources = app(TenantResourceRegistry::class);
@@ -34,4 +34,8 @@ it('persists explicit tenant ownership on each discussion model', function (): v
     ] as $model) {
         expect($model->getFillable())->toContain('tenant_id');
     }
+});
+
+it('requires compatible Media ownership when the attachment adapter is active', function (): void {
+    expect(app(TenantResourceRegistry::class)->dependencies()['comments'] ?? [])->toContain('media');
 });

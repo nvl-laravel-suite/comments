@@ -7,19 +7,26 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('comments');
+    }
+
     public function up(): void
     {
         $schema = Schema::connection(CommentsConfiguration::connection());
         $tables = [
-            CommentsTables::Comments,
-            CommentsTables::Reactions,
-            CommentsTables::Revisions,
-            CommentsTables::Reports,
-            CommentsTables::MetadataValues,
-            CommentsTables::Mentions,
+            CommentsTables::get(CommentsTables::Comments),
+            CommentsTables::get(CommentsTables::Reactions),
+            CommentsTables::get(CommentsTables::Revisions),
+            CommentsTables::get(CommentsTables::Reports),
+            CommentsTables::get(CommentsTables::MetadataValues),
+            CommentsTables::get(CommentsTables::Mentions),
         ];
 
         foreach ($tables as $table) {
@@ -32,7 +39,7 @@ return new class extends Migration
             }
         }
 
-        $schema->table(CommentsConfiguration::table(CommentsTables::Comments), static function (Blueprint $table): void {
+        $schema->table(CommentsConfiguration::table(CommentsTables::get(CommentsTables::Comments)), static function (Blueprint $table): void {
             $table->dropUnique('comments_idempotency_key_unique');
             $table->unique(['tenant_id', 'idempotency_key'], 'comments_tenant_idempotency_unique');
             $table->index(['tenant_id', 'commentable_identity_hash', 'created_at', 'id'], 'comments_tenant_target_index');

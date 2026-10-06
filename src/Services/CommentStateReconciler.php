@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use LogicException;
@@ -31,7 +31,9 @@ use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Media\Enums\MimeType;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Support\Integrations\OptionalIntegration;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Audits denormalized counters and thread lineage with race-safe optional repairs.
@@ -48,6 +50,8 @@ final readonly class CommentStateReconciler
         private CommentMentionWriter $mentions,
         private CommentMutationLock $mutationLock,
         private TenantBoundary $boundary,
+        private OptionalIntegration $integrations,
+        private Application $app,
     ) {}
 
     /**
@@ -341,10 +345,13 @@ final readonly class CommentStateReconciler
      */
     private function attachmentAuditRequired(): bool
     {
-        $attachmentsEnabled = config('comments.attachments.enabled', true) === true;
+        $attachmentsEnabled = $this->integrations->enabled('comments.attachments.enabled', MediaServiceProvider::class);
+        if (($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) !== true) {
+            return false;
+        }
         $association = new MediaAssociation;
         $media = new Media;
-        $associationSchema = Schema::connection($association->getConnectionName());
+        $associationSchema = $association->getConnection()->getSchemaBuilder();
         $associationTableExists = $associationSchema->hasTable($association->getTable());
 
         if (! $associationTableExists) {
@@ -377,7 +384,7 @@ final readonly class CommentStateReconciler
         $commentConnection = DB::connection((new Comment)->getConnectionName())->getName();
         $associationConnection = DB::connection($association->getConnectionName())->getName();
         $mediaConnection = DB::connection($media->getConnectionName())->getName();
-        $mediaTableExists = Schema::connection($media->getConnectionName())
+        $mediaTableExists = $media->getConnection()->getSchemaBuilder()
             ->hasTable($media->getTable());
 
         if ($commentConnection !== $associationConnection

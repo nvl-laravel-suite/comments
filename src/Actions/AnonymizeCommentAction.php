@@ -6,8 +6,7 @@ namespace Nvl\Comments\Actions;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use InvalidArgumentException;
+use Nvl\Comments\Contracts\CommentAttachmentLifecycle;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Enums\CommentAbility;
@@ -30,11 +29,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Media\Contracts\DetachMediaContract;
-use Nvl\Media\Models\Media;
-use Nvl\Media\Models\MediaAssociation;
-use Nvl\Media\Services\MediaMutationLock;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Irreversibly anonymizes one comment while retaining thread and audit structure.
@@ -46,9 +41,8 @@ final readonly class AnonymizeCommentAction
      */
     public function __construct(
         private CommentAccessService $access,
-        private DetachMediaContract $detachMedia,
+        private CommentAttachmentLifecycle $attachments,
         private CommentLifecycleGuard $guard,
-        private MediaMutationLock $mediaLock,
         private CommentMutationLock $mutationLock,
         private CommentMetadataIndexWriter $metadataIndex,
         private CommentMentionWriter $mentions,
@@ -83,7 +77,7 @@ final readonly class AnonymizeCommentAction
             $audience,
             asNotFound: $audience !== CommentAudience::Management,
         );
-        $attachmentStateRequired = $this->attachmentStateRequired($resolved);
+        $attachmentStateRequired = $this->attachments->stateRequired($resolved);
         $commentConnection = DB::connection((new Comment)->getConnectionName());
         $lockIds = array_values(array_filter([$resolved->id, $resolved->parent_id]));
 
@@ -123,19 +117,9 @@ final readonly class AnonymizeCommentAction
                 }
 
                 /** @var list<string> $mediaIds */
-                $mediaIds = $attachmentStateRequired
-                    ? $authorizationComment
-                        ->mediaAssociations()
-                        ->where('collection', 'attachments')
-                        ->orderBy('media_id')
-                        ->pluck('media_id')
-                        ->filter(static fn (mixed $mediaId): bool => is_string($mediaId))
-                        ->unique()
-                        ->values()
-                        ->all()
-                    : [];
+                $mediaIds = $attachmentStateRequired ? $this->attachments->ids($authorizationComment) : [];
 
-                return $this->mediaLock->executeMany(
+                return $this->attachments->synchronize(
                     $mediaIds,
                     fn (): Comment => $commentConnection->transaction(function () use (
                         $actor,
@@ -179,18 +163,7 @@ final readonly class AnonymizeCommentAction
                         }
 
                         /** @var list<string> $lockedMediaIds */
-                        $lockedMediaIds = $attachmentStateRequired
-                            ? $comment
-                                ->mediaAssociations()
-                                ->where('collection', 'attachments')
-                                ->orderBy('media_id')
-                                ->lockForUpdate()
-                                ->pluck('media_id')
-                                ->filter(static fn (mixed $mediaId): bool => is_string($mediaId))
-                                ->unique()
-                                ->values()
-                                ->all()
-                            : [];
+                        $lockedMediaIds = $attachmentStateRequired ? $this->attachments->ids($comment, lock: true) : [];
 
                         if ($lockedMediaIds !== $mediaIds) {
                             throw new CommentMutationBusyException(
@@ -199,11 +172,7 @@ final readonly class AnonymizeCommentAction
                         }
 
                         foreach ($mediaIds as $mediaId) {
-                            if ($this->detachMedia->execute(
-                                $mediaId,
-                                $comment,
-                                'attachments',
-                            ) === 0) {
+                            if ($this->attachments->detach($mediaId, $comment) === 0) {
                                 throw new CommentMutationBusyException(
                                     'Comment attachments changed during anonymization; retry the request.',
                                 );
@@ -342,52 +311,5 @@ final readonly class AnonymizeCommentAction
                 );
             },
         );
-    }
-
-    /**
-     * Require Media only when attachments are enabled or historical state needs scrubbing.
-     */
-    private function attachmentStateRequired(Comment $comment): bool
-    {
-        $attachmentsEnabled = config('comments.attachments.enabled', true) === true;
-        $association = new MediaAssociation;
-        $associationSchema = Schema::connection($association->getConnectionName());
-
-        if (! $associationSchema->hasTable($association->getTable())) {
-            if (! $attachmentsEnabled) {
-                return false;
-            }
-
-            throw new InvalidArgumentException(
-                'Comment anonymization requires the Media association table when attachments are enabled.',
-            );
-        }
-
-        $hasHistoricalState = MediaAssociation::query()
-            ->where('associable_type', $comment->getMorphClass())
-            ->where('associable_id', $comment->id)
-            ->where('collection', 'attachments')
-            ->exists();
-
-        if (! $attachmentsEnabled && ! $hasHistoricalState) {
-            return false;
-        }
-
-        $media = new Media;
-        $commentConnection = DB::connection($comment->getConnectionName())->getName();
-        $associationConnection = DB::connection($association->getConnectionName())->getName();
-        $mediaConnection = DB::connection($media->getConnectionName())->getName();
-        $mediaTableExists = Schema::connection($media->getConnectionName())
-            ->hasTable($media->getTable());
-
-        if ($commentConnection !== $associationConnection
-            || $commentConnection !== $mediaConnection
-            || ! $mediaTableExists) {
-            throw new InvalidArgumentException(
-                'Comment anonymization requires Comments and complete Media state on one database connection when attachment state exists.',
-            );
-        }
-
-        return true;
     }
 }

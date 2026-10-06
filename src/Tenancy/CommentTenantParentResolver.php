@@ -6,8 +6,8 @@ namespace Nvl\Comments\Tenancy;
 
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
-use Nvl\Tenancy\Contracts\TenantParentResolver;
-use Nvl\Tenancy\Exceptions\TenantConfigurationInvalid;
+use Nvl\Support\Tenancy\Contracts\TenantParentResolver;
+use Nvl\Support\Tenancy\Exceptions\TenantConfigurationInvalid;
 
 /** Exposes the host's bounded canonical Comment target morph allowlist. */
 final readonly class CommentTenantParentResolver implements TenantParentResolver

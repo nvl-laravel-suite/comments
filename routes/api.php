@@ -9,9 +9,11 @@ use Nvl\Comments\Http\Controllers\MemberCommentsController;
 use Nvl\Comments\Http\Controllers\PublicCommentsController;
 use Nvl\Comments\Http\Middleware\CommentsResponseCache;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
+use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Support\Integrations\OptionalIntegration;
 
 $attachmentRouteName = CommentsRouteConfiguration::name('attachments');
-$attachmentsEnabled = config('comments.attachments.enabled', true) === true;
+$attachmentsEnabled = app(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class);
 
 if ($attachmentsEnabled
     && config('comments.routes.attachments.enabled', true) === true

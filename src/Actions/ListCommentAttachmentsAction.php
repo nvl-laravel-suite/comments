@@ -5,17 +5,15 @@ declare(strict_types=1);
 namespace Nvl\Comments\Actions;
 
 use Illuminate\Support\Collection;
+use Nvl\Comments\Contracts\CommentAttachmentProjection;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
-use Nvl\Comments\Services\CommentAttachmentDataFactory;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
-use Nvl\Media\Models\MediaAssociation;
-use Nvl\Tenancy\Services\TenantBoundary;
 
 /**
  * Lists authorized, deliverable attachment associations for one scoped comment.
@@ -24,10 +22,9 @@ final readonly class ListCommentAttachmentsAction
 {
     public function __construct(
         private CommentAccessService $access,
-        private CommentAttachmentDataFactory $dataFactory,
+        private CommentAttachmentProjection $attachments,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -56,26 +53,6 @@ final readonly class ListCommentAttachmentsAction
             asNotFound: $audience !== CommentAudience::Management,
         );
 
-        if (config('comments.attachments.enabled', true) !== true
-            || $comment->trashed()
-            || $comment->anonymized_at !== null) {
-            return new Collection;
-        }
-
-        return $this->boundary->query(MediaAssociation::query(), 'media.associations')
-            ->where('associable_type', $comment->getMorphClass())
-            ->where('associable_id', $comment->id)
-            ->where('collection', 'attachments')
-            ->where('is_active', true)
-            ->with(['media.imageVariations', 'media.translations'])
-            ->orderBy('order')
-            ->orderBy('id')
-            ->get()
-            ->map(
-                fn (MediaAssociation $association): ?CommentAttachmentData => $this->dataFactory
-                    ->fromAssociation($association, $comment, $target, $actor, $audience),
-            )
-            ->filter(static fn (?CommentAttachmentData $attachment): bool => $attachment !== null)
-            ->values();
+        return $this->attachments->attachments($comment, $target, $actor, $audience);
     }
 }

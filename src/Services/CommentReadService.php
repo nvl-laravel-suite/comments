@@ -15,7 +15,7 @@ use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Builds target-bound comment reads with trusted authorization scoping.

@@ -7,6 +7,7 @@ namespace Nvl\Comments\Services;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Nvl\Comments\Contracts\CommentAttachmentProjection;
 use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Data\CommentAbilitiesData;
@@ -25,8 +26,7 @@ use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
-use Nvl\Media\Models\MediaAssociation;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Spatie\LaravelData\Optional;
 
 /**
@@ -36,7 +36,7 @@ final readonly class CommentProjectionFactory
 {
     public function __construct(
         private CommentAccessService $access,
-        private CommentAttachmentDataFactory $attachments,
+        private CommentAttachmentProjection $attachments,
         private CommentAuthorPresenter $authors,
         private CommentQueryScope $queryScope,
         private CommentMentionProjectionFactory $mentions,
@@ -362,54 +362,7 @@ final readonly class CommentProjectionFactory
         CommentActorData $actor,
         CommentAudience $audience,
     ): array {
-        if (config('comments.attachments.enabled', true) !== true) {
-            return [];
-        }
-
-        $activeComments = [];
-
-        foreach ($comments as $comment) {
-            if (! $this->isTombstone($comment)) {
-                $activeComments[$comment->id] = $comment;
-            }
-        }
-
-        if ($activeComments === []) {
-            return [];
-        }
-
-        $associations = MediaAssociation::query()
-            ->where('associable_type', (new Comment)->getMorphClass())
-            ->whereIn('associable_id', array_keys($activeComments))
-            ->where('collection', 'attachments')
-            ->where('is_active', true)
-            ->with(['media.imageVariations', 'media.translations'])
-            ->orderBy('order')
-            ->orderBy('id')
-            ->get();
-        $counts = [];
-
-        foreach ($associations as $association) {
-            $comment = $activeComments[$association->associable_id] ?? null;
-
-            if (! $comment instanceof Comment) {
-                continue;
-            }
-
-            $attachment = $this->attachments->fromAssociation(
-                $association,
-                $comment,
-                $target,
-                $actor,
-                $audience,
-            );
-
-            if ($attachment !== null) {
-                $counts[$comment->id] = ($counts[$comment->id] ?? 0) + 1;
-            }
-        }
-
-        return $counts;
+        return $this->attachments->counts($comments, $target, $actor, $audience);
     }
 
     /**

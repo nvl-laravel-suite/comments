@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * One actor's idempotent reaction type on a comment.
@@ -58,12 +59,12 @@ final class CommentReaction extends Model
 
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::Reactions);
+        return CommentsConfiguration::table(CommentsTables::get(CommentsTables::Reactions));
     }
 
     public function getConnectionName(): ?string
     {
-        return CommentsConfiguration::connection() ?? parent::getConnectionName();
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('comments') ?? parent::getConnectionName());
     }
 
     /**

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * Current normalized reference to one registered application resource.
@@ -52,7 +53,7 @@ final class CommentMention extends Model
      */
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::Mentions);
+        return CommentsConfiguration::table(CommentsTables::get(CommentsTables::Mentions));
     }
 
     /**
@@ -60,7 +61,7 @@ final class CommentMention extends Model
      */
     public function getConnectionName(): ?string
     {
-        return CommentsConfiguration::connection() ?? parent::getConnectionName();
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('comments') ?? parent::getConnectionName());
     }
 
     /**

@@ -9,8 +9,8 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
-use Nvl\Tenancy\Contracts\TenantContext;
-use Nvl\Tenancy\ValueObjects\TenantContextSnapshot;
+use Nvl\Support\Tenancy\Contracts\TenantContext;
+use Nvl\Support\Tenancy\ValueObjects\TenantContextSnapshot;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 

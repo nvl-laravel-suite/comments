@@ -51,8 +51,8 @@ UI.
   persistence and normalized current mention references; applications own the
   registered resource resolvers and their authorization policy.
 
-`nvl/comments` declares `nvl/core`, `nvl/filterable`, and `nvl/media`; attachment
-support is a first-class integration.
+`nvl/comments` requires `nvl/core` and `nvl/filterable`. Install `nvl/media` only
+when the host needs attachment support.
 
 ## Install
 
@@ -76,7 +76,7 @@ Choose exactly one migration owner:
 1. **Automatic vendor loading (default):** leave `comments.migrations.enabled=true`, do not publish `comments-migrations`, and run `php artisan migrate`.
 2. **Host-owned published migrations:** publish `comments-migrations`, set `comments.migrations.enabled=false` before migrating, and maintain the published files as application migrations.
 
-Never run both sources. Laravel retimestamps files published through the migration tag. `php artisan nvl:comments:doctor` reports a warning when automatic loading remains enabled and `database/migrations` contains a timestamp-independent name matching a package migration; `--strict` promotes that warning to failure. The bundled create migrations deliberately target the default database connection and canonical table names. If the application configures a different Comments connection or table name, disable the bundled migrations and ship application-owned migrations for that frozen storage layout.
+Never run both sources. Laravel retimestamps files published through the migration tag. `php artisan nvl:comments:doctor` reports a warning when automatic loading remains enabled and `database/migrations` contains a timestamp-independent name matching a package migration; `--strict` promotes that warning to failure. Bundled migrations use the effective Comments/Core connection and logical `comments.tables` overrides. Existing package tables require the verified schema upgrade before vendor migration loading is enabled.
 
 ## Persistence
 
@@ -892,3 +892,65 @@ host projection contract and active membership; public cache validators and
 signed attachment capabilities include tenant/site/host identity.
 
 NVL Comments is released under the MIT License.
+
+## Shared owner identity
+
+Declare a model once in `config/nvl-core.php`:
+
+```php
+'owners' => ['article' => Article::class],
+```
+
+Enable this package capability separately in `config/comments.php`:
+
+```php
+'targets' => [
+    'articles.detail' => ['owner' => 'article', 'resolver' => ArticleCommentResolver::class],
+],
+```
+
+Keep the target resolver and its visibility/identifier checks. The route alias may differ from the shared owner alias. A resolver must return the exact model declared by its owner reference. Core registration does not add the model to this package's allowlist.
+
+Existing package class/resolver/handler registrations remain accepted for one major cycle. Run `php artisan nvl:doctor --strict --format=json` to inspect compatibility diagnostics. See [UPGRADING.md](UPGRADING.md) before changing a persisted morph type.
+
+## Shared consumer diagnostics
+
+Run `php artisan nvl:doctor --strict --format=json` to combine the read-only checks from loaded NVL package providers. Errors fail the gate, and strict mode also fails warnings. This package's existing Doctor command remains available and uses the same package-owned inspection service.
+
+## Optional Media attachments
+
+`comments.attachments.enabled` defaults to `null`: attachments activate when
+`MediaServiceProvider` is loaded. Set `true` to require Media and receive an
+explicit configuration error when the provider is unavailable; set `false` to
+disable attachment routes, mutations, and projections. A package installed on
+disk with discovery disabled is unavailable until its provider is registered.
+
+Ordinary create/read/update, moderation, projections, reconciliation, and
+anonymization need no Media package. `Comment` has no foreign Media interface or
+trait. Loaded Media supplies guarded `media`, `mediaAssociations`, and
+`attachmentAssociations` relations. Use `AttachCommentMediaAction` and
+`DetachCommentMediaAction` for mutations; the adapter retains MIME/size/count
+limits, exclusive private ownership, both authorization checks, and the shared
+connection requirement. Direct Media trait helpers on `Comment`, such as
+`addMedia` or `getMediaSlot`, are no longer supported.
+
+When Media remains loaded but attachments are disabled, historical attachment
+state still participates in anonymization and reconciliation. Force deletion
+preserves Media's shared-asset handling and tombstones unshared assets through
+its public deletion contract. Restore the Media provider before cleaning up
+historical attachment state in a host that has disabled discovery.
+
+## Next major: isolated schema identities
+
+Use `comments.tables.<logical-key>` for every table and `comments.connection` for its database connection. Null connection inherits `nvl-core.connection`, then Laravel's default. Tables are resolved at runtime by the package table definition helper.
+
+| Logical key | New default | Previous name |
+| --- | --- | --- |
+| `comments` | `nvl_comments_comments` | `comments` |
+| `reactions` | `nvl_comments_reactions` | `comment_reactions` |
+| `revisions` | `nvl_comments_revisions` | `comment_revisions` |
+| `reports` | `nvl_comments_reports` | `comment_reports` |
+| `metadata_values` | `nvl_comments_metadata_values` | `comment_metadata_values` |
+| `mentions` | `nvl_comments_mentions` | `comment_mentions` |
+
+Migration filenames contain `nvl_comments_`. Existing installations must complete the upgrade in `UPGRADING.md` before running new migrations. A pending creator rejects an existing target before any migration in the batch runs; legacy storage with old history needs an ownership decision.

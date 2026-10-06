@@ -44,6 +44,7 @@ abstract class TestCase extends Orchestra
             'media.disk' => 'local',
             'media.queue.connection' => 'sync',
             'media.routes.assets_enabled' => false,
+            'translatable.locales' => ['en', 'bg'],
             'comments.targets' => ['article' => TestCommentTargetResolver::class],
             'comments.moderation.new_status' => 'approved',
             'comments.moderation.edited_status' => 'approved',

@@ -10,17 +10,19 @@ use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
-use Nvl\Tenancy\Enums\TenantResourceKind;
+use Nvl\Support\Tenancy\Enums\TenantResourceKind;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\ValueObjects\TenantResourceDefinition;
 use Nvl\Tenancy\Services\TenantAdoptionRegistry;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
-use Nvl\Tenancy\ValueObjects\TenantResourceDefinition;
 
 /** Registers canonical target-derived ownership for the whole discussion graph. */
 final readonly class CommentsResourceRegistrar
 {
-    public function register(TenantResourceRegistry $resources, TenantAdoptionRegistry $adoption): void
+    public function register(TenantResourceRegistry $resources, ?TenantAdoptionRegistry $adoption = null, bool $attachments = false): void
     {
-        $resources->requireCompatible('comments', 'media');
+        if ($attachments) {
+            $resources->requireCompatible('comments', 'media');
+        }
         $resources->registerParentResolver('comments.comments', CommentTenantParentResolver::class);
         foreach ([
             new TenantResourceDefinition('comments.comments', 'comments', Comment::class, TenantResourceKind::Inherited, null, 'commentable'),
@@ -32,6 +34,6 @@ final readonly class CommentsResourceRegistrar
         ] as $resource) {
             $resources->register($resource);
         }
-        $adoption->register('comments', CommentsAdoptionAdapter::class);
+        $adoption?->register('comments', CommentsAdoptionAdapter::class);
     }
 }

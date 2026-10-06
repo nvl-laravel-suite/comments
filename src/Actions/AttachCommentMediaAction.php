@@ -11,6 +11,7 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
+use Nvl\Comments\Integrations\MediaCommentRelations;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentMutationLock;
@@ -25,7 +26,7 @@ use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaMutationLock;
 use Nvl\Media\Slots\MediaSlot;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Attaches available media only after comment and media ownership authorization.
@@ -55,7 +56,7 @@ final readonly class AttachCommentMediaAction
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
         $mediaId = $media instanceof Media ? $media->id : $media;
 
-        if (config('comments.attachments.enabled', true) !== true) {
+        if (config('comments.attachments.enabled') === false) {
             throw new InvalidCommentMutationException(
                 'Comment attachments are disabled.',
             );
@@ -135,13 +136,7 @@ final readonly class AttachCommentMediaAction
                         );
                     }
 
-                    $slot = $comment->getMediaSlot('attachments');
-
-                    if ($slot === null) {
-                        throw new InvalidCommentMutationException(
-                            'The comment attachment slot is not configured.',
-                        );
-                    }
+                    $slot = MediaCommentRelations::slot();
 
                     if ($slot->acceptedMimeTypes !== []
                         && ! in_array($media->mime_type, $slot->acceptedMimeTypes, true)) {

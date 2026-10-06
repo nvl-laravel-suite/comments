@@ -27,8 +27,8 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
-use Nvl\Tenancy\Services\TenantBoundary;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Owns the reusable atomic creation workflow shared by plain and rich entrypoints.

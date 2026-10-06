@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * Immutable snapshot of comment content before an edit.
@@ -58,12 +59,12 @@ final class CommentRevision extends Model
 
     public function getTable(): string
     {
-        return CommentsConfiguration::table(CommentsTables::Revisions);
+        return CommentsConfiguration::table(CommentsTables::get(CommentsTables::Revisions));
     }
 
     public function getConnectionName(): ?string
     {
-        return CommentsConfiguration::connection() ?? parent::getConnectionName();
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('comments') ?? parent::getConnectionName());
     }
 
     /**

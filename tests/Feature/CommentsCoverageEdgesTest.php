@@ -12,6 +12,7 @@ use Nvl\Comments\Actions\CreateCommentAction;
 use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Data\Mutations\CreateCommentData;
+use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
@@ -462,7 +463,7 @@ it('rejects malformed production configuration in strict diagnostics', function 
     'string boolean' => ['comments.anonymous.enabled', 'false'],
     'string byte limit' => ['comments.content.maximum_bytes', '20000'],
     'negative cache lifetime' => ['comments.cache.public_max_age', -1],
-    'mutable vendor migration target' => ['comments.tables.comments', 'tenant_comments'],
+    'string optional integration flag' => ['comments.attachments.enabled', 'false'],
     'unsafe route prefix' => ['comments.routes.public.prefix', '../private-comments'],
     'duplicate formats' => ['comments.content.allowed_formats', ['plain', 'plain']],
     'unknown format' => ['comments.content.allowed_formats', ['plain', 'html']],
@@ -479,7 +480,7 @@ it('renders the complete human-readable Doctor report', function (): void {
     expect($exitCode)->toBe(0)
         ->and(Artisan::output())->toContain(
             'configuration.values',
-            'table.comments',
+            'table.'.CommentsTables::get(CommentsTables::Comments),
             'mutation_lock.ready',
             'healthy',
             'true',

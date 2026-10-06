@@ -132,7 +132,7 @@ it('creates the portable hash-only metadata index schema', function (): void {
     ]))->toBeTrue();
 });
 
-it('adds metadata storage to an existing released schema and refuses application-owned targets', function (): void {
+it('adds and rolls back metadata storage on released schemas and configured table names', function (): void {
     config()->set('database.connections.comments_metadata_upgrade', [
         'driver' => 'sqlite',
         'database' => ':memory:',
@@ -144,29 +144,37 @@ it('adds metadata storage to an existing released schema and refuses application
     config()->set('comments.connection', null);
 
     foreach ([
-        '2026_07_27_110001_create_comments_table.php',
-        '2026_07_27_110002_create_comment_reactions_table.php',
-        '2026_07_27_110003_create_comment_revisions_table.php',
-        '2026_07_27_110004_create_comment_reports_table.php',
+        '2026_07_27_110001_nvl_comments_create_comments_table.php',
+        '2026_07_27_110002_nvl_comments_create_comment_reactions_table.php',
+        '2026_07_27_110003_nvl_comments_create_comment_revisions_table.php',
+        '2026_07_27_110004_nvl_comments_create_comment_reports_table.php',
     ] as $migration) {
         (require __DIR__."/../../database/migrations/{$migration}")->up();
     }
 
     $metadataMigration = require __DIR__
-        .'/../../database/migrations/2026_08_28_000000_create_comment_metadata_values_table.php';
+        .'/../../database/migrations/2026_08_28_000000_nvl_comments_create_comment_metadata_values_table.php';
     $metadataMigration->up();
 
     expect(Schema::connection('comments_metadata_upgrade')->hasTable(
         CommentsTables::MetadataValues,
     ))->toBeTrue();
 
-    config()->set('comments.tables.comment_metadata_values', 'tenant_comment_metadata_values');
     $metadataMigration->down();
 
-    expect(fn () => $metadataMigration->up())->toThrow(
-        LogicException::class,
-        'canonical tables',
-    )->and(Schema::connection('comments_metadata_upgrade')->hasTable(
+    expect(Schema::connection('comments_metadata_upgrade')->hasTable(CommentsTables::MetadataValues))->toBeFalse();
+
+    config()->set('comments.tables.comment_metadata_values', 'tenant_comment_metadata_values');
+    $metadataMigration->up();
+
+    expect(Schema::connection('comments_metadata_upgrade')->hasColumns(
+        'tenant_comment_metadata_values',
+        ['id', 'comment_id', 'schema_namespace', 'field_name', 'value_type', 'value_hash'],
+    ))->toBeTrue();
+
+    $metadataMigration->down();
+
+    expect(Schema::connection('comments_metadata_upgrade')->hasTable(
         'tenant_comment_metadata_values',
     ))->toBeFalse();
 
@@ -183,7 +191,7 @@ it('uses actual application-owned metadata storage for every write and selector 
         $table->string('value_type', 16);
         $table->char('value_hash', 64);
         $table->timestamps();
-        $table->foreign('comment_id')->references('id')->on('comments')->cascadeOnDelete();
+        $table->foreign('comment_id')->references('id')->on(CommentsTables::get(CommentsTables::Comments))->cascadeOnDelete();
         $table->unique(
             ['comment_id', 'schema_namespace', 'field_name'],
             'tenant_comment_metadata_identity_unique',

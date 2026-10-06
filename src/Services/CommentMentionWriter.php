@@ -10,7 +10,7 @@ use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Synchronizes current normalized mention rows from canonical documents.

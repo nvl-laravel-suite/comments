@@ -127,7 +127,7 @@ return [
     ],
 
     'attachments' => [
-        'enabled' => true,
+        'enabled' => null,
         'maximum_per_comment' => 5,
         'maximum_file_bytes' => 10 * 1024 * 1024,
         'allow_public_media' => false,

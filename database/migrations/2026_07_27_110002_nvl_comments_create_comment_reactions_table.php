@@ -6,9 +6,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('comments');
+    }
+
     /**
      * Create actor reactions.
      */
@@ -16,7 +23,7 @@ return new class extends Migration
     {
         $this->assertCanonicalManagedStorage();
 
-        Schema::create(CommentsTables::Reactions, function (Blueprint $table): void {
+        Schema::connection(PackageStorage::connection('comments'))->create(CommentsTables::get(CommentsTables::Reactions), function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('comment_id');
             $table->string('actor_type', 100);
@@ -28,7 +35,7 @@ return new class extends Migration
 
             $table->foreign('comment_id')
                 ->references('id')
-                ->on(CommentsTables::Comments)
+                ->on(CommentsTables::get(CommentsTables::Comments))
                 ->cascadeOnDelete();
             $table->unique(
                 ['comment_id', 'actor_identity_hash', 'type_hash'],
@@ -44,17 +51,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(CommentsTables::Reactions);
+        Schema::connection(PackageStorage::connection('comments'))->dropIfExists(CommentsTables::get(CommentsTables::Reactions));
     }
 
     private function assertCanonicalManagedStorage(): void
     {
-        if (config('comments.connection') !== null
-            || config('comments.tables.comment_reactions') !== CommentsTables::Reactions
-            || config('comments.tables.comments') !== CommentsTables::Comments) {
-            throw new LogicException(
-                'The package-managed Comments migrations only own canonical tables on the default connection.',
-            );
-        }
+        PackageStorage::connection('comments');
     }
 };
