@@ -78,7 +78,13 @@ php artisan migrate
 - Owners with `InteractsWithComments` may use
   `withNvlVisibleCommentCount($actor, $audience, $policy = null)` while retaining
   host selections and global scopes. Use byte-exact correlated native identity,
-  including integer/UUID text casts. Resolve fresh readers after context changes.
+  including integer/UUID text casts. Host counts select live owners only: owners
+  using Laravel's SoftDeletes trait retain their canonical native deletion-column
+  null predicate, including custom column names, after removing global scopes or
+  including trashed rows. Group existing caller WHERE clauses and only their
+  bindings before mandatory live-owner and tenant guards so caller ORs cannot
+  escape. Keep unrelated host scopes removable. Resolve fresh readers after
+  context changes.
 
 ## Start with audience and canonical scope
 

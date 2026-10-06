@@ -15,9 +15,14 @@ or an explicit query-free `CommentBatchQueryScope` adapter. Package default scop
 selection uses the current container bindings, not just configured class names.
 Unsupported policies fail closed when used. The optional
 `withNvlVisibleCommentCount` host scope adds an authorized count without replacing
-selected host columns or scopes. Register exact target resources and
-`nvl-comments.tenancy.target_types` when enabling Tenancy. See the README for the
-adapter example, measured three-query domain budget, cold installation probe and
+selected host columns or scopes. Host counts include live owners only. Owners
+using Laravel's SoftDeletes trait retain a mandatory null predicate on their
+canonical native deletion column, including custom names, after `withTrashed()`
+or `withoutGlobalScopes()`. Caller WHERE clauses and bindings are grouped before
+mandatory live-owner and tenant predicates so existing OR conditions cannot
+reopen those guards; unrelated host scopes remain removable. Register exact target
+resources and `nvl-comments.tenancy.target_types` when enabling Tenancy. See the
+README for the adapter example, measured three-query domain budget, cold installation probe and
 1,000-row latest transfer ceiling.
 
 ## Tenant adoption

@@ -66,4 +66,16 @@ final readonly class CommentBatchTenancyScenario
             return $owner->refresh();
         });
     }
+
+    /** Create one adopted public-scope owner with its native custom deletion column. */
+    public function liveOwner(string $tenant): BatchSoftDeletingCommentOwner
+    {
+        return $this->run($tenant, static function (): BatchSoftDeletingCommentOwner {
+            $owner = new BatchSoftDeletingCommentOwner(['name' => 'Owner']);
+            $owner->forceFill(app(TenantBoundary::class)->attributes('test.live-comment-owners'));
+            $owner->save();
+
+            return $owner->refresh();
+        });
+    }
 }

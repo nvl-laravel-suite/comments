@@ -28,6 +28,7 @@ use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
 use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Tests\Fixtures\BatchCommentPolicy;
+use Nvl\Comments\Tests\Fixtures\BatchSoftDeletingCommentOwner;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResource;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\Tests\Fixtures\TestConfiguredCommentTarget;
@@ -302,6 +303,69 @@ it('adds a visible host count while retaining host selection and scope', functio
         ->and($rows[0]->name)->toBe('Visible')
         ->and((int) $rows[0]->getAttribute('nvl_visible_comment_count'))->toBe(1);
 });
+
+it('keeps deleted host owners outside visible counts after global scopes are removed', function (): void {
+    $owner = TestCommentMentionResource::query()->create(['id' => 'deleted-owner', 'tenant_id' => 'host', 'name' => 'Deleted', 'registration_number' => 'deleted']);
+    Comment::query()->create(['commentable_type' => $owner->getMorphClass(), 'commentable_id' => (string) $owner->getKey(), 'body' => 'Public', 'status' => CommentStatus::Approved, 'visibility' => CommentVisibility::Public]);
+    $owner->delete();
+    $query = $owner->newQuery()->withoutGlobalScopes();
+    app(CommentBatchQueryBuilder::class)->withVisibleCount($query, CommentActorData::anonymous(), CommentAudience::Public, app(CommentBatchQueryScope::class));
+
+    expect($query->pluck('id')->all())->toBe([]);
+});
+
+it('retains the native custom live-owner guard and caller OR in host counts', function (bool $direct, string $mode): void {
+    Schema::create((new BatchSoftDeletingCommentOwner)->getTable(), static function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+        $table->string('name');
+        $table->softDeletes(BatchSoftDeletingCommentOwner::DELETED_AT);
+        $table->timestamps();
+    });
+    $live = BatchSoftDeletingCommentOwner::query()->create(['name' => 'Live']);
+    $deleted = BatchSoftDeletingCommentOwner::query()->create(['name' => 'Deleted']);
+    foreach ([$live, $deleted] as $owner) {
+        Comment::query()->create(['commentable_type' => $owner->getMorphClass(), 'commentable_id' => (string) $owner->getKey(), 'body' => 'Public', 'status' => CommentStatus::Approved, 'visibility' => CommentVisibility::Public]);
+    }
+    $deleted->delete();
+    $query = BatchSoftDeletingCommentOwner::query()->select(['id', 'name'])->selectRaw('? as host_marker', ['selected']);
+    if ($mode === 'with-trashed') {
+        $query->withTrashed();
+    } elseif ($mode !== 'retained') {
+        $query->withoutGlobalScopes();
+    }
+    if ($mode === 'without-global-scopes-or') {
+        $query->whereKey($deleted->getKey())->orWhere($live->getQualifiedKeyName(), $live->getKey());
+    }
+    $policy = app(CommentBatchQueryScope::class);
+    $counted = $direct
+        ? app(CommentBatchQueryBuilder::class)->withVisibleCount($query, CommentActorData::anonymous(), CommentAudience::Public, $policy)
+        : $query->withNvlVisibleCommentCount(CommentActorData::anonymous(), CommentAudience::Public, $policy);
+
+    expect($counted->get()->map(static fn (BatchSoftDeletingCommentOwner $owner): array => $owner->getAttributes())->all())
+        ->toBe([['id' => $live->getKey(), 'name' => 'Live', 'host_marker' => 'selected', 'nvl_visible_comment_count' => 1]]);
+})->with(['direct helper' => true, 'public scope' => false])->with(['retained', 'with-trashed', 'without-global-scopes', 'without-global-scopes-or']);
+
+it('preserves unrelated removable host scopes and OR selections on non-soft-deleting owners', function (bool $direct): void {
+    $live = TestCommentTarget::query()->create(['name' => 'Visible']);
+    $other = TestCommentTarget::query()->create(['name' => 'Other']);
+    foreach ([$live, $other] as $owner) {
+        Comment::query()->create(['commentable_type' => $owner->getMorphClass(), 'commentable_id' => (string) $owner->getKey(), 'body' => 'Public', 'status' => CommentStatus::Approved, 'visibility' => CommentVisibility::Public]);
+    }
+    $query = TestCommentTarget::query()->withGlobalScope('batch-visible-name', static fn (Builder $query) => $query->where('name', 'Visible'));
+    expect((clone $query)->pluck('id')->all())->toBe([$live->getKey()]);
+    $query->withoutGlobalScope('batch-visible-name')->select(['id', 'name'])
+        ->whereKey($other->getKey())->orWhere($live->getQualifiedKeyName(), $live->getKey());
+    $policy = app(CommentBatchQueryScope::class);
+    $counted = $direct
+        ? app(CommentBatchQueryBuilder::class)->withVisibleCount($query, CommentActorData::anonymous(), CommentAudience::Public, $policy)
+        : $query->withNvlVisibleCommentCount(CommentActorData::anonymous(), CommentAudience::Public, $policy);
+    $rows = $counted->get()->keyBy('name');
+
+    expect($rows->keys()->sort()->values()->all())->toBe(['Other', 'Visible']);
+    foreach ([$live, $other] as $owner) {
+        expect($rows[$owner->name]->getAttributes())->toBe(['id' => $owner->getKey(), 'name' => $owner->name, 'nvl_visible_comment_count' => 1]);
+    }
+})->with(['direct helper' => true, 'public scope' => false]);
 
 it('rejects actual host builder connection or table drift before storage probes', function (string $kind): void {
     config(['database.connections.batch_foreign' => config('database.connections.testing')]);

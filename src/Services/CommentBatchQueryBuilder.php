@@ -6,6 +6,7 @@ namespace Nvl\Comments\Services;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
 use Nvl\Comments\Data\CommentActorData;
@@ -76,6 +77,15 @@ final readonly class CommentBatchQueryBuilder
             || $query->getQuery()->unions !== null) {
             throw new TenantBoundaryViolation('The Comment host count query must retain its canonical owner table and connection.');
         }
+        $this->groupCallerPredicates($query);
+        $prototype = new ($owner::class);
+        if (in_array(SoftDeletes::class, class_uses_recursive($prototype), true) && method_exists($prototype, 'getQualifiedDeletedAtColumn')) {
+            $column = $prototype->getQualifiedDeletedAtColumn();
+            if (! is_string($column) || $column === '') {
+                throw new TenantBoundaryViolation('A canonical Comment owner requires a valid soft-delete column.');
+            }
+            $query->whereNull($column);
+        }
         $query = $this->owners->scope($query);
         $comments = $this->base();
         CommentBatchOwnerAdmission::exact($comments, 'commentable_type', $owner->getMorphClass());
@@ -91,6 +101,27 @@ final readonly class CommentBatchQueryBuilder
         }
 
         return $query->addSelect(['nvl_visible_comment_count' => $comments->selectRaw('COUNT(*)')])->withCasts(['nvl_visible_comment_count' => 'integer']);
+    }
+
+    /**
+     * Keep caller OR clauses inside every subsequently added mandatory owner guard.
+     *
+     * @template T of Model
+     *
+     * @param  Builder<T>  $query
+     */
+    private function groupCallerPredicates(Builder $query): void
+    {
+        $base = $query->getQuery();
+        if ($base->wheres === []) {
+            return;
+        }
+        $nested = $base->forNestedWhere();
+        $nested->wheres = $base->wheres;
+        $nested->setBindings($base->getRawBindings()['where'], 'where');
+        $base->wheres = [];
+        $base->setBindings([], 'where');
+        $base->addNestedWhereQuery($nested);
     }
 
     /**

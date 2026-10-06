@@ -20,6 +20,11 @@ final class CommentBatchTenancyFixtureServiceProvider extends ServiceProvider
             'test.comment-owners',
             TestCommentMentionResource::class,
         ));
+        $resources->register(new TenantResourceDefinition(
+            'test.live-comment-owners',
+            'test.live-comment-owners',
+            BatchSoftDeletingCommentOwner::class,
+        ));
         $adoptions->register('resource-fixture-owners', CommentBatchOwnerAdoptionAdapter::class);
     }
 }

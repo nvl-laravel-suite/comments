@@ -8,6 +8,7 @@ use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Nvl\Comments\Providers\CommentsServiceProvider;
+use Nvl\Comments\Tests\Fixtures\BatchSoftDeletingCommentOwner;
 use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyDirectory;
 use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyFixtureServiceProvider;
 use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyMaintenanceMode;
@@ -47,7 +48,10 @@ abstract class CommentBatchTenancyTestCase extends Orchestra
         $app['config']->set([
             'cache.default' => 'array',
             'nvl-comments.attachments.enabled' => false,
-            'nvl-comments.tenancy.target_types' => [TestCommentMentionResource::class => TestCommentMentionResource::class],
+            'nvl-comments.tenancy.target_types' => [
+                TestCommentMentionResource::class => TestCommentMentionResource::class,
+                BatchSoftDeletingCommentOwner::class => BatchSoftDeletingCommentOwner::class,
+            ],
             'nvl-tenancy.enabled' => true,
             'nvl-tenancy.resources.comments' => 'tenant',
             'nvl-tenancy.directory.driver' => 'host',

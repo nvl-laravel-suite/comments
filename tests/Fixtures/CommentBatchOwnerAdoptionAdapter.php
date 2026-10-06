@@ -18,7 +18,7 @@ final readonly class CommentBatchOwnerAdoptionAdapter implements TenantAdoptionA
     /** @return list<string> */
     public function resources(): array
     {
-        return ['test.comment-owners'];
+        return ['test.comment-owners', 'test.live-comment-owners'];
     }
 
     /** Create the owner table with direct tenant identity. */
@@ -36,6 +36,16 @@ final readonly class CommentBatchOwnerAdoptionAdapter implements TenantAdoptionA
                 $table->unique(['tenant_id', 'id'], 'test_comment_owners_tenant_id_unique');
             });
         }
+        if (! $schema->hasTable((new BatchSoftDeletingCommentOwner)->getTable())) {
+            $schema->create((new BatchSoftDeletingCommentOwner)->getTable(), static function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->uuid('tenant_id');
+                $table->string('name');
+                $table->softDeletes(BatchSoftDeletingCommentOwner::DELETED_AT);
+                $table->timestamps();
+                $table->unique(['tenant_id', 'id'], 'test_live_comment_owners_tenant_id_unique');
+            });
+        }
     }
 
     /** Require every fixture owner to retain its reviewed tenant identity. */
@@ -43,6 +53,9 @@ final readonly class CommentBatchOwnerAdoptionAdapter implements TenantAdoptionA
     {
         if ($this->connection()->table((new TestCommentMentionResource)->getTable())->whereNull('tenant_id')->exists()) {
             throw new RuntimeException('Comment owner fixture adoption found an unmapped owner.');
+        }
+        if ($this->connection()->table((new BatchSoftDeletingCommentOwner)->getTable())->whereNull('tenant_id')->exists()) {
+            throw new RuntimeException('Live Comment owner fixture adoption found an unmapped owner.');
         }
 
         return new TenantBackfillResult(null, 0);
@@ -59,6 +72,13 @@ final readonly class CommentBatchOwnerAdoptionAdapter implements TenantAdoptionA
         }
         if (! $schema->hasIndex($table, ['tenant_id', 'id'], 'unique')) {
             $errors[] = 'test.comment-owners.identity';
+        }
+        $liveTable = (new BatchSoftDeletingCommentOwner)->getTable();
+        if (! $schema->hasColumns($liveTable, ['id', 'tenant_id', 'name', 'created_at', 'updated_at', BatchSoftDeletingCommentOwner::DELETED_AT])) {
+            $errors[] = 'test.live-comment-owners.columns';
+        }
+        if (! $schema->hasIndex($liveTable, ['tenant_id', 'id'], 'unique')) {
+            $errors[] = 'test.live-comment-owners.identity';
         }
 
         return new TenantVerification($errors);

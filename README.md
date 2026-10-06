@@ -500,7 +500,13 @@ $articles = Article::query()
 
 Pass an explicit compatible policy as the third scope argument when needed. The
 scope retains host selections/global scopes and uses byte-exact text correlation,
-including integer/UUID casts and case/trailing-space-sensitive keys. Under enabled
+including integer/UUID casts and case/trailing-space-sensitive keys. Counts select
+live owners only: for owners using Laravel's SoftDeletes trait, the canonical
+native deletion column must remain null, including custom column names, even
+after `withTrashed()` or `withoutGlobalScopes()`. Existing caller WHERE clauses
+and their bindings are grouped before mandatory live-owner and tenant predicates;
+caller OR conditions cannot bypass those guards. Unrelated host scopes remain
+removable and selected columns are preserved. Under enabled
 Tenancy, register every concrete owner resource and its exact morph mapping in
 `nvl-comments.tenancy.target_types`; package ownership remains enforced when
 callers remove host global scopes. Resolve new readers after policy/context
