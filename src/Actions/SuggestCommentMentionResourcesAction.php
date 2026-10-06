@@ -50,7 +50,7 @@ final readonly class SuggestCommentMentionResourcesAction
             asNotFound: $audience !== CommentAudience::Management,
         );
 
-        if (config('comments.mentions.enabled', false) !== true) {
+        if (config('nvl-comments.mentions.enabled', false) !== true) {
             throw new InvalidCommentMutationException('Rich comment mentions are not enabled.');
         }
 

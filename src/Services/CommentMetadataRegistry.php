@@ -88,7 +88,7 @@ final class CommentMetadataRegistry
             $field = $this->storageFields[$storageKey] ?? null;
 
             if (! $field instanceof CommentMetadataField) {
-                if (config('comments.metadata.strict', false) === true) {
+                if (config('nvl-comments.metadata.strict', false) === true) {
                     throw new InvalidCommentMutationException(
                         'Comment metadata contains an unregistered field.',
                     );
@@ -127,7 +127,7 @@ final class CommentMetadataRegistry
         }
 
         $maximumFields = min(100, CommentsConfiguration::positiveInteger(
-            'comments.metadata.maximum_registered_fields',
+            'nvl-comments.metadata.maximum_registered_fields',
             50,
         ));
 
@@ -286,10 +286,10 @@ final class CommentMetadataRegistry
      */
     private function registerConfiguredSchemas(): void
     {
-        $configured = config('comments.metadata.schemas', []);
+        $configured = config('nvl-comments.metadata.schemas', []);
 
         if (! is_array($configured) || ! array_is_list($configured)) {
-            throw new InvalidArgumentException('comments.metadata.schemas must be a list.');
+            throw new InvalidArgumentException('nvl-comments.metadata.schemas must be a list.');
         }
 
         foreach ($configured as $schemaClass) {
@@ -450,10 +450,10 @@ final class CommentMetadataRegistry
      */
     private function keyBytes(): string
     {
-        $configured = config('comments.metadata.digest_key');
+        $configured = config('nvl-comments.metadata.digest_key');
 
         if (! is_string($configured) || $configured === '') {
-            $configured = config('comments.idempotency.digest_key');
+            $configured = config('nvl-comments.idempotency.digest_key');
         }
 
         if (! is_string($configured) || $configured === '') {

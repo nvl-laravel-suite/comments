@@ -30,7 +30,7 @@ final readonly class CommentDocumentNormalizer
         CommentDocumentData $document,
         CommentMentionContext $context,
     ): CommentDocumentData {
-        if (config('comments.mentions.enabled', false) !== true) {
+        if (config('nvl-comments.mentions.enabled', false) !== true) {
             throw new InvalidCommentMutationException(
                 'Rich comment mentions are not enabled.',
             );
@@ -237,11 +237,11 @@ final readonly class CommentDocumentNormalizer
         }
 
         $maximumBlocks = min(250, CommentsConfiguration::positiveInteger(
-            'comments.rich_text.maximum_blocks',
+            'nvl-comments.rich_text.maximum_blocks',
             100,
         ));
         $maximumNodes = min(1_000, CommentsConfiguration::positiveInteger(
-            'comments.rich_text.maximum_nodes',
+            'nvl-comments.rich_text.maximum_nodes',
             500,
         ));
 
@@ -379,11 +379,11 @@ final readonly class CommentDocumentNormalizer
         }
 
         $maximumMentions = min(100, CommentsConfiguration::positiveInteger(
-            'comments.mentions.maximum_per_comment',
+            'nvl-comments.mentions.maximum_per_comment',
             25,
         ));
         $maximumResources = min(20, CommentsConfiguration::positiveInteger(
-            'comments.mentions.maximum_resource_types_per_comment',
+            'nvl-comments.mentions.maximum_resource_types_per_comment',
             10,
         ));
 
@@ -395,7 +395,7 @@ final readonly class CommentDocumentNormalizer
 
         $normalized = new CommentDocumentData(version: 1, blocks: $blocks);
         $maximumBytes = min(131_072, CommentsConfiguration::positiveInteger(
-            'comments.rich_text.maximum_bytes',
+            'nvl-comments.rich_text.maximum_bytes',
             32_768,
         ));
 

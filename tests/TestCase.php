@@ -41,14 +41,14 @@ abstract class TestCase extends Orchestra
         $app['config']->set([
             'cache.default' => 'file',
             'filesystems.default' => 'local',
-            'media.disk' => 'local',
-            'media.queue.connection' => 'sync',
-            'media.routes.assets_enabled' => false,
-            'translatable.locales' => ['en', 'bg'],
-            'comments.targets' => ['article' => TestCommentTargetResolver::class],
-            'comments.moderation.new_status' => 'approved',
-            'comments.moderation.edited_status' => 'approved',
-            'comments.mutation_lock.allow_local_store' => true,
+            'nvl-media.disk' => 'local',
+            'nvl-media.queue.connection' => 'sync',
+            'nvl-media.routes.assets_enabled' => false,
+            'nvl-translatable.locales' => ['en', 'bg'],
+            'nvl-comments.targets' => ['article' => TestCommentTargetResolver::class],
+            'nvl-comments.moderation.new_status' => 'approved',
+            'nvl-comments.moderation.edited_status' => 'approved',
+            'nvl-comments.mutation_lock.allow_local_store' => true,
         ]);
     }
 

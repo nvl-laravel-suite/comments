@@ -121,7 +121,7 @@ final readonly class ModerateCommentAction
                         ->withTrashed()
                         ->findOrFail($comment->id);
                 }, attempts: CommentsConfiguration::positiveInteger(
-                    'comments.transactions.attempts',
+                    'nvl-comments.transactions.attempts',
                     3,
                 )),
         );

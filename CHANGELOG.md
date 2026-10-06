@@ -4,6 +4,15 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Isolate owned cache and lock keys under `nvl:comments:`; preserve generic host entries and explicit store choices.
+
+- Prepare lockstep major 5 with required and development NVL peer floors of `^5.0`. This candidate has not been tagged or published.
+- Store host owner identity using Laravel morph classes and isolate mutation lock keys.
+- Preserve independently enabled routes and application authorization boundaries.
+- Review [UPGRADING.md](UPGRADING.md) before adopting the new names and infrastructure boundaries.
+
 ## [2.2.2] - 2026-09-26
 
 ### Documentation

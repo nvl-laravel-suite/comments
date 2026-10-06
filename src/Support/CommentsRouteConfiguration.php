@@ -13,7 +13,7 @@ final class CommentsRouteConfiguration
 {
     public static function path(string $group): string
     {
-        $path = config("comments.routes.{$group}.prefix", "api/v1/comments/{$group}");
+        $path = config("nvl-comments.routes.{$group}.prefix", "nvl/api/v1/comments/{$group}");
 
         if (! is_string($path)) {
             throw new InvalidArgumentException("comments.routes.{$group}.prefix must be a string.");
@@ -35,7 +35,7 @@ final class CommentsRouteConfiguration
 
     public static function name(string $group): string
     {
-        $name = config("comments.routes.{$group}.name", "nvl.comments.{$group}.");
+        $name = config("nvl-comments.routes.{$group}.name", "nvl.comments.{$group}.");
 
         if (! is_string($name)) {
             throw new InvalidArgumentException("comments.routes.{$group}.name must be a string.");
@@ -57,7 +57,7 @@ final class CommentsRouteConfiguration
      */
     public static function middleware(string $group): array
     {
-        $middleware = config("comments.routes.{$group}.middleware", ['api']);
+        $middleware = config("nvl-comments.routes.{$group}.middleware", ['api']);
 
         if (! is_array($middleware)) {
             throw new InvalidArgumentException(

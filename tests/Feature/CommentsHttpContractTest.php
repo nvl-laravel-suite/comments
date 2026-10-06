@@ -31,9 +31,9 @@ use Nvl\Comments\Tests\Fixtures\TestStringCommentTargetResolver;
 
 beforeEach(function (): void {
     config()->set([
-        'comments.routes.public.enabled' => true,
-        'comments.routes.member.enabled' => true,
-        'comments.routes.management.enabled' => true,
+        'nvl-comments.routes.public.enabled' => true,
+        'nvl-comments.routes.member.enabled' => true,
+        'nvl-comments.routes.management.enabled' => true,
     ]);
 
     require dirname(__DIR__, 2).'/routes/api.php';
@@ -64,7 +64,7 @@ function commentsHttpAssertDenied(TestResponse $response, string $audience): voi
 }
 
 it('exposes authenticated rich mutation and suggestion seams without a public suggestion route', function (): void {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,
@@ -133,7 +133,7 @@ it('exposes authenticated rich mutation and suggestion seams without a public su
 it('authorizes private rich HTTP seams before malformed documents and suggestion input', function (
     string $audience,
 ): void {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,
@@ -232,7 +232,7 @@ it('authorizes private rich HTTP seams before malformed documents and suggestion
 it('retains Action reauthorization after private suggestion preauthorization', function (
     string $audience,
 ): void {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,

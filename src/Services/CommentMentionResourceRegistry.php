@@ -52,7 +52,7 @@ final class CommentMentionResourceRegistry
      */
     public function registerConfigured(): void
     {
-        $configured = config('comments.mentions.resources', []);
+        $configured = config('nvl-comments.mentions.resources', []);
 
         if (! is_array($configured)) {
             throw new InvalidArgumentException(
@@ -126,7 +126,7 @@ final class CommentMentionResourceRegistry
     ): void {
         $this->assertNewAlias($alias);
 
-        if (! is_string($resolver) && config('tenancy.enabled') === true) {
+        if (! is_string($resolver) && config('nvl-tenancy.enabled') === true) {
             throw new InvalidArgumentException(
                 'Enabled tenant mention resources must register a resolver class.',
             );
@@ -341,11 +341,11 @@ final class CommentMentionResourceRegistry
         int $limit,
     ): Collection {
         $maximumQuery = min(160, CommentsConfiguration::positiveInteger(
-            'comments.mentions.maximum_query_length',
+            'nvl-comments.mentions.maximum_query_length',
             160,
         ));
         $maximumLimit = min(20, CommentsConfiguration::positiveInteger(
-            'comments.mentions.maximum_suggestion_limit',
+            'nvl-comments.mentions.maximum_suggestion_limit',
             20,
         ));
 
@@ -541,7 +541,7 @@ final class CommentMentionResourceRegistry
     private function boundedIds(array $ids): array
     {
         $maximum = min(100, CommentsConfiguration::positiveInteger(
-            'comments.mentions.maximum_batch_size',
+            'nvl-comments.mentions.maximum_batch_size',
             100,
         ));
 

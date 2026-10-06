@@ -104,7 +104,7 @@ final class CommentsReconcileCommand extends Command
 
         if ($option === null || $option === '') {
             return CommentsConfiguration::positiveInteger(
-                'comments.reconciliation.chunk_size',
+                'nvl-comments.reconciliation.chunk_size',
                 500,
             );
         }

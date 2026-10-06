@@ -16,7 +16,7 @@ $attachmentRouteName = CommentsRouteConfiguration::name('attachments');
 $attachmentsEnabled = app(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class);
 
 if ($attachmentsEnabled
-    && config('comments.routes.attachments.enabled', true) === true
+    && config('nvl-comments.routes.attachments.enabled', true) === true
     && ! Route::has("{$attachmentRouteName}asset")) {
     Route::prefix(CommentsRouteConfiguration::path('attachments'))
         ->name($attachmentRouteName)
@@ -41,7 +41,7 @@ if ($attachmentsEnabled
         });
 }
 
-if (config('comments.routes.public.enabled', false) === true) {
+if (config('nvl-comments.routes.public.enabled', false) === true) {
     Route::prefix(CommentsRouteConfiguration::path('public'))
         ->name(CommentsRouteConfiguration::name('public'))
         ->middleware([
@@ -91,7 +91,7 @@ if (config('comments.routes.public.enabled', false) === true) {
         });
 }
 
-if (config('comments.routes.member.enabled', false) === true) {
+if (config('nvl-comments.routes.member.enabled', false) === true) {
     Route::prefix(CommentsRouteConfiguration::path('member'))
         ->name(CommentsRouteConfiguration::name('member'))
         ->middleware([
@@ -174,7 +174,7 @@ if (config('comments.routes.member.enabled', false) === true) {
         });
 }
 
-if (config('comments.routes.management.enabled', false) === true) {
+if (config('nvl-comments.routes.management.enabled', false) === true) {
     Route::prefix(CommentsRouteConfiguration::path('management'))
         ->name(CommentsRouteConfiguration::name('management'))
         ->middleware([

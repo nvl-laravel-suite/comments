@@ -15,7 +15,7 @@ release.
 
 Before cutover:
 
-1. Disable `comments.migrations.enabled`.
+1. Disable `nvl-comments.migrations.enabled`.
 2. Register the final Laravel morph map and `CommentActorResolver` before any
    import or write. Preserve existing target/actor aliases indefinitely; a
    fallback class-name change is also an identity change.
@@ -34,7 +34,7 @@ Do not continue while reconciliation reports
 fix the import's raw identity and derived fingerprint together, then rerun the
 read-only audit.
 
-Merge the complete `comments.mutation_lock` group and rebuild cached
+Merge the complete `nvl-comments.mutation_lock` group and rebuild cached
 configuration before serving mutations. Production requires `enabled=true`,
 positive integer lease/wait values, and one Redis or shared database
 `LockProvider` store used by every process. The new `allow_local_store` key
@@ -72,7 +72,7 @@ store. Array, null, and failover stores are rejected.
 ### Route changes
 
 Public, member, and management groups are independent and disabled by default.
-The member group defaults to `api/v1/member/discussions` with
+The member group defaults to `nvl/api/v1/comments/member` with
 `api`, `auth`, and throttling middleware. It does not depend on public routes
 being enabled. Management routes now also default to `api`, `auth`, and
 throttling; strict Doctor rejects enabled public/member/management groups that
@@ -96,16 +96,16 @@ management, mutation, revision, and signed-asset delivery responses are
 private/no-store.
 
 Attachment URLs now use short-lived signed Comments routes containing only the
-association ID. Ensure `comments.routes.attachments` remains enabled whenever
+association ID. Ensure `nvl-comments.routes.attachments` remains enabled whenever
 HTTP attachment mutations are enabled; the mutation fails before writing when
 signed delivery is unavailable. The signed URL is a bearer capability
 authorized in the canonical Comment owner context. Configure
-`comments.attachments.signed_url_lifetime` for the desired capability window.
+`nvl-comments.attachments.signed_url_lifetime` for the desired capability window.
 Public attachment metadata now uses the configured Media fallback locale, and
 its cache lifetime is capped below that signed lifetime.
 
-`comments.attachments.maximum_file_bytes` is now a required positive integer
-and defaults to 10 MiB. When `comments.attachments.enabled` is false, attachment
+`nvl-comments.attachments.maximum_file_bytes` is now a required positive integer
+and defaults to 10 MiB. When `nvl-comments.attachments.enabled` is false, attachment
 routes are omitted and ordinary reads avoid Media. Historical associations still
 require the complete same-connection Media schema until cleanup; strict Doctor
 reports `attachments.disabled_state_ready` when that state is unsafe.
@@ -139,8 +139,8 @@ comment parent/root/actor, reaction type/actor, and report status/comment indexe
 validated by strict Doctor.
 
 The bundled create migrations are immutable and accept only the default
-connection and canonical table names. A custom `comments.connection` or
-`comments.tables.*` layout requires `comments.migrations.enabled=false` and
+connection and canonical table names. A custom `nvl-comments.connection` or
+`nvl-comments.tables.*` layout requires `nvl-comments.migrations.enabled=false` and
 application-owned migrations that retain the same columns, constraints, and
 indexes. Strict Doctor also requires the canonical critical column types,
 explicit string lengths, nullability, and defaults; a name-compatible but
@@ -158,11 +158,9 @@ request input. Derive scope from the canonical target and consumer contracts.
 
 ## Shared owner registry compatibility
 
-Move model identity declarations to `nvl-core.owners` and reference the alias from `comments` capability configuration as described in the [README](README.md#shared-owner-identity). Preserve package contracts, resolvers/handlers, visibility scopes, and mutation authorization. Core does not grant package capabilities. Conflicting aliases or multiple canonical aliases for one model fail before use.
+Declare owner classes in `nvl-core.owners`, for example `'owners' => [Article::class]`, and reference the same model class from each package capability. Laravel's `getMorphClass()` is the stored owner identity: it returns the host-authored morph alias or the FQCN when no map exists. Core declarations and package allowlists do not add or enforce a host morph map and do not grant authorization.
 
-Legacy class inputs remain accepted for one major cycle and are reported through Core diagnostics. Existing Content, Taxonomy, and Metafields mappings keep their established aliases. Legacy SEO, Media, Comments, Templates, Pages, and Translatable class-backed behavior does not automatically create a new morph alias. Existing host morph mappings are respected.
-
-Adding a canonical Core alias changes Laravel's write-time morph type for that model. Before adding it to an existing class-backed deployment, explicitly convert the known package-owned morph columns and reconcile every other affected host relationship. Keep unrelated rows and host-owned morph tables unchanged. This release performs no automatic owner-data conversion and does not ship `nvl:owners:upgrade`. Preserve existing aliases when no conversion is required, rebuild configuration caches, and restart workers after the cutover.
+Legacy alias references remain read compatibility during major 5 and are removed in major 6. A legacy configured alias must agree with the model's current `getMorphClass()`; mismatches are diagnostics and require a host decision. Doctor can inspect declared package owner columns for stored-versus-current identities without rewriting them. If the host introduces or changes its morph map, review and convert only the affected stored columns and reconcile host relationships before cutover. No automatic owner-data conversion or `nvl:owners:upgrade` is provided. Rebuild configuration caches and restart workers after the coordinated change.
 
 ## Shared Doctor integration
 
@@ -172,7 +170,7 @@ The loaded package provider now contributes its existing inspection checks to Co
 
 Media moves from a required dependency to a suggested integration. Install it
 explicitly if the host uses comment attachments. The new default
-`comments.attachments.enabled=null` selects a loaded Media provider; existing
+`nvl-comments.attachments.enabled=null` selects a loaded Media provider; existing
 published `true` values continue to require it, while `false` disables the
 attachment surface. Rebuild config and route caches after changing provider
 discovery or this switch, then run `nvl:comments:doctor --strict --format=json`.
@@ -190,12 +188,18 @@ This is a breaking schema identity change. Back up storage and migration history
 
 ```sh
 php artisan nvl:doctor --strict --format=json
-php artisan nvl:schema:upgrade --package=comments --claim-legacy --dry-run --format=json
-php artisan nvl:schema:upgrade --package=comments --claim-legacy --format=json
+php artisan nvl:schema:upgrade --package=comments --claim-legacy --migration-owner=vendor --dry-run --format=json
+php artisan nvl:schema:upgrade --package=comments --claim-legacy --migration-owner=vendor --format=json
 ```
 
 The command validates released columns and relational keys plus creating migration history, renames owned legacy tables to the effective `tables.*` targets and rewrites exact package migration identities while retaining batches and unrelated host records. It refuses foreign/incomplete shapes and conflicting targets. Explicit old table mappings retain those names; remove them when choosing new defaults. A second run is empty.
 
-Unmodified published files, including changed timestamps, map by verified checksum to the exact vendor migration identity and current package migration implementation. Modified host copies remain host-owned. Disable vendor loading when retaining a published owner; duplicate ownership fails before migration. No migration files or stored morph types are rewritten.
+Declare each published path and canonical identity explicitly in `nvl-core.migrations.published`; retimestamped history also needs an exact `legacy` mapping. Use `--migration-owner=vendor` after manually archiving declared copies outside loaded paths, or `--migration-owner=published` after manually replacing executable copies with current migration code and disabling vendor loading. The plan verifies ownership and preserves batches; checksums do not automatically claim files. Modified host copies remain host-owned. No migration files or stored morph types are rewritten.
 
-DDL transactions are driver dependent and per connection. Inspect dry-run warnings for MySQL/MariaDB or split storage; after a failure, inspect completed steps before resuming. Schema-qualified rename targets require an explicit host schema move first. Re-enable your selected migration owner, migrate remaining package changes and rerun Doctor before resuming writes. See the suite upgrade guide for shared owner/locale inputs, Core option defaults and one-major deprecation rules.
+DDL transactions are driver dependent and per connection. Inspect dry-run warnings for MySQL/MariaDB or split storage; after a failure, inspect completed steps before resuming. Schema-qualified rename targets require an explicit host schema move first. Re-enable your selected migration owner, run `nvl:schema:preflight` with the same selected paths and connection, then migrate remaining package changes and rerun Doctor before resuming writes. See the suite upgrade guide for shared owner/locale inputs, Core option defaults and one-major deprecation rules.
+
+## Major 5 cache and lock identities
+
+Comment mutation locks use `nvl:comments:mutation:` instead of `comments:mutation:`. The selected cache store and tenant partitioning are unchanged; generic host locks are never acquired or removed.
+
+Drain old mutation workers and maintenance processes, then wait for their outstanding lock leases to end before starting the new major across all nodes. Running old and new lock prefixes concurrently would create independent serialization domains. Restart workers after cutover; preserve host-selected stores and keys, and do not flush a shared cache to remove old NVL entries.

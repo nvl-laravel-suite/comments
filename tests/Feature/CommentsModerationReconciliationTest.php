@@ -66,8 +66,8 @@ function runCommentsV1Reconciliation(array $options = []): array
 
 it('keeps deleted metadata indexes absent during reconciliation repair', function (): void {
     config()->set([
-        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
-        'comments.metadata.digest_key' => 'reconcile-deleted-metadata-key',
+        'nvl-comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'nvl-comments.metadata.digest_key' => 'reconcile-deleted-metadata-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
     $target = TestCommentTarget::query()->create(['name' => 'Deleted metadata reconciliation']);
@@ -104,7 +104,7 @@ it('keeps moderation queues actionable target-bound filterable and deleted-aware
     $author = new CommentActorData('member', 'author');
     $create = app(CreateCommentAction::class);
 
-    config()->set('comments.moderation.new_status', CommentStatus::Pending->value);
+    config()->set('nvl-comments.moderation.new_status', CommentStatus::Pending->value);
     $pending = $create->execute(
         $firstTarget,
         new CreateCommentData('Pending review'),
@@ -112,7 +112,7 @@ it('keeps moderation queues actionable target-bound filterable and deleted-aware
     );
 
     $this->travel(1)->minute();
-    config()->set('comments.moderation.new_status', CommentStatus::Spam->value);
+    config()->set('nvl-comments.moderation.new_status', CommentStatus::Spam->value);
     $spam = $create->execute(
         $firstTarget,
         new CreateCommentData('Spam review'),
@@ -120,7 +120,7 @@ it('keeps moderation queues actionable target-bound filterable and deleted-aware
     );
 
     $this->travel(1)->minute();
-    config()->set('comments.moderation.new_status', CommentStatus::Approved->value);
+    config()->set('nvl-comments.moderation.new_status', CommentStatus::Approved->value);
     $clean = $create->execute(
         $firstTarget,
         new CreateCommentData('No moderation work'),
@@ -176,13 +176,13 @@ it('keeps moderation queues actionable target-bound filterable and deleted-aware
     );
 
     $this->travel(1)->minute();
-    config()->set('comments.moderation.new_status', CommentStatus::Pending->value);
+    config()->set('nvl-comments.moderation.new_status', CommentStatus::Pending->value);
     $otherTargetPending = $create->execute(
         $secondTarget,
         new CreateCommentData('Other target pending'),
         $author,
     );
-    config()->set('comments.moderation.new_status', CommentStatus::Approved->value);
+    config()->set('nvl-comments.moderation.new_status', CommentStatus::Approved->value);
     $otherTargetReported = $create->execute(
         $secondTarget,
         new CreateCommentData('Other target report'),
@@ -536,7 +536,7 @@ it('audits without mutation then repairs safe drift once without replaying user 
 });
 
 it('audits and safely rebuilds current rich mention rows and body without changing history', function (): void {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,

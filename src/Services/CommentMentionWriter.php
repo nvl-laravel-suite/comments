@@ -44,7 +44,7 @@ final readonly class CommentMentionWriter
         foreach ($this->documents->references($document) as $reference) {
             $rows[] = [
                 'id' => (string) Str::uuid(),
-                ...($this->config->get('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                ...($this->config->get('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                 'comment_id' => $comment->id,
                 'token_id' => $reference->tokenId,
                 'resource_alias' => $reference->resourceAlias,

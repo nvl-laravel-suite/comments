@@ -52,8 +52,8 @@ final class MediaCommentRelations
     public static function slot(): MediaSlot
     {
         return (new MediaSlot('attachments'))->privateExclusive()
-            ->onlyKeepLatest(CommentsConfiguration::positiveInteger('comments.attachments.maximum_per_comment', 5))
-            ->maxFileSize(CommentsConfiguration::positiveInteger('comments.attachments.maximum_file_bytes', 10 * 1024 * 1024))
+            ->onlyKeepLatest(CommentsConfiguration::positiveInteger('nvl-comments.attachments.maximum_per_comment', 5))
+            ->maxFileSize(CommentsConfiguration::positiveInteger('nvl-comments.attachments.maximum_file_bytes', 10 * 1024 * 1024))
             ->acceptsMimeTypes([...MimeType::images(), ...MimeType::documents()]);
     }
 }

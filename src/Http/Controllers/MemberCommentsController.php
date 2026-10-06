@@ -202,7 +202,7 @@ final class MemberCommentsController extends Controller
                 $request->has('limit')
                     ? $request->integer('limit')
                     : min(20, CommentsConfiguration::positiveInteger(
-                        'comments.mentions.suggestion_limit',
+                        'nvl-comments.mentions.suggestion_limit',
                         10,
                     )),
             )->map(

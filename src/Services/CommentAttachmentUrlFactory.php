@@ -29,7 +29,7 @@ final class CommentAttachmentUrlFactory
     public function assertAvailable(): void
     {
         if (! $this->integrations->enabled('comments.attachments.enabled', MediaServiceProvider::class)
-            || config('comments.routes.attachments.enabled', true) !== true) {
+            || config('nvl-comments.routes.attachments.enabled', true) !== true) {
             throw new CommentAttachmentDeliveryUnavailableException;
         }
 
@@ -74,7 +74,7 @@ final class CommentAttachmentUrlFactory
     ): string {
         $this->assertAvailable();
         $lifetime = CommentsConfiguration::positiveInteger(
-            'comments.attachments.signed_url_lifetime',
+            'nvl-comments.attachments.signed_url_lifetime',
             5,
         );
 

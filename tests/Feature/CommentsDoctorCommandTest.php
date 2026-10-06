@@ -112,7 +112,7 @@ it('reports complete schema and dependency readiness by default', function (): v
 });
 
 it('validates registered mention resources and every hard bound', function (): void {
-    config()->set('comments.mentions.resources', [
+    config()->set('nvl-comments.mentions.resources', [
         'organization' => [
             'model' => TestCommentMentionResource::class,
             'searchable_fields' => ['name', 'registration_number'],
@@ -127,13 +127,13 @@ it('validates registered mention resources and every hard bound', function (): v
     [$readyExitCode, $readyReport] = runCommentsDoctor();
 
     config()->set([
-        'comments.mentions.maximum_per_comment' => 101,
-        'comments.mentions.maximum_resource_types_per_comment' => 21,
-        'comments.mentions.suggestion_limit' => 21,
-        'comments.mentions.maximum_suggestion_limit' => 21,
-        'comments.mentions.maximum_query_length' => 161,
-        'comments.mentions.maximum_batch_size' => 101,
-        'comments.mentions.resources' => [
+        'nvl-comments.mentions.maximum_per_comment' => 101,
+        'nvl-comments.mentions.maximum_resource_types_per_comment' => 21,
+        'nvl-comments.mentions.suggestion_limit' => 21,
+        'nvl-comments.mentions.maximum_suggestion_limit' => 21,
+        'nvl-comments.mentions.maximum_query_length' => 161,
+        'nvl-comments.mentions.maximum_batch_size' => 101,
+        'nvl-comments.mentions.resources' => [
             'organization' => [
                 'model' => TestCommentMentionResource::class,
                 'resolver' => TestCommentMentionUrlResolver::class,
@@ -171,9 +171,9 @@ it('reports resources registered programmatically on the live mention registry',
 
 it('reports legacy metadata as strict incompatible before strict mode is enabled', function (): void {
     config()->set([
-        'comments.metadata.strict' => false,
-        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
-        'comments.metadata.digest_key' => 'doctor-metadata-test-key',
+        'nvl-comments.metadata.strict' => false,
+        'nvl-comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'nvl-comments.metadata.digest_key' => 'doctor-metadata-test-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
     $target = TestCommentTarget::query()->create(['name' => 'Doctor strict compatibility']);
@@ -199,9 +199,9 @@ it('reports legacy metadata as strict incompatible before strict mode is enabled
 
 it('reports revision-only legacy metadata without exposing historical keys or values', function (): void {
     config()->set([
-        'comments.metadata.strict' => false,
-        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
-        'comments.metadata.digest_key' => 'doctor-revision-metadata-test-key',
+        'nvl-comments.metadata.strict' => false,
+        'nvl-comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'nvl-comments.metadata.digest_key' => 'doctor-revision-metadata-test-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
     $target = TestCommentTarget::query()->create(['name' => 'Doctor revision compatibility']);
@@ -241,9 +241,9 @@ it('reports revision-only legacy metadata without exposing historical keys or va
 
 it('accepts valid configured rich-document lows', function (): void {
     config()->set([
-        'comments.rich_text.maximum_bytes' => 1,
-        'comments.rich_text.maximum_blocks' => 1,
-        'comments.rich_text.maximum_nodes' => 1,
+        'nvl-comments.rich_text.maximum_bytes' => 1,
+        'nvl-comments.rich_text.maximum_blocks' => 1,
+        'nvl-comments.rich_text.maximum_nodes' => 1,
     ]);
 
     [$exitCode, $report] = runCommentsDoctor();
@@ -269,15 +269,15 @@ it('rejects invalid rich-document configuration bounds', function (
         ->and($report['rich_text.bounds_ready'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 })->with([
-    'bytes invalid type' => ['comments.rich_text.maximum_bytes', '32768'],
-    'bytes zero' => ['comments.rich_text.maximum_bytes', 0],
-    'bytes above hard cap' => ['comments.rich_text.maximum_bytes', 131_073],
-    'blocks invalid type' => ['comments.rich_text.maximum_blocks', '100'],
-    'blocks zero' => ['comments.rich_text.maximum_blocks', 0],
-    'blocks above hard cap' => ['comments.rich_text.maximum_blocks', 251],
-    'nodes invalid type' => ['comments.rich_text.maximum_nodes', '500'],
-    'nodes zero' => ['comments.rich_text.maximum_nodes', 0],
-    'nodes above hard cap' => ['comments.rich_text.maximum_nodes', 1_001],
+    'bytes invalid type' => ['nvl-comments.rich_text.maximum_bytes', '32768'],
+    'bytes zero' => ['nvl-comments.rich_text.maximum_bytes', 0],
+    'bytes above hard cap' => ['nvl-comments.rich_text.maximum_bytes', 131_073],
+    'blocks invalid type' => ['nvl-comments.rich_text.maximum_blocks', '100'],
+    'blocks zero' => ['nvl-comments.rich_text.maximum_blocks', 0],
+    'blocks above hard cap' => ['nvl-comments.rich_text.maximum_blocks', 251],
+    'nodes invalid type' => ['nvl-comments.rich_text.maximum_nodes', '500'],
+    'nodes zero' => ['nvl-comments.rich_text.maximum_nodes', 0],
+    'nodes above hard cap' => ['nvl-comments.rich_text.maximum_nodes', 1_001],
 ]);
 
 it('registers timestamp-aware migration publishing and warns about duplicate ownership', function (): void {
@@ -289,7 +289,7 @@ it('registers timestamp-aware migration publishing and warns about duplicate own
 
     expect(CommentsServiceProvider::pathsToPublish(
         CommentsServiceProvider::class,
-        'comments-migrations',
+        'nvl-comments-migrations',
     ))->not->toBeEmpty()
         ->and($publishableMigrationPaths)->toContain($migrationPath);
 
@@ -323,7 +323,7 @@ it('fails strict diagnostics when a configured package table lacks required colu
     Schema::create('comments_doctor_broken', function (Blueprint $table): void {
         $table->uuid('id')->primary();
     });
-    config()->set('comments.tables.comments', 'comments_doctor_broken');
+    config()->set('nvl-comments.tables.comments', 'comments_doctor_broken');
 
     [$exitCode, $report] = runCommentsDoctor();
 
@@ -428,7 +428,7 @@ it('fails strict diagnostics when an idempotency constraint is missing', functio
 });
 
 it('fails strict diagnostics for a configured target resolver with a mismatched alias', function (): void {
-    config()->set('comments.targets', [
+    config()->set('nvl-comments.targets', [
         'wrong-alias' => TestCommentTargetResolver::class,
     ]);
 
@@ -449,7 +449,7 @@ it('checks Media attachment tables only while attachments are enabled', function
         ->and($enabledReport['attachments.tables_ready'])->toBeFalse()
         ->and($enabledReport['healthy'])->toBeFalse();
 
-    config()->set('comments.attachments.enabled', false);
+    config()->set('nvl-comments.attachments.enabled', false);
     [$disabledExitCode, $disabledReport] = runCommentsDoctor();
 
     expect($disabledExitCode)->toBe(0)
@@ -461,7 +461,7 @@ it('checks Media attachment tables only while attachments are enabled', function
 });
 
 it('rejects stringly typed security switches and malformed middleware', function (): void {
-    config()->set('comments.attachments.enabled', 'false');
+    config()->set('nvl-comments.attachments.enabled', 'false');
 
     [$stringExitCode, $stringReport] = runCommentsDoctor();
 
@@ -470,8 +470,8 @@ it('rejects stringly typed security switches and malformed middleware', function
         ->and($stringReport['attachments'])->toBeFalse()
         ->and($stringReport['healthy'])->toBeFalse();
 
-    config()->set('comments.attachments.enabled', true);
-    config()->set('comments.routes.public.middleware', ['api', null]);
+    config()->set('nvl-comments.attachments.enabled', true);
+    config()->set('nvl-comments.routes.public.middleware', ['api', null]);
 
     [$middlewareExitCode, $middlewareReport] = runCommentsDoctor();
 
@@ -481,7 +481,7 @@ it('rejects stringly typed security switches and malformed middleware', function
 });
 
 it('checks route and policy readiness only for enabled surfaces', function (): void {
-    config()->set('comments.routes.public.enabled', true);
+    config()->set('nvl-comments.routes.public.enabled', true);
     require dirname(__DIR__, 2).'/routes/api.php';
     Route::getRoutes()->refreshNameLookups();
 
@@ -493,8 +493,8 @@ it('checks route and policy readiness only for enabled surfaces', function (): v
         ->and($publicReport['policy.public_ready'])->toBeTrue()
         ->and($publicReport['healthy'])->toBeTrue();
 
-    config()->set('comments.routes.public.enabled', false);
-    config()->set('comments.routes.management.enabled', true);
+    config()->set('nvl-comments.routes.public.enabled', false);
+    config()->set('nvl-comments.routes.management.enabled', true);
     require dirname(__DIR__, 2).'/routes/api.php';
     Route::getRoutes()->refreshNameLookups();
 
@@ -552,7 +552,7 @@ it('checks route and policy readiness only for enabled surfaces', function (): v
         ->and($customPolicyReport['query_scope.management_ready'])->toBeTrue()
         ->and($customPolicyReport['healthy'])->toBeTrue();
 
-    config()->set('comments.routes.management.middleware', ['api']);
+    config()->set('nvl-comments.routes.management.middleware', ['api']);
 
     [$unprotectedExitCode, $unprotectedReport] = runCommentsDoctor();
 
@@ -582,54 +582,54 @@ it('rejects malformed mutation lock values without coercion', function (
         ->and($report['healthy'])->toBeFalse();
 })->with([
     'group' => [
-        'comments.mutation_lock',
+        'nvl-comments.mutation_lock',
         'enabled',
-        'comments.mutation_lock must be an array.',
+        'nvl-comments.mutation_lock must be an array.',
     ],
     'missing local-store declaration' => [
-        'comments.mutation_lock',
+        'nvl-comments.mutation_lock',
         [
             'enabled' => true,
             'store' => null,
             'seconds' => 300,
             'wait_seconds' => 30,
         ],
-        'comments.mutation_lock.allow_local_store must be a boolean.',
+        'nvl-comments.mutation_lock.allow_local_store must be a boolean.',
     ],
     'enabled string' => [
-        'comments.mutation_lock.enabled',
+        'nvl-comments.mutation_lock.enabled',
         'false',
-        'comments.mutation_lock.enabled must be a boolean.',
+        'nvl-comments.mutation_lock.enabled must be a boolean.',
     ],
     'store array' => [
-        'comments.mutation_lock.store',
+        'nvl-comments.mutation_lock.store',
         ['file'],
-        'comments.mutation_lock.store must be null or a non-blank cache store name.',
+        'nvl-comments.mutation_lock.store must be null or a non-blank cache store name.',
     ],
     'blank store' => [
-        'comments.mutation_lock.store',
+        'nvl-comments.mutation_lock.store',
         '   ',
-        'comments.mutation_lock.store must be null or a non-blank cache store name.',
+        'nvl-comments.mutation_lock.store must be null or a non-blank cache store name.',
     ],
     'lease string' => [
-        'comments.mutation_lock.seconds',
+        'nvl-comments.mutation_lock.seconds',
         '300',
-        'comments.mutation_lock.seconds must be a positive integer.',
+        'nvl-comments.mutation_lock.seconds must be a positive integer.',
     ],
     'zero lease' => [
-        'comments.mutation_lock.seconds',
+        'nvl-comments.mutation_lock.seconds',
         0,
-        'comments.mutation_lock.seconds must be a positive integer.',
+        'nvl-comments.mutation_lock.seconds must be a positive integer.',
     ],
     'zero wait' => [
-        'comments.mutation_lock.wait_seconds',
+        'nvl-comments.mutation_lock.wait_seconds',
         0,
-        'comments.mutation_lock.wait_seconds must be a positive integer.',
+        'nvl-comments.mutation_lock.wait_seconds must be a positive integer.',
     ],
     'local opt-in string' => [
-        'comments.mutation_lock.allow_local_store',
+        'nvl-comments.mutation_lock.allow_local_store',
         'true',
-        'comments.mutation_lock.allow_local_store must be a boolean.',
+        'nvl-comments.mutation_lock.allow_local_store must be a boolean.',
     ],
 ]);
 
@@ -640,8 +640,8 @@ it('rejects unsafe and non-locking mutation stores descriptively', function (
     string $message,
 ): void {
     config()->set("cache.stores.{$storeName}", ['driver' => $driver]);
-    config()->set('comments.mutation_lock.store', $storeName);
-    config()->set('comments.mutation_lock.allow_local_store', $allowLocalStore);
+    config()->set('nvl-comments.mutation_lock.store', $storeName);
+    config()->set('nvl-comments.mutation_lock.allow_local_store', $allowLocalStore);
 
     expect(fn (): bool => app(CommentMutationLock::class)->execute(
         'comment-id',
@@ -688,7 +688,7 @@ it('rejects unsafe and non-locking mutation stores descriptively', function (
 ]);
 
 it('rejects undefined mutation stores with the configured name', function (): void {
-    config()->set('comments.mutation_lock.store', 'missing_comments_store');
+    config()->set('nvl-comments.mutation_lock.store', 'missing_comments_store');
 
     expect(fn (): bool => app(CommentMutationLock::class)->execute(
         'comment-id',
@@ -700,7 +700,7 @@ it('rejects undefined mutation stores with the configured name', function (): vo
 });
 
 it('validates the application default when no dedicated mutation store is configured', function (): void {
-    config()->set('comments.mutation_lock.store', null);
+    config()->set('nvl-comments.mutation_lock.store', null);
     config()->set('cache.default', 'array');
 
     expect(fn (): bool => app(CommentMutationLock::class)->execute(
@@ -723,17 +723,17 @@ it('validates the application default when no dedicated mutation store is config
 });
 
 it('permits file locks only by explicit single-host opt-in and exact false disables locking', function (): void {
-    config()->set('comments.mutation_lock.store', 'file');
-    config()->set('comments.mutation_lock.allow_local_store', true);
+    config()->set('nvl-comments.mutation_lock.store', 'file');
+    config()->set('nvl-comments.mutation_lock.allow_local_store', true);
 
     $locked = app(CommentMutationLock::class)->execute(
         'comment-id',
         static fn (): string => 'locked',
     );
 
-    config()->set('comments.mutation_lock.enabled', false);
-    config()->set('comments.mutation_lock.store', 'array');
-    config()->set('comments.mutation_lock.allow_local_store', false);
+    config()->set('nvl-comments.mutation_lock.enabled', false);
+    config()->set('nvl-comments.mutation_lock.store', 'array');
+    config()->set('nvl-comments.mutation_lock.allow_local_store', false);
 
     $disabled = app(CommentMutationLock::class)->execute(
         'comment-id',
@@ -745,11 +745,11 @@ it('permits file locks only by explicit single-host opt-in and exact false disab
 });
 
 it('requires mutation locking in strict Doctor and accepts shared database and Redis providers', function (): void {
-    config()->set('comments.mutation_lock.enabled', false);
+    config()->set('nvl-comments.mutation_lock.enabled', false);
 
     [$disabledExitCode, $disabledReport] = runCommentsDoctor();
 
-    config()->set('comments.mutation_lock.enabled', true);
+    config()->set('nvl-comments.mutation_lock.enabled', true);
     config()->set('cache.stores.comments_database', [
         'driver' => 'database',
         'connection' => config('database.default'),
@@ -757,7 +757,7 @@ it('requires mutation locking in strict Doctor and accepts shared database and R
         'lock_connection' => config('database.default'),
         'lock_table' => 'cache_locks',
     ]);
-    config()->set('comments.mutation_lock.store', 'comments_database');
+    config()->set('nvl-comments.mutation_lock.store', 'comments_database');
 
     [, $databaseReport] = runCommentsDoctor();
     $databaseProvider = app(CommentMutationLockStore::class)->provider(
@@ -770,7 +770,7 @@ it('requires mutation locking in strict Doctor and accepts shared database and R
         'connection' => 'cache',
         'lock_connection' => 'default',
     ]);
-    config()->set('comments.mutation_lock.store', 'comments_redis');
+    config()->set('nvl-comments.mutation_lock.store', 'comments_redis');
 
     [, $redisReport] = runCommentsDoctor();
     $redisProvider = app(CommentMutationLockStore::class)->provider(

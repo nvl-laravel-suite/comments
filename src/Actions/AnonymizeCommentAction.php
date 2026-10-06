@@ -305,7 +305,7 @@ final readonly class AnonymizeCommentAction
 
                         return $comment;
                     }, attempts: CommentsConfiguration::positiveInteger(
-                        'comments.transactions.attempts',
+                        'nvl-comments.transactions.attempts',
                         3,
                     )),
                 );

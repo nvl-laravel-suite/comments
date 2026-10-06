@@ -809,9 +809,9 @@ it('replays an exact idempotency key before applying tightened content policy', 
     Event::fake([CommentChanged::class]);
     $created = $create->execute($target, $data, $actor);
     config()->set([
-        'comments.content.maximum_bytes' => 1,
-        'comments.content.allowed_formats' => [CommentFormat::Markdown->value],
-        'comments.content.maximum_tags' => 1,
+        'nvl-comments.content.maximum_bytes' => 1,
+        'nvl-comments.content.allowed_formats' => [CommentFormat::Markdown->value],
+        'nvl-comments.content.maximum_tags' => 1,
     ]);
 
     $replayed = $create->execute($target, $data, $actor);
@@ -938,9 +938,30 @@ it('does not dispatch rolled back events and allows the idempotent request to re
     Event::assertDispatchedTimes(CommentChanged::class, 1);
 });
 
+it('preserves foreign mutation locks while acquiring an owned comment lock', function (): void {
+    $commentId = 'namespaced-comment-lock-'.Str::uuid()->toString();
+    config()->set('nvl-comments.mutation_lock.wait_seconds', 1);
+    $foreignKey = 'comments:mutation:'.hash('sha256', $commentId);
+    $ownedKey = 'nvl:'.$foreignKey;
+    $foreignLock = Cache::store('file')->lock($foreignKey, 10);
+    expect($foreignLock->get())->toBeTrue();
+
+    try {
+        $result = app(CommentMutationLock::class)->execute($commentId, static function () use ($foreignKey, $ownedKey): string {
+            expect(Cache::store('file')->lock($foreignKey, 10)->get())->toBeFalse()
+                ->and(Cache::store('file')->lock($ownedKey, 10)->get())->toBeFalse();
+
+            return 'processed';
+        });
+        expect($result)->toBe('processed');
+    } finally {
+        $foreignLock->release();
+    }
+});
+
 it('retains mutation locks across savepoint rollback and releases them after root rollback', function (): void {
     $commentId = 'rollback-lock-compatibility-'.Str::uuid()->toString();
-    $lockKey = 'comments:mutation:'.hash('sha256', $commentId);
+    $lockKey = 'nvl:comments:mutation:'.hash('sha256', $commentId);
     $contender = Cache::store('file')->lock($lockKey, 5, 'independent-contender');
     $connectionName = 'comments_rollback_compatibility';
     config()->set("database.connections.{$connectionName}", [
@@ -949,7 +970,7 @@ it('retains mutation locks across savepoint rollback and releases them after roo
         'prefix' => '',
         'foreign_key_constraints' => true,
     ]);
-    config()->set('comments.connection', $connectionName);
+    config()->set('nvl-comments.connection', $connectionName);
     $connection = DB::connection($connectionName);
 
     try {
@@ -1161,8 +1182,8 @@ it('deletes and restores a reply with exact parent counter and revision semantic
 
 it('rebuilds queryable metadata when an ordinary soft deletion is restored', function (): void {
     config()->set([
-        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
-        'comments.metadata.digest_key' => 'restore-metadata-test-key',
+        'nvl-comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'nvl-comments.metadata.digest_key' => 'restore-metadata-test-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
     $target = TestCommentTarget::query()->create(['name' => 'Restore metadata']);
@@ -1519,7 +1540,7 @@ it('scrubs only the erased author from deletion and restoration audit identities
     bool $restore,
     bool $authorOwnsAudit,
 ): void {
-    config()->set('comments.attachments.enabled', false);
+    config()->set('nvl-comments.attachments.enabled', false);
     $target = TestCommentTarget::query()->create(['name' => 'Anonymization history']);
     $author = new CommentActorData('member', 'erased-author');
     $system = CommentActorData::system();
@@ -1581,7 +1602,7 @@ it('scrubs only the erased author from deletion and restoration audit identities
 ]);
 
 it('honors the shared mutation lock when deleting the latest comment', function (): void {
-    config()->set('comments.mutation_lock.wait_seconds', 1);
+    config()->set('nvl-comments.mutation_lock.wait_seconds', 1);
     $target = TestCommentTarget::query()->create(['name' => 'Latest mutation lock']);
     $actor = new CommentActorData('member', 'author');
     $comment = app(CreateCommentAction::class)->execute(
@@ -1591,7 +1612,7 @@ it('honors the shared mutation lock when deleting the latest comment', function 
         CommentAudience::Member,
     );
     $lock = Cache::store('file')->lock(
-        'comments:mutation:'.hash('sha256', $comment->id),
+        'nvl:comments:mutation:'.hash('sha256', $comment->id),
         10,
         'independent-lifecycle-writer',
     );
@@ -1613,7 +1634,7 @@ it('honors the shared mutation lock when deleting the latest comment', function 
 });
 
 it('does not reintroduce a deletion identity during authorized self anonymization', function (): void {
-    config()->set('comments.attachments.enabled', false);
+    config()->set('nvl-comments.attachments.enabled', false);
     $target = TestCommentTarget::query()->create(['name' => 'Self anonymization']);
     $author = new CommentActorData('member', 'erased-author');
     $comment = app(CreateCommentAction::class)->execute(

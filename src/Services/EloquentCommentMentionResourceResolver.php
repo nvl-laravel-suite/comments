@@ -126,7 +126,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     private function tenantQuery(Model $model, CommentMentionContext $context): Builder
     {
         $query = $model->newQuery();
-        if ($this->config?->get('tenancy.enabled') !== true) {
+        if ($this->config?->get('nvl-tenancy.enabled') !== true) {
             return $query;
         }
         $tenant = $this->tenantContext?->requireTenant()

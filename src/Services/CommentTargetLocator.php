@@ -35,7 +35,7 @@ final readonly class CommentTargetLocator
         $lookupKey = CommentTargetIdentifier::lookupKey($prototype, $target->getKey());
 
         $query = $prototype->newQuery();
-        if ($this->config->get('tenancy.enabled') === true) {
+        if ($this->config->get('nvl-tenancy.enabled') === true) {
             $query = $this->boundary->query($query, $this->resources->forModel($prototype)->key);
         }
 
@@ -76,7 +76,7 @@ final readonly class CommentTargetLocator
         }
 
         $query = $prototype->newQuery();
-        if ($this->config->get('tenancy.enabled') === true) {
+        if ($this->config->get('nvl-tenancy.enabled') === true) {
             $query = $this->boundary->query($query, $this->resources->forModel($prototype)->key);
         }
         $target = $query->find($lookupKey);

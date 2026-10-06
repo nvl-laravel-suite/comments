@@ -76,8 +76,8 @@ function commentsConcurrencyPrepareConnection(): string
         'database.connections.comments_concurrency_target',
         $connectionConfig,
     );
-    config()->set('comments.mutation_lock.enabled', true);
-    config()->set('media.mutation_lock.enabled', true);
+    config()->set('nvl-comments.mutation_lock.enabled', true);
+    config()->set('nvl-media.mutation_lock.enabled', true);
     DB::purge('comments_concurrency_target');
 
     return $connectionName;
@@ -847,7 +847,7 @@ it('counts distinct concurrent reporters exactly once each', function (): void {
 
 it('allows exactly one concurrent rich update for an expected revision', function (): void {
     $connectionName = commentsConcurrencyPrepareConnection();
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,

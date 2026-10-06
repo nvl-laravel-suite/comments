@@ -49,7 +49,7 @@ final readonly class ListCommentsAction
                 (string) $identifier,
             );
         $maximum = $this->maximumPerPage($filterSet);
-        $perPage ??= CommentsConfiguration::positiveInteger('comments.pagination.default', 25);
+        $perPage ??= CommentsConfiguration::positiveInteger('nvl-comments.pagination.default', 25);
         $query = $this->reads->query($target, $actor, $audience);
         $this->filters->apply($query, $filterSet, Comment::filterSchema());
 
@@ -61,7 +61,7 @@ final readonly class ListCommentsAction
      */
     private function maximumPerPage(FilterSet $filterSet): int
     {
-        $maximum = CommentsConfiguration::positiveInteger('comments.pagination.maximum', 100);
+        $maximum = CommentsConfiguration::positiveInteger('nvl-comments.pagination.maximum', 100);
 
         foreach ($filterSet->filters as $filter) {
             if ($filter->alias === 'root'
@@ -70,7 +70,7 @@ final readonly class ListCommentsAction
                 return min(
                     $maximum,
                     CommentsConfiguration::positiveInteger(
-                        'comments.threading.maximum_replies_per_page',
+                        'nvl-comments.threading.maximum_replies_per_page',
                         100,
                     ),
                 );

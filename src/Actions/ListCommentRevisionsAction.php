@@ -58,11 +58,11 @@ final readonly class ListCommentRevisionsAction
             asNotFound: $audience !== CommentAudience::Management,
         );
         $maximum = CommentsConfiguration::positiveInteger(
-            'comments.pagination.maximum',
+            'nvl-comments.pagination.maximum',
             100,
         );
         $perPage ??= CommentsConfiguration::positiveInteger(
-            'comments.pagination.default',
+            'nvl-comments.pagination.default',
             25,
         );
 

@@ -82,9 +82,9 @@ function commentsV1RegisterRoutes(
     bool $management = false,
 ): void {
     config()->set([
-        'comments.routes.public.enabled' => $public,
-        'comments.routes.member.enabled' => $member,
-        'comments.routes.management.enabled' => $management,
+        'nvl-comments.routes.public.enabled' => $public,
+        'nvl-comments.routes.member.enabled' => $member,
+        'nvl-comments.routes.management.enabled' => $management,
     ]);
 
     require dirname(__DIR__, 2).'/routes/api.php';
@@ -233,8 +233,8 @@ it('finds the latest target comment through bounded selectors and audience proje
 
 it('returns only audience-registered metadata through HTTP projections', function (): void {
     config()->set([
-        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
-        'comments.metadata.digest_key' => 'comments-api-metadata-key',
+        'nvl-comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'nvl-comments.metadata.digest_key' => 'comments-api-metadata-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
     commentsV1RegisterRoutes(public: true, member: true);
@@ -315,7 +315,7 @@ it('validates latest-comment tags and denies management before querying comments
             'workflow.event' => 1.5,
         ]))->toThrow(InvalidArgumentException::class, 'scalar registered aliases');
 
-    config()->set('comments.content.maximum_tags', 50);
+    config()->set('nvl-comments.content.maximum_tags', 50);
     $tooManyDistinctTags = array_map(
         static fn (int $index): string => "tag-{$index}",
         range(1, 21),
@@ -397,7 +397,7 @@ it('keeps every route group disabled by default and enables the complete member 
         ->and(Route::has('nvl.comments.public.mentions.suggestions'))->toBeFalse()
         ->and(Route::has('nvl.comments.management.index'))->toBeFalse()
         ->and(Route::getRoutes()->getByName('nvl.comments.member.index')?->uri())
-        ->toBe('api/v1/member/discussions/targets/{target}/{targetId}')
+        ->toBe('nvl/api/v1/comments/member/targets/{target}/{targetId}')
         ->and(Route::getRoutes()->getByName('nvl.comments.member.index')?->gatherMiddleware())
         ->toContain('auth', 'throttle:60,1');
 });
@@ -541,9 +541,9 @@ it('applies the complete actor status visibility read matrix before caller queri
 
 it('covers every default ability across actor status visibility and audience roles', function (): void {
     config()->set([
-        'comments.anonymous.enabled' => true,
-        'comments.moderation.allow_author_delete' => true,
-        'comments.moderation.allow_author_restore' => true,
+        'nvl-comments.anonymous.enabled' => true,
+        'nvl-comments.moderation.allow_author_delete' => true,
+        'nvl-comments.moderation.allow_author_restore' => true,
     ]);
     $policy = app(ConfiguredCommentAuthorization::class);
     $actors = [
@@ -898,7 +898,7 @@ it('requires identity-view permission independently from moderation permission',
 
 it('returns every configured reaction in deterministic order with member viewer state only', function (): void {
     commentsV1RegisterRoutes(public: true, member: true);
-    config()->set('comments.reactions.allowed', ['helpful', 'like', 'love']);
+    config()->set('nvl-comments.reactions.allowed', ['helpful', 'like', 'love']);
 
     $target = TestCommentTarget::query()->create(['name' => 'Reaction article']);
     $viewer = commentsV1Member('reaction-viewer');
@@ -1663,7 +1663,7 @@ it('exposes only safe attachment fields and detaches an association idempotently
         ->assertJsonMissingPath('data.0.uploadedBy')
         ->assertJsonMissingPath('data.0.uploadedByType');
     $attachment = $response->json('data.0');
-    config()->set('comments.attachments.allow_public_media', true);
+    config()->set('nvl-comments.attachments.allow_public_media', true);
     $publicMedia = Media::factory()->create([
         'filename' => 'public-handbook.pdf',
         'extension' => 'pdf',
@@ -1840,7 +1840,7 @@ it('does not commit an attachment when media delivery is not authorized', functi
 });
 
 it('does not commit an attachment when signed delivery routes are unavailable', function (): void {
-    config()->set('comments.routes.attachments.enabled', false);
+    config()->set('nvl-comments.routes.attachments.enabled', false);
     commentsV1RegisterRoutes(member: true);
 
     $target = TestCommentTarget::query()->create(['name' => 'Missing delivery route']);
@@ -1880,9 +1880,9 @@ it('does not commit an attachment when signed delivery routes are unavailable', 
 it('keeps public attachment metadata deterministic across request locales', function (): void {
     commentsV1RegisterRoutes(public: true, member: true);
     config()->set([
-        'comments.attachments.allow_public_media' => true,
-        'comments.attachments.signed_url_lifetime' => 1,
-        'comments.cache.public_max_age' => 600,
+        'nvl-comments.attachments.allow_public_media' => true,
+        'nvl-comments.attachments.signed_url_lifetime' => 1,
+        'nvl-comments.cache.public_max_age' => 600,
     ]);
 
     $target = TestCommentTarget::query()->create(['name' => 'Localized attachment']);
@@ -2011,7 +2011,7 @@ it('delivers a signed attachment authorized in the owning comment context', func
 
 it('keeps populated public member and management projection queries constant from one to twenty five comments', function (): void {
     app(TenantInstallationState::class)->assertUsable('comments.comments');
-    config()->set('comments.attachments.allow_public_media', true);
+    config()->set('nvl-comments.attachments.allow_public_media', true);
 
     $singleTarget = TestCommentTarget::query()->create(['name' => 'Single projection']);
     $batchTarget = TestCommentTarget::query()->create(['name' => 'Batch projection']);
@@ -2278,7 +2278,7 @@ it('derives management reply counts through the trusted operation scope', functi
 });
 
 it('authorizes latest target actions against persisted target attributes', function (bool $delete): void {
-    config()->set('comments.attachments.enabled', false);
+    config()->set('nvl-comments.attachments.enabled', false);
     $target = TestCommentTarget::query()->create(['name' => 'Private target']);
     $comment = app(CreateCommentAction::class)->execute(
         $target,
@@ -2332,7 +2332,7 @@ it('authorizes latest target actions against persisted target attributes', funct
 ]);
 
 it('honors the operation specific scope when deleting the latest comment', function (): void {
-    config()->set('comments.attachments.enabled', false);
+    config()->set('nvl-comments.attachments.enabled', false);
     $target = TestCommentTarget::query()->create(['name' => 'Target']);
     $actor = new CommentActorData('member', 'author');
     $comment = app(CreateCommentAction::class)->execute(

@@ -11,11 +11,11 @@ See the [installation and publishing guide](https://github.com/nvl-laravel-suite
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/comments:^2.0` |
+| Installed through | `composer require nvl/comments:^5.0` |
 | Module identifier | `nvl/comments` |
 | PHP namespace | `Nvl\Comments` |
 | Service provider | `Nvl\Comments\Providers\CommentsServiceProvider` |
-| Configuration | `config/comments.php` |
+| Configuration | `config/nvl-comments.php` |
 
 `nvl/comments` is a production-oriented, headless comments domain for Laravel
 12–13. It provides polymorphic discussion threads, anonymous and authenticated
@@ -57,7 +57,7 @@ when the host needs attachment support.
 ## Install
 
 ```bash
-composer require nvl/comments:^2.0
+composer require nvl/comments:^5.0
 php artisan migrate
 ```
 
@@ -66,17 +66,17 @@ Laravel auto-discovers
 consumer needs to own:
 
 ```bash
-php artisan vendor:publish --tag=comments-config
-php artisan vendor:publish --tag=comments-migrations
-php artisan vendor:publish --tag=comments-skills
+php artisan vendor:publish --tag=nvl-comments-config
+php artisan vendor:publish --tag=nvl-comments-migrations
+php artisan vendor:publish --tag=nvl-comments-skills
 ```
 
 Choose exactly one migration owner:
 
-1. **Automatic vendor loading (default):** leave `comments.migrations.enabled=true`, do not publish `comments-migrations`, and run `php artisan migrate`.
-2. **Host-owned published migrations:** publish `comments-migrations`, set `comments.migrations.enabled=false` before migrating, and maintain the published files as application migrations.
+1. **Automatic vendor loading (default):** leave `nvl-comments.migrations.enabled=true`, do not publish `nvl-comments-migrations`, and run `php artisan migrate`.
+2. **Host-owned published migrations:** publish `nvl-comments-migrations`, set `nvl-comments.migrations.enabled=false` before migrating, and maintain the published files as application migrations.
 
-Never run both sources. Laravel retimestamps files published through the migration tag. `php artisan nvl:comments:doctor` reports a warning when automatic loading remains enabled and `database/migrations` contains a timestamp-independent name matching a package migration; `--strict` promotes that warning to failure. Bundled migrations use the effective Comments/Core connection and logical `comments.tables` overrides. Existing package tables require the verified schema upgrade before vendor migration loading is enabled.
+Never run both sources. Laravel retimestamps files published through the migration tag. `php artisan nvl:comments:doctor` reports a warning when automatic loading remains enabled and `database/migrations` contains a timestamp-independent name matching a package migration; `--strict` promotes that warning to failure. Bundled migrations use the effective Comments/Core connection and logical `nvl-comments.tables` overrides. Existing package tables require the verified schema upgrade before vendor migration loading is enabled.
 
 ## Persistence
 
@@ -236,7 +236,7 @@ resource aliases, and opaque IDs only; labels are resolved and stored by the
 server. HTML, URLs, client labels, arbitrary fields, and nested children are
 rejected.
 
-Rich support is disabled by default through `comments.mentions.enabled` until
+Rich support is disabled by default through `nvl-comments.mentions.enabled` until
 the application registers resources. Declarative Eloquent resources are a
 convenience for non-sensitive allowlisted fields; custom resolvers retain
 ownership of sensitive domain authorization:
@@ -330,7 +330,7 @@ HTTP callers may send an `Idempotency-Key` UUID; direct callers use
   an idempotency record.
 
 The digest defaults to `app.key`. Set
-`COMMENTS_IDEMPOTENCY_DIGEST_KEY` before first use when comment idempotency keys
+`NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY` before first use when comment idempotency keys
 need an independently managed secret; changing it later invalidates equality
 checks for existing keys.
 
@@ -409,25 +409,25 @@ Public, member, and management groups are configured and enabled independently:
 'routes' => [
     'public' => [
         'enabled' => true,
-        'prefix' => 'api/v1/discussions',
+        'prefix' => 'nvl/api/v1/comments/public',
         'name' => 'nvl.comments.public.',
         'middleware' => ['api', 'throttle:60,1'],
     ],
     'member' => [
         'enabled' => true,
-        'prefix' => 'api/v1/member/discussions',
+        'prefix' => 'nvl/api/v1/comments/member',
         'name' => 'nvl.comments.member.',
         'middleware' => ['api', 'auth', 'throttle:60,1'],
     ],
     'management' => [
         'enabled' => true,
-        'prefix' => 'api/v1/comments',
+        'prefix' => 'nvl/api/v1/comments',
         'name' => 'nvl.comments.management.',
         'middleware' => ['api', 'auth', 'throttle:60,1'],
     ],
     'attachments' => [
         'enabled' => true,
-        'prefix' => 'api/v1/comment-attachments',
+        'prefix' => 'nvl/api/v1/comments/attachments',
         'name' => 'nvl.comments.attachments.',
         'middleware' => ['api', 'throttle:120,1'],
     ],
@@ -436,7 +436,7 @@ Public, member, and management groups are configured and enabled independently:
 
 The public, member, and management discussion groups are disabled by default.
 Opaque signed attachment delivery is enabled while
-`comments.attachments.enabled` is enabled, so independently enabled member or
+`nvl-comments.attachments.enabled` is enabled, so independently enabled member or
 public APIs can deliver their authorized attachment URLs.
 
 ### Public and member routes
@@ -468,7 +468,7 @@ Member routes additionally provide:
 - `POST /comments/{comment}/revisions/{revision}/restore`
 
 The attachment list/create/detach entries in these groups, and the equivalent
-management entries below, are omitted when `comments.attachments.enabled` is
+management entries below, are omitted when `nvl-comments.attachments.enabled` is
 not exactly `true`.
 
 Public GET responses, including public attachment lists, are evaluated as an
@@ -517,7 +517,7 @@ Stale mutations raise `StaleCommentException`.
 - Deleting soft-deletes the comment, records the responsible actor, increments
   the revision, and decrements the active direct-parent count once.
 - Restoring locks the trashed row, rejects active/anonymized rows and deleted or
-  anonymized parents, restores to `comments.moderation.restored_status`
+  anonymized parents, restores to `nvl-comments.moderation.restored_status`
   (`pending` by default), increments the revision, and increments the parent
   count once.
 - Revision history is separately paginated and never embedded in ordinary
@@ -573,12 +573,12 @@ consumer policy that deliberately grants the required `Associate`, `View`,
 do not grant blanket access to unrelated private Media.
 
 The package enforces MIME/size/count limits, rejects public Media by default,
-and never changes Media visibility. `comments.attachments.maximum_file_bytes`
+and never changes Media visibility. `nvl-comments.attachments.maximum_file_bytes`
 defaults to 10 MiB and is enforced at the Action boundary as well as by the
 Media slot. Comments, Media, and Media associations must share one database
 connection for atomic attachment writes.
 
-When `comments.attachments.enabled` is exactly `false`, attachment HTTP routes
+When `nvl-comments.attachments.enabled` is exactly `false`, attachment HTTP routes
 are not registered and ordinary comment reads, projections, reconciliation,
 and history-free anonymization do not require Media tables. If historical
 comment associations still exist, keep the complete same-connection Media
@@ -595,7 +595,7 @@ associations are idempotent successes.
 Asset and thumbnail URLs are short-lived, association-scoped signed routes.
 Their path/query contains the association ID only—never the Media UUID,
 uploader, disk path, or conversion label. Configure their lifetime with
-`comments.attachments.signed_url_lifetime`. The URL is a bearer capability
+`nvl-comments.attachments.signed_url_lifetime`. The URL is a bearer capability
 authorized against the canonical Comment owner when issued; delivery still
 requires a valid signature and a live attachment association. Keep the
 attachment delivery routes enabled whenever an HTTP attachment mutation route
@@ -656,7 +656,7 @@ and identifier resolution. Raw columns and unsupported operators are rejected
 by `nvl/filterable`.
 
 Pagination defaults to 25 and is capped at 100. Root-filtered replies are also
-bounded by `comments.threading.maximum_replies_per_page`. Without a caller
+bounded by `nvl-comments.threading.maximum_replies_per_page`. Without a caller
 sort, threads are pin-first then newest-first with UUID as the deterministic
 tie-breaker. An explicit allowlisted caller sort replaces that default pin
 priority and still receives the UUID tie-breaker.
@@ -666,14 +666,14 @@ priority and still receives the UUID tie-breaker.
 Existing JSON metadata remains internal and backward compatible by default.
 Applications opt individual scalar fields into validation, equality selectors,
 and audience-safe projections by implementing `CommentMetadataSchema` and adding
-the class to `comments.metadata.schemas`. A schema owns one stable snake/dot
+the class to `nvl-comments.metadata.schemas`. A schema owns one stable snake/dot
 namespace and a list of `CommentMetadataField` definitions. Fields have a public
 snake-case alias, a unique top-level JSON storage key, one of `string`,
 `integer`, `boolean`, or `uuid`, explicit nullability/mutability/queryability,
 and an explicit `CommentAudience` visibility list. Management sees only fields
 that declare `CommentAudience::Management`.
 
-Compatibility mode (`comments.metadata.strict=false`) validates every registered
+Compatibility mode (`nvl-comments.metadata.strict=false`) validates every registered
 field while retaining unknown legacy keys internally. Strict mode rejects an
 unknown key on mutation and should be enabled only after Doctor reports
 `metadata.strict_compatible=true`. Metadata has independent encoded-byte and
@@ -681,7 +681,7 @@ registered-field limits; it no longer shares the comment body byte limit.
 
 Queryable values are copied to `comment_metadata_values` as a domain-separated
 keyed hash of their type and normalized scalar. The index contains no plaintext
-value. Set `COMMENTS_METADATA_DIGEST_KEY`; otherwise Comments falls back to its
+value. Set `NVL_COMMENTS_METADATA_DIGEST_KEY`; otherwise Comments falls back to its
 idempotency digest key and then `app.key`. Rotating that key invalidates lookup
 hashes, so run `nvl:comments:reconcile --repair` to rebuild the index before
 depending on metadata selectors.
@@ -898,20 +898,20 @@ NVL Comments is released under the MIT License.
 Declare a model once in `config/nvl-core.php`:
 
 ```php
-'owners' => ['article' => Article::class],
+'owners' => [Article::class],
 ```
 
-Enable this package capability separately in `config/comments.php`:
+Enable this package capability separately in `config/nvl-comments.php`:
 
 ```php
 'targets' => [
-    'articles.detail' => ['owner' => 'article', 'resolver' => ArticleCommentResolver::class],
+    'articles.detail' => ['owner' => Article::class, 'resolver' => ArticleCommentResolver::class],
 ],
 ```
 
-Keep the target resolver and its visibility/identifier checks. The route alias may differ from the shared owner alias. A resolver must return the exact model declared by its owner reference. Core registration does not add the model to this package's allowlist.
+Keep the target resolver and its visibility/identifier checks. The target API key may differ from the native owner identity. A resolver must return the exact model declared by its owner reference. Core registration does not add the model to this package's allowlist.
 
-Existing package class/resolver/handler registrations remain accepted for one major cycle. Run `php artisan nvl:doctor --strict --format=json` to inspect compatibility diagnostics. See [UPGRADING.md](UPGRADING.md) before changing a persisted morph type.
+Laravel's `getMorphClass()` determines stored identity. These class declarations do not install host morph maps. Keep resolvers, handlers and authorization independent; use `nvl:doctor --strict --format=json` to review legacy alias mismatches or stored identity drift. See [UPGRADING.md](UPGRADING.md) before changing the host's morph map.
 
 ## Shared consumer diagnostics
 
@@ -919,7 +919,7 @@ Run `php artisan nvl:doctor --strict --format=json` to combine the read-only che
 
 ## Optional Media attachments
 
-`comments.attachments.enabled` defaults to `null`: attachments activate when
+`nvl-comments.attachments.enabled` defaults to `null`: attachments activate when
 `MediaServiceProvider` is loaded. Set `true` to require Media and receive an
 explicit configuration error when the provider is unavailable; set `false` to
 disable attachment routes, mutations, and projections. A package installed on
@@ -942,7 +942,7 @@ historical attachment state in a host that has disabled discovery.
 
 ## Next major: isolated schema identities
 
-Use `comments.tables.<logical-key>` for every table and `comments.connection` for its database connection. Null connection inherits `nvl-core.connection`, then Laravel's default. Tables are resolved at runtime by the package table definition helper.
+Use `nvl-comments.tables.<logical-key>` for every table and `nvl-comments.connection` for its database connection. Null connection inherits `nvl-core.connection`, then Laravel's default. Tables are resolved at runtime by the package table definition helper.
 
 | Logical key | New default | Previous name |
 | --- | --- | --- |
@@ -953,4 +953,10 @@ Use `comments.tables.<logical-key>` for every table and `comments.connection` fo
 | `metadata_values` | `nvl_comments_metadata_values` | `comment_metadata_values` |
 | `mentions` | `nvl_comments_mentions` | `comment_mentions` |
 
-Migration filenames contain `nvl_comments_`. Existing installations must complete the upgrade in `UPGRADING.md` before running new migrations. A pending creator rejects an existing target before any migration in the batch runs; legacy storage with old history needs an ownership decision.
+Migration filenames contain `nvl_comments_`. Existing installations must complete the upgrade in `UPGRADING.md` before running new migrations. A pending creator rejects an existing target before that owned migration runs; use `nvl:schema:preflight` for an explicit whole-batch check; legacy storage with old history needs an ownership decision.
+
+Owned cache and lock identities follow `nvl:<package>:<purpose>:…`. Comment mutation locks use `nvl:comments:mutation:` instead of `comments:mutation:`. The selected cache store and tenant partitioning are unchanged; generic host locks are never acquired or removed. See [UPGRADING](UPGRADING.md) for coordinated worker and lock lease cutover.
+
+## Canonical configuration ownership
+
+Use `nvl-comments` settings in `config/nvl-comments.php` and canonical package environment names. Old generic roots are foreign unless an upgrading NVL host explicitly selects them in Core's default-off compatibility. Canonical false/null/empty values win; no old roots are populated or written back. Keep logical package/resource IDs unchanged. Review [Core's rename inventory and cache/worker cutover](https://github.com/nvl-laravel-suite/core/blob/main/UPGRADING.md#major-5-canonical-configuration-and-environment).

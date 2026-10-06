@@ -16,8 +16,8 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^13.0",
-        "nvl/core": "^2.0",
-        "nvl/filterable": "^2.0",
+        "nvl/core": "^5.0",
+        "nvl/filterable": "^5.0",
         "spatie/laravel-data": "^4.23",
         "spatie/typescript-transformer": "^3.3",
         "symfony/http-foundation": "^7.2 || ^8.0",
@@ -28,9 +28,9 @@
         "larastan/larastan": "^3.10",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
-        "nvl/media": "^2.0",
-        "nvl/tenancy": "^2.0",
-        "nvl/translatable": "^2.0",
+        "nvl/media": "^5.0",
+        "nvl/tenancy": "^5.0",
+        "nvl/translatable": "^5.0",
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0"
@@ -58,7 +58,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "2.x-dev"
+            "dev-main": "5.x-dev"
         },
         "laravel": {
             "providers": [
@@ -81,7 +81,9 @@
             "/.phpunit.result.cache",
             "/phpstan.neon.dist",
             "/phpunit.xml.dist",
-            "/tests"
+            "/tests",
+            "/.DS_Store",
+            "/**/.DS_Store"
         ]
     },
     "minimum-stability": "stable",
@@ -89,5 +91,9 @@
     "suggest": {
         "nvl/media": "Enables private authorized comment attachments, signed asset delivery, and historical attachment cleanup.",
         "nvl/tenancy": "Enables enforcing tenant ownership, scoped execution, adoption, and captured tenant queue contexts."
+    },
+    "conflict": {
+        "nvl/media": "<5.0 || >=6.0",
+        "nvl/tenancy": "<5.0 || >=6.0"
     }
 }

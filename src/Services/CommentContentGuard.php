@@ -118,7 +118,7 @@ final class CommentContentGuard
         }
 
         $maximumBytes = CommentsConfiguration::positiveInteger(
-            'comments.content.maximum_bytes',
+            'nvl-comments.content.maximum_bytes',
             20_000,
         );
 
@@ -149,7 +149,7 @@ final class CommentContentGuard
             );
         }
 
-        $allowedFormats = config('comments.content.allowed_formats', ['plain', 'markdown']);
+        $allowedFormats = config('nvl-comments.content.allowed_formats', ['plain', 'markdown']);
 
         if (! is_array($allowedFormats) || ! in_array($format, $allowedFormats, true)) {
             throw new InvalidCommentMutationException(
@@ -180,7 +180,7 @@ final class CommentContentGuard
         }
 
         $maximumTags = CommentsConfiguration::positiveInteger(
-            'comments.content.maximum_tags',
+            'nvl-comments.content.maximum_tags',
             20,
         );
 

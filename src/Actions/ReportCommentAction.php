@@ -114,7 +114,7 @@ final readonly class ReportCommentAction
                     $wasOpen = $report?->status === CommentReportStatus::Open;
                     $report ??= new CommentReport;
                     $report->fill([
-                        ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                        ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                         'comment_id' => $comment->id,
                         'reporter_type' => $actor->type,
                         'reporter_id' => $actor->id,
@@ -156,7 +156,7 @@ final readonly class ReportCommentAction
 
                     return $report->refresh();
                 }, attempts: CommentsConfiguration::positiveInteger(
-                    'comments.transactions.attempts',
+                    'nvl-comments.transactions.attempts',
                     3,
                 )),
         );

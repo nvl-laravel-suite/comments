@@ -49,7 +49,7 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
  */
 function commentsRichRegisterResolver(): void
 {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,
@@ -187,7 +187,7 @@ it('upgrades released schemas and rolls rich storage back safely', function (): 
     ]);
     $defaultConnection = config('database.default');
     config()->set('database.default', 'comments_rich_upgrade');
-    config()->set('comments.connection', null);
+    config()->set('nvl-comments.connection', null);
 
     foreach ([
         '2026_07_27_110001_nvl_comments_create_comments_table.php',
@@ -232,10 +232,10 @@ it('upgrades and rolls back rich storage on configured table names and connectio
         'prefix' => '',
         'foreign_key_constraints' => true,
     ]);
-    config()->set('comments.connection', 'comments_rich_custom');
-    config()->set('comments.tables.comments', 'tenant_comments');
-    config()->set('comments.tables.comment_revisions', 'tenant_comment_revisions');
-    config()->set('comments.tables.comment_mentions', 'tenant_comment_mentions');
+    config()->set('nvl-comments.connection', 'comments_rich_custom');
+    config()->set('nvl-comments.tables.comments', 'tenant_comments');
+    config()->set('nvl-comments.tables.comment_revisions', 'tenant_comment_revisions');
+    config()->set('nvl-comments.tables.comment_mentions', 'tenant_comment_mentions');
     foreach ([
         '2026_07_27_110001_nvl_comments_create_comments_table.php',
         '2026_07_27_110002_nvl_comments_create_comment_reactions_table.php',
@@ -286,7 +286,7 @@ it('writes every mention field to application-owned compatible storage', functio
         );
         $table->index(['comment_id', 'position']);
     });
-    config()->set('comments.tables.comment_mentions', $table);
+    config()->set('nvl-comments.tables.comment_mentions', $table);
     commentsRichRegisterResolver();
     $target = TestCommentTarget::query()->create(['name' => 'Application rich storage']);
     $comment = app(CreateRichCommentAction::class)->execute(
@@ -314,9 +314,9 @@ it('writes every mention field to application-owned compatible storage', functio
 
 it('writes rich comments revision documents and mentions to application-owned storage', function (): void {
     commentsRichCreateApplicationOwnedTables();
-    config()->set('comments.tables.comments', 'tenant_comments');
-    config()->set('comments.tables.comment_revisions', 'tenant_comment_revisions');
-    config()->set('comments.tables.comment_mentions', 'tenant_comment_mentions');
+    config()->set('nvl-comments.tables.comments', 'tenant_comments');
+    config()->set('nvl-comments.tables.comment_revisions', 'tenant_comment_revisions');
+    config()->set('nvl-comments.tables.comment_mentions', 'tenant_comment_mentions');
     commentsRichRegisterResolver();
     $target = TestCommentTarget::query()->create(['name' => 'Application owned rich lifecycle']);
     $actor = new CommentActorData('member', 'application-owned-rich-author');
@@ -384,7 +384,7 @@ it('rejects unknown rich document root keys', function (): void {
 });
 
 it('rejects rich input before resolution while mentions are disabled', function (): void {
-    config()->set('comments.mentions.enabled', false);
+    config()->set('nvl-comments.mentions.enabled', false);
     $target = TestCommentTarget::query()->create(['name' => 'Disabled rich mentions']);
 
     expect(fn () => app(CommentDocumentNormalizer::class)->normalizeInput(
@@ -547,7 +547,7 @@ it('rejects case-variant duplicate mention tokens before persistence', function 
 });
 
 it('rejects rich format mutations through both legacy actions', function (): void {
-    config()->set('comments.content.allowed_formats', ['plain', 'markdown', 'rich_text']);
+    config()->set('nvl-comments.content.allowed_formats', ['plain', 'markdown', 'rich_text']);
     $target = TestCommentTarget::query()->create(['name' => 'Legacy rich action target']);
     $actor = new CommentActorData('member', 'legacy-rich-author');
 
@@ -677,7 +677,7 @@ it('treats an exact rich update as a no-op without creating history', function (
 
 it('applies explicit rich locale and tags while retaining status for an invalid edited-status config', function (): void {
     commentsRichRegisterResolver();
-    config()->set('comments.moderation.edited_status', false);
+    config()->set('nvl-comments.moderation.edited_status', false);
     $target = TestCommentTarget::query()->create(['name' => 'Explicit rich fields']);
     $actor = new CommentActorData('member', 'rich-fields-author');
     $token = (string) Str::uuid();
@@ -880,7 +880,7 @@ it('enforces configured block node byte mention and resource bounds', function (
     $normalizer = app(CommentDocumentNormalizer::class);
     $valid = commentsRichDocument();
 
-    config()->set('comments.rich_text.maximum_blocks', 1);
+    config()->set('nvl-comments.rich_text.maximum_blocks', 1);
     $tooManyBlocks = $valid;
     $tooManyBlocks['blocks'][] = $valid['blocks'][0];
     expect(fn () => $normalizer->normalizeInput(
@@ -888,22 +888,22 @@ it('enforces configured block node byte mention and resource bounds', function (
         $context,
     ))->toThrow(InvalidCommentMutationException::class);
 
-    config()->set('comments.rich_text.maximum_blocks', 100);
-    config()->set('comments.rich_text.maximum_nodes', 1);
+    config()->set('nvl-comments.rich_text.maximum_blocks', 100);
+    config()->set('nvl-comments.rich_text.maximum_nodes', 1);
     expect(fn () => $normalizer->normalizeInput(
         new CommentDocumentData(...$valid),
         $context,
     ))->toThrow(InvalidCommentMutationException::class);
 
-    config()->set('comments.rich_text.maximum_nodes', 500);
-    config()->set('comments.rich_text.maximum_bytes', 20);
+    config()->set('nvl-comments.rich_text.maximum_nodes', 500);
+    config()->set('nvl-comments.rich_text.maximum_bytes', 20);
     expect(fn () => $normalizer->normalizeInput(
         new CommentDocumentData(...$valid),
         $context,
     ))->toThrow(InvalidCommentMutationException::class);
 
-    config()->set('comments.rich_text.maximum_bytes', 32_768);
-    config()->set('comments.mentions.maximum_per_comment', 1);
+    config()->set('nvl-comments.rich_text.maximum_bytes', 32_768);
+    config()->set('nvl-comments.mentions.maximum_per_comment', 1);
     $tooManyMentions = $valid;
     $tooManyMentions['blocks'][0]['children'][] = [
         'type' => 'mention',
@@ -916,8 +916,8 @@ it('enforces configured block node byte mention and resource bounds', function (
         $context,
     ))->toThrow(InvalidCommentMutationException::class);
 
-    config()->set('comments.mentions.maximum_per_comment', 25);
-    config()->set('comments.mentions.maximum_resource_types_per_comment', 1);
+    config()->set('nvl-comments.mentions.maximum_per_comment', 25);
+    config()->set('nvl-comments.mentions.maximum_resource_types_per_comment', 1);
     app(CommentMentionResourceRegistry::class)->register(
         'team',
         TestCommentMentionResourceResolver::class,
@@ -937,7 +937,7 @@ it('enforces configured block node byte mention and resource bounds', function (
 
 it('rejects documents that exceed the byte ceiling after server labels are added', function (): void {
     commentsRichRegisterResolver();
-    config()->set('comments.rich_text.maximum_bytes', 400);
+    config()->set('nvl-comments.rich_text.maximum_bytes', 400);
     $target = TestCommentTarget::query()->create(['name' => 'Resolved byte bound target']);
     $document = commentsRichDocument();
     $document['blocks'][0]['children'][1]['id'] = 'org-long';
@@ -964,12 +964,12 @@ it('enforces every hard rich document and mention ceiling above host configurati
     );
     $normalizer = app(CommentDocumentNormalizer::class);
 
-    config()->set('comments.rich_text.maximum_blocks', 10_000);
-    config()->set('comments.rich_text.maximum_nodes', 10_000);
-    config()->set('comments.rich_text.maximum_bytes', 1_000_000);
-    config()->set('comments.mentions.maximum_per_comment', 10_000);
-    config()->set('comments.mentions.maximum_resource_types_per_comment', 10_000);
-    config()->set('comments.mentions.maximum_batch_size', 10_000);
+    config()->set('nvl-comments.rich_text.maximum_blocks', 10_000);
+    config()->set('nvl-comments.rich_text.maximum_nodes', 10_000);
+    config()->set('nvl-comments.rich_text.maximum_bytes', 1_000_000);
+    config()->set('nvl-comments.mentions.maximum_per_comment', 10_000);
+    config()->set('nvl-comments.mentions.maximum_resource_types_per_comment', 10_000);
+    config()->set('nvl-comments.mentions.maximum_batch_size', 10_000);
 
     $blockOverflow = [
         'version' => 1,
@@ -1134,8 +1134,8 @@ it('rejects changed or removed immutable metadata from historical rich snapshots
 ): void {
     commentsRichRegisterResolver();
     config()->set([
-        'comments.metadata.schemas' => [TestCommentMetadataSchema::class],
-        'comments.metadata.digest_key' => 'immutable-rich-restore-test-key',
+        'nvl-comments.metadata.schemas' => [TestCommentMetadataSchema::class],
+        'nvl-comments.metadata.digest_key' => 'immutable-rich-restore-test-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
     $target = TestCommentTarget::query()->create(['name' => 'Immutable rich restore']);

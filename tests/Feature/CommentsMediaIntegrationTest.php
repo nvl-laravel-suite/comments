@@ -19,7 +19,7 @@ it('automatically enables loaded Media while preserving attachment privacy and s
     $media = Media::factory()->create(['is_public' => false, 'visibility' => MediaVisibility::Private, 'status' => MediaLifecycleStatus::Available, 'mime_type' => 'image/jpeg']);
     $association = app(AttachCommentMediaAction::class)->execute($comment, $media, CommentActorData::system());
 
-    expect(config('comments.attachments.enabled'))->toBeNull()
+    expect(config('nvl-comments.attachments.enabled'))->toBeNull()
         ->and(app('router')->has('nvl.comments.attachments.asset'))->toBeTrue()
         ->and($comment->attachmentAssociations()->count())->toBe(1)
         ->and(app(CommentProjectionFactory::class)->publicComment($comment, $target)->attachmentCount)->toBe(0);

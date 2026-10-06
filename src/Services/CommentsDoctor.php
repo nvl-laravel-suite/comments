@@ -872,7 +872,7 @@ final class CommentsDoctor
         $richTextBoundsReady = $this->richTextBoundsReady();
         $checks['rich_text.bounds_ready'] = $richTextBoundsReady;
         $requiredChecks[] = $richTextBoundsReady;
-        $migrationDuplicates = config('comments.migrations.enabled') === true
+        $migrationDuplicates = config('nvl-comments.migrations.enabled') === true
             ? $this->publishedMigrationDuplicates(dirname(__DIR__, 2).'/database/migrations')
             : [];
         $migrationOwnershipReady = $migrationDuplicates === [];
@@ -988,17 +988,17 @@ final class CommentsDoctor
         $targetResolversReady = $this->targetResolversReady($targets, $container);
         $checks['targets.ready'] = $targetResolversReady;
         $requiredChecks[] = $targetResolversReady;
-        $publicRoutesEnabled = config('comments.routes.public.enabled', false) === true;
-        $memberRoutesEnabled = config('comments.routes.member.enabled', false) === true;
-        $managementRoutesEnabled = config('comments.routes.management.enabled', false) === true;
+        $publicRoutesEnabled = config('nvl-comments.routes.public.enabled', false) === true;
+        $memberRoutesEnabled = config('nvl-comments.routes.member.enabled', false) === true;
+        $managementRoutesEnabled = config('nvl-comments.routes.management.enabled', false) === true;
         $checks['public_routes'] = $publicRoutesEnabled;
         $checks['member_routes'] = $memberRoutesEnabled;
         $checks['management_routes'] = $managementRoutesEnabled;
-        $checks['anonymous'] = config('comments.anonymous.enabled', false) === true;
+        $checks['anonymous'] = config('nvl-comments.anonymous.enabled', false) === true;
         $integration = $this->integrations->check('comments.attachments.enabled', MediaServiceProvider::class);
         $checks['attachments.integration'] = $integration;
         $requiredChecks[] = $integration['passed'];
-        $attachmentsEnabled = $integration['passed'] && config('comments.attachments.enabled') !== false
+        $attachmentsEnabled = $integration['passed'] && config('nvl-comments.attachments.enabled') !== false
             && ($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) === true;
         $checks['attachments'] = $attachmentsEnabled;
 
@@ -1149,7 +1149,7 @@ final class CommentsDoctor
         CommentTargetRegistry $targets,
         Container $container,
     ): bool {
-        $configured = config('comments.targets', []);
+        $configured = config('nvl-comments.targets', []);
 
         if (! is_array($configured)) {
             return false;
@@ -1291,16 +1291,16 @@ final class CommentsDoctor
         }
 
         $booleanKeys = [
-            'comments.migrations.enabled',
-            'comments.routes.public.enabled',
-            'comments.routes.member.enabled',
-            'comments.routes.management.enabled',
-            'comments.mentions.enabled',
-            'comments.routes.attachments.enabled',
-            'comments.moderation.allow_author_delete',
-            'comments.moderation.allow_author_restore',
-            'comments.anonymous.enabled',
-            'comments.attachments.allow_public_media',
+            'nvl-comments.migrations.enabled',
+            'nvl-comments.routes.public.enabled',
+            'nvl-comments.routes.member.enabled',
+            'nvl-comments.routes.management.enabled',
+            'nvl-comments.mentions.enabled',
+            'nvl-comments.routes.attachments.enabled',
+            'nvl-comments.moderation.allow_author_delete',
+            'nvl-comments.moderation.allow_author_restore',
+            'nvl-comments.anonymous.enabled',
+            'nvl-comments.attachments.allow_public_media',
         ];
 
         foreach ($booleanKeys as $key) {
@@ -1308,25 +1308,25 @@ final class CommentsDoctor
                 return false;
             }
         }
-        $attachments = config('comments.attachments.enabled');
+        $attachments = config('nvl-comments.attachments.enabled');
         if ($attachments !== null && ! is_bool($attachments)) {
             return false;
         }
 
         $positiveIntegerKeys = [
-            'comments.threading.maximum_depth',
-            'comments.threading.maximum_replies_per_page',
-            'comments.content.maximum_bytes',
-            'comments.content.maximum_tags',
-            'comments.metadata.maximum_bytes',
-            'comments.metadata.maximum_registered_fields',
-            'comments.attachments.maximum_per_comment',
-            'comments.attachments.maximum_file_bytes',
-            'comments.attachments.signed_url_lifetime',
-            'comments.transactions.attempts',
-            'comments.reconciliation.chunk_size',
-            'comments.pagination.default',
-            'comments.pagination.maximum',
+            'nvl-comments.threading.maximum_depth',
+            'nvl-comments.threading.maximum_replies_per_page',
+            'nvl-comments.content.maximum_bytes',
+            'nvl-comments.content.maximum_tags',
+            'nvl-comments.metadata.maximum_bytes',
+            'nvl-comments.metadata.maximum_registered_fields',
+            'nvl-comments.attachments.maximum_per_comment',
+            'nvl-comments.attachments.maximum_file_bytes',
+            'nvl-comments.attachments.signed_url_lifetime',
+            'nvl-comments.transactions.attempts',
+            'nvl-comments.reconciliation.chunk_size',
+            'nvl-comments.pagination.default',
+            'nvl-comments.pagination.maximum',
         ];
 
         foreach ($positiveIntegerKeys as $key) {
@@ -1337,12 +1337,12 @@ final class CommentsDoctor
             }
         }
 
-        $publicMaxAge = config('comments.cache.public_max_age');
-        $connection = config('comments.connection');
-        $metadataStrict = config('comments.metadata.strict');
-        $metadataSchemas = config('comments.metadata.schemas');
-        $metadataMaximumBytes = config('comments.metadata.maximum_bytes');
-        $metadataMaximumFields = config('comments.metadata.maximum_registered_fields');
+        $publicMaxAge = config('nvl-comments.cache.public_max_age');
+        $connection = config('nvl-comments.connection');
+        $metadataStrict = config('nvl-comments.metadata.strict');
+        $metadataSchemas = config('nvl-comments.metadata.schemas');
+        $metadataMaximumBytes = config('nvl-comments.metadata.maximum_bytes');
+        $metadataMaximumFields = config('nvl-comments.metadata.maximum_registered_fields');
 
         if (! is_int($publicMaxAge)
             || $publicMaxAge < 0
@@ -1372,9 +1372,9 @@ final class CommentsDoctor
             return false;
         }
 
-        $formats = config('comments.content.allowed_formats');
-        $reactions = config('comments.reactions.allowed');
-        $actionableStatuses = config('comments.moderation.actionable_statuses');
+        $formats = config('nvl-comments.content.allowed_formats');
+        $reactions = config('nvl-comments.reactions.allowed');
+        $actionableStatuses = config('nvl-comments.moderation.actionable_statuses');
         $validFormats = array_column(CommentFormat::cases(), 'value');
         $validStatuses = array_column(CommentStatus::cases(), 'value');
 
@@ -1385,7 +1385,7 @@ final class CommentsDoctor
         }
 
         foreach (['new_status', 'edited_status', 'restored_status'] as $key) {
-            $status = config("comments.moderation.{$key}");
+            $status = config("nvl-comments.moderation.{$key}");
 
             if (! is_string($status) || ! in_array($status, $validStatuses, true)) {
                 return false;
@@ -1401,9 +1401,9 @@ final class CommentsDoctor
     private function richTextBoundsReady(): bool
     {
         foreach ([
-            'comments.rich_text.maximum_bytes' => 131_072,
-            'comments.rich_text.maximum_blocks' => 250,
-            'comments.rich_text.maximum_nodes' => 1_000,
+            'nvl-comments.rich_text.maximum_bytes' => 131_072,
+            'nvl-comments.rich_text.maximum_blocks' => 250,
+            'nvl-comments.rich_text.maximum_nodes' => 1_000,
         ] as $key => $hardMaximum) {
             $value = config($key);
 
@@ -1422,12 +1422,12 @@ final class CommentsDoctor
      */
     private function mentionReadiness(CommentMentionResourceRegistry $resources): array
     {
-        $maximumMentions = config('comments.mentions.maximum_per_comment');
-        $maximumAliases = config('comments.mentions.maximum_resource_types_per_comment');
-        $suggestionLimit = config('comments.mentions.suggestion_limit');
-        $maximumSuggestionLimit = config('comments.mentions.maximum_suggestion_limit');
-        $maximumQueryLength = config('comments.mentions.maximum_query_length');
-        $maximumBatchSize = config('comments.mentions.maximum_batch_size');
+        $maximumMentions = config('nvl-comments.mentions.maximum_per_comment');
+        $maximumAliases = config('nvl-comments.mentions.maximum_resource_types_per_comment');
+        $suggestionLimit = config('nvl-comments.mentions.suggestion_limit');
+        $maximumSuggestionLimit = config('nvl-comments.mentions.maximum_suggestion_limit');
+        $maximumQueryLength = config('nvl-comments.mentions.maximum_query_length');
+        $maximumBatchSize = config('nvl-comments.mentions.maximum_batch_size');
         $boundsReady = is_int($maximumMentions)
             && $maximumMentions >= 1
             && $maximumMentions <= 100
@@ -1684,7 +1684,7 @@ final class CommentsDoctor
      */
     private function attachmentRoutesReady(): bool
     {
-        if (config('comments.routes.attachments.enabled', true) !== true) {
+        if (config('nvl-comments.routes.attachments.enabled', true) !== true) {
             return false;
         }
 

@@ -158,7 +158,7 @@ final readonly class CommentCreationWriter
                         ): Comment {
                             $targetQuery = $targetPrototype->newQuery();
 
-                            if ($this->config->get('tenancy.enabled') === true) {
+                            if ($this->config->get('nvl-tenancy.enabled') === true) {
                                 $targetQuery = $this->boundary->query(
                                     $targetQuery,
                                     $this->resources->forModel($targetPrototype)->key,
@@ -248,7 +248,7 @@ final readonly class CommentCreationWriter
 
                             $depth = $parent === null ? 0 : $parent->depth + 1;
                             $maximumDepth = CommentsConfiguration::positiveInteger(
-                                'comments.threading.maximum_depth',
+                                'nvl-comments.threading.maximum_depth',
                                 6,
                             );
 
@@ -293,7 +293,7 @@ final readonly class CommentCreationWriter
                                 );
                             }
 
-                            $configuredStatus = config('comments.moderation.new_status', 'pending');
+                            $configuredStatus = config('nvl-comments.moderation.new_status', 'pending');
                             $status = is_string($configuredStatus)
                                 ? CommentStatus::tryFrom($configuredStatus)
                                 : null;
@@ -366,7 +366,7 @@ final readonly class CommentCreationWriter
                                 : $comment;
                         },
                         attempts: CommentsConfiguration::positiveInteger(
-                            'comments.transactions.attempts',
+                            'nvl-comments.transactions.attempts',
                             3,
                         ),
                     );
@@ -385,7 +385,7 @@ final readonly class CommentCreationWriter
                     }
 
                     $targetQuery = $targetPrototype->newQuery();
-                    if ($this->config->get('tenancy.enabled') === true) {
+                    if ($this->config->get('nvl-tenancy.enabled') === true) {
                         $targetQuery = $this->boundary->query(
                             $targetQuery,
                             $this->resources->forModel($targetPrototype)->key,
@@ -415,7 +415,7 @@ final readonly class CommentCreationWriter
     /** @return array{tenant_id?: string|null} */
     private function ownershipAttributes(Model $target): array
     {
-        if ($this->config->get('tenancy.enabled') !== true) {
+        if ($this->config->get('nvl-tenancy.enabled') !== true) {
             return [];
         }
 

@@ -6,6 +6,7 @@ use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
 use Nvl\Comments\Services\SafeCommentAuthorPresenter;
 use Nvl\Comments\Support\CommentActorFactory;
+use Nvl\Support\Config\PackageEnvironment;
 
 return [
     'tenancy' => [
@@ -45,25 +46,25 @@ return [
     'routes' => [
         'management' => [
             'enabled' => false,
-            'prefix' => 'api/v1/comments',
+            'prefix' => 'nvl/api/v1/comments',
             'name' => 'nvl.comments.management.',
             'middleware' => ['api', 'auth', 'throttle:60,1'],
         ],
         'member' => [
             'enabled' => false,
-            'prefix' => 'api/v1/member/discussions',
+            'prefix' => 'nvl/api/v1/comments/member',
             'name' => 'nvl.comments.member.',
             'middleware' => ['api', 'auth', 'throttle:60,1'],
         ],
         'public' => [
             'enabled' => false,
-            'prefix' => 'api/v1/discussions',
+            'prefix' => 'nvl/api/v1/comments/public',
             'name' => 'nvl.comments.public.',
             'middleware' => ['api', 'throttle:60,1'],
         ],
         'attachments' => [
             'enabled' => true,
-            'prefix' => 'api/v1/comment-attachments',
+            'prefix' => 'nvl/api/v1/comments/attachments',
             'name' => 'nvl.comments.attachments.',
             'middleware' => ['api', 'throttle:120,1'],
         ],
@@ -83,7 +84,7 @@ return [
     ],
 
     'idempotency' => [
-        'digest_key' => env('COMMENTS_IDEMPOTENCY_DIGEST_KEY'),
+        'digest_key' => PackageEnvironment::get('NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY'),
     ],
 
     'threading' => [
@@ -101,7 +102,7 @@ return [
         'strict' => false,
         'maximum_bytes' => 16_384,
         'maximum_registered_fields' => 50,
-        'digest_key' => env('COMMENTS_METADATA_DIGEST_KEY'),
+        'digest_key' => PackageEnvironment::get('NVL_COMMENTS_METADATA_DIGEST_KEY'),
         'schemas' => [],
     ],
 

@@ -17,7 +17,7 @@ final readonly class CommentTenantParentResolver implements TenantParentResolver
     /** @return array<string, class-string<Model>> */
     public function types(): array
     {
-        $configured = $this->config->get('comments.tenancy.target_types', []);
+        $configured = $this->config->get('nvl-comments.tenancy.target_types', []);
 
         if (! is_array($configured)) {
             throw new TenantConfigurationInvalid('comments.tenancy.target_types must be an alias-keyed model map.');

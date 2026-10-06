@@ -50,7 +50,7 @@ final readonly class CommentMetadataIndexWriter
         $records = array_map(
             fn (array $row): array => [
                 'id' => (string) Str::uuid(),
-                ...($this->config->get('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                ...($this->config->get('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                 'comment_id' => $comment->id,
                 ...$row,
                 'created_at' => $timestamp,

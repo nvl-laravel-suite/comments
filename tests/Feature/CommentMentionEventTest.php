@@ -30,7 +30,7 @@ use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
  */
 function commentsMentionEventRegister(): void
 {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,

@@ -57,8 +57,8 @@ final readonly class ListCommentReportsAction
             CommentAudience::Management,
             context: ['operation' => 'list_reports'],
         );
-        $maximum = CommentsConfiguration::positiveInteger('comments.pagination.maximum', 100);
-        $perPage ??= CommentsConfiguration::positiveInteger('comments.pagination.default', 25);
+        $maximum = CommentsConfiguration::positiveInteger('nvl-comments.pagination.maximum', 100);
+        $perPage ??= CommentsConfiguration::positiveInteger('nvl-comments.pagination.default', 25);
         $query = $this->boundary->query(CommentReport::query(), 'comments.reports')
             ->with('comment')
             ->where('comment_id', $comment->id);

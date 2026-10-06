@@ -45,7 +45,7 @@ final readonly class CommentMetadataGuard
         }
 
         $maximumBytes = min(65_536, CommentsConfiguration::positiveInteger(
-            'comments.metadata.maximum_bytes',
+            'nvl-comments.metadata.maximum_bytes',
             16_384,
         ));
 

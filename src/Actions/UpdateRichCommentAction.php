@@ -130,7 +130,7 @@ final readonly class UpdateRichCommentAction
                     }
 
                     $revision = $comment->revisions()->create([
-                        ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                        ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                         'revision' => $comment->revision,
                         'body' => $comment->body,
                         'format' => $comment->format,
@@ -148,7 +148,7 @@ final readonly class UpdateRichCommentAction
                         );
                     }
 
-                    $configuredStatus = config('comments.moderation.edited_status', 'pending');
+                    $configuredStatus = config('nvl-comments.moderation.edited_status', 'pending');
                     $status = is_string($configuredStatus)
                         ? CommentStatus::tryFrom($configuredStatus)
                         : null;
@@ -194,7 +194,7 @@ final readonly class UpdateRichCommentAction
 
                     return $comment->refresh();
                 }, attempts: CommentsConfiguration::positiveInteger(
-                    'comments.transactions.attempts',
+                    'nvl-comments.transactions.attempts',
                     3,
                 )),
         );

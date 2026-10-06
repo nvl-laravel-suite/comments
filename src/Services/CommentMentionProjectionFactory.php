@@ -69,7 +69,7 @@ final readonly class CommentMentionProjectionFactory
         $context = new CommentMentionContext($target, $actor, $audience);
         $live = [];
         $batchSize = min(100, CommentsConfiguration::positiveInteger(
-            'comments.mentions.maximum_batch_size',
+            'nvl-comments.mentions.maximum_batch_size',
             100,
         ));
 

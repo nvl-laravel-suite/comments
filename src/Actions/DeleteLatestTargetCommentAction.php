@@ -91,7 +91,7 @@ final readonly class DeleteLatestTargetCommentAction
                     $audience,
                 );
             }, attempts: CommentsConfiguration::positiveInteger(
-                'comments.transactions.attempts',
+                'nvl-comments.transactions.attempts',
                 3,
             ));
     }

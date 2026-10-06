@@ -772,7 +772,7 @@ it('rejects attachment media whose mime type is outside the comment slot', funct
 
     expect($comment->media()->count())->toBe(0);
 
-    config()->set('comments.attachments.maximum_file_bytes', 100);
+    config()->set('nvl-comments.attachments.maximum_file_bytes', 100);
     $oversized = Media::factory()->create([
         'filename' => 'oversized.pdf',
         'extension' => 'pdf',
@@ -797,7 +797,7 @@ it('rejects attachment media whose mime type is outside the comment slot', funct
 });
 
 it('removes Media dependencies from ordinary flows when attachments are disabled', function (): void {
-    config()->set('comments.attachments.enabled', false);
+    config()->set('nvl-comments.attachments.enabled', false);
     $target = TestCommentTarget::query()->create(['name' => 'No-media article']);
     $comment = app(CreateCommentAction::class)->execute(
         $target,
@@ -918,9 +918,9 @@ it('returns sanitized tombstones so public descendants retain their thread struc
 
 it('applies configured default maximum and reply pagination bounds', function (): void {
     config()->set([
-        'comments.pagination.default' => 2,
-        'comments.pagination.maximum' => 3,
-        'comments.threading.maximum_replies_per_page' => 1,
+        'nvl-comments.pagination.default' => 2,
+        'nvl-comments.pagination.maximum' => 3,
+        'nvl-comments.threading.maximum_replies_per_page' => 1,
     ]);
     $target = TestCommentTarget::query()->create(['name' => 'Article']);
     $actor = new CommentActorData('member', '42');

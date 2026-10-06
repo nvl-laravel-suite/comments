@@ -43,6 +43,7 @@ use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Support\Providers\TenantServiceProvider;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
+use Nvl\Support\Traits\RegistersNamespacedResources;
 use Nvl\Tenancy\Services\TenantAdoptionRegistry;
 
 /**
@@ -51,6 +52,7 @@ use Nvl\Tenancy\Services\TenantAdoptionRegistry;
 final class CommentsServiceProvider extends ServiceProvider
 {
     use MergesPackageConfiguration;
+    use RegistersNamespacedResources;
 
     public function register(): void
     {
@@ -58,7 +60,7 @@ final class CommentsServiceProvider extends ServiceProvider
         PackageDoctorContributor::register($this->app, 'nvl/comments', fn (): array => PackageDoctorContributor::reportChecks($this->app->make(CommentsDoctor::class)->inspect(), 'nvl:comments:doctor'));
 
         $this->app->register(TenantServiceProvider::class);
-        $this->mergePackageConfiguration(__DIR__.'/../../config/comments.php', 'comments');
+        $this->mergePackageConfiguration(__DIR__.'/../../config/nvl-comments.php', 'comments');
         $this->registerAttachmentAdapters();
         (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class));
         $this->app->booted(function (): void {
@@ -67,31 +69,31 @@ final class CommentsServiceProvider extends ServiceProvider
             }
         });
         $authorization = config(
-            'comments.authorization.class',
+            'nvl-comments.authorization.class',
             ConfiguredCommentAuthorization::class,
         );
 
         if (! is_string($authorization)
             || ! is_a($authorization, CommentAuthorization::class, true)) {
             throw new InvalidArgumentException(
-                'comments.authorization.class must implement CommentAuthorization.',
+                'nvl-comments.authorization.class must implement CommentAuthorization.',
             );
         }
 
         $this->app->bindIf(CommentAuthorization::class, $authorization);
         $this->bindConfiguredContract(
             CommentQueryScope::class,
-            'comments.query_scope.class',
+            'nvl-comments.query_scope.class',
             $authorization,
         );
         $this->bindConfiguredContract(
             CommentActorResolver::class,
-            'comments.actor_resolver.class',
+            'nvl-comments.actor_resolver.class',
             CommentActorFactory::class,
         );
         $this->bindConfiguredContract(
             CommentAuthorPresenter::class,
-            'comments.author_presenter.class',
+            'nvl-comments.author_presenter.class',
             SafeCommentAuthorPresenter::class,
         );
         $this->app->alias(
@@ -151,7 +153,7 @@ final class CommentsServiceProvider extends ServiceProvider
         });
         $this->registerTransactionListeners($events);
 
-        if (config('comments.migrations.enabled', true) === true) {
+        if (config('nvl-comments.migrations.enabled', true) === true) {
             $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
         }
 
@@ -165,7 +167,7 @@ final class CommentsServiceProvider extends ServiceProvider
         }
 
         $this->publishes([
-            __DIR__.'/../../config/comments.php' => config_path('comments.php'),
+            __DIR__.'/../../config/nvl-comments.php' => config_path('nvl-comments.php'),
         ], 'comments-config');
         $this->publishesMigrations([
             __DIR__.'/../../database/migrations' => database_path('migrations'),
@@ -217,10 +219,10 @@ final class CommentsServiceProvider extends ServiceProvider
 
     private function registerTargets(CommentTargetRegistry $registry): void
     {
-        $configured = config('comments.targets', []);
+        $configured = config('nvl-comments.targets', []);
 
         if (! is_array($configured)) {
-            throw new InvalidArgumentException('comments.targets must be an array.');
+            throw new InvalidArgumentException('nvl-comments.targets must be an array.');
         }
 
         foreach ($configured as $alias => $resolver) {

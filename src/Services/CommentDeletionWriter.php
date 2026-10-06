@@ -154,7 +154,7 @@ final readonly class CommentDeletionWriter
 
                         return true;
                     }, attempts: CommentsConfiguration::positiveInteger(
-                        'comments.transactions.attempts',
+                        'nvl-comments.transactions.attempts',
                         3,
                     ));
             },

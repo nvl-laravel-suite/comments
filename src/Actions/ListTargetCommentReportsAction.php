@@ -55,8 +55,8 @@ final readonly class ListTargetCommentReportsAction
             audience: CommentAudience::Management,
             context: ['operation' => 'list_target_reports'],
         );
-        $maximum = CommentsConfiguration::positiveInteger('comments.pagination.maximum', 100);
-        $perPage ??= CommentsConfiguration::positiveInteger('comments.pagination.default', 25);
+        $maximum = CommentsConfiguration::positiveInteger('nvl-comments.pagination.maximum', 100);
+        $perPage ??= CommentsConfiguration::positiveInteger('nvl-comments.pagination.default', 25);
         $filterSet ??= FilterSet::none();
         $targetHash = CommentIdentity::pair($identity['type'], $identity['id']);
         $commentQuery = $this->boundary->query(Comment::query(), 'comments.comments')

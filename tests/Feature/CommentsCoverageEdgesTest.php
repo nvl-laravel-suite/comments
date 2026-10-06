@@ -20,6 +20,7 @@ use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Http\Middleware\CommentsResponseCache;
+use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Comments\Services\CommentAttachmentAssetResponder;
 use Nvl\Comments\Services\CommentContentGuard;
 use Nvl\Comments\Services\CommentLifecycleGuard;
@@ -103,7 +104,7 @@ function commentsCoverageJsonOutput(): array
 
 it('serves local assets with private headers and safe unicode filenames', function (): void {
     Storage::fake('comments_local');
-    config()->set('media.cache_file_existence', false);
+    config()->set('nvl-media.cache_file_existence', false);
     config()->set('filesystems.disks.comments_local.driver', 'local');
 
     $media = commentsCoverageAsset(
@@ -132,7 +133,7 @@ it('serves local assets with private headers and safe unicode filenames', functi
 
 it('honors conditional requests and hides unavailable asset details', function (): void {
     Storage::fake('comments_conditional');
-    config()->set('media.cache_file_existence', false);
+    config()->set('nvl-media.cache_file_existence', false);
     config()->set('filesystems.disks.comments_conditional.driver', 'local');
 
     $media = commentsCoverageAsset('comments_conditional', 'conditional-attachment');
@@ -169,7 +170,7 @@ it('honors conditional requests and hides unavailable asset details', function (
 
 it('streams complete and ranged non-local assets without loading them into memory', function (): void {
     Storage::fake('comments_remote');
-    config()->set('media.cache_file_existence', false);
+    config()->set('nvl-media.cache_file_existence', false);
 
     $contents = '0123456789';
     $media = commentsCoverageAsset('comments_remote', $contents);
@@ -225,7 +226,7 @@ it('streams complete and ranged non-local assets without loading them into memor
 
 it('rejects malformed or unsatisfiable byte ranges without leaking asset state', function (): void {
     Storage::fake('comments_ranges');
-    config()->set('media.cache_file_existence', false);
+    config()->set('nvl-media.cache_file_existence', false);
 
     $media = commentsCoverageAsset('comments_ranges', '0123456789');
     config()->set('filesystems.disks.comments_ranges.driver', 's3');
@@ -273,45 +274,45 @@ it('rejects malformed route configuration instead of weakening route boundaries'
 
     expect($resolve)->toThrow(InvalidArgumentException::class, $message);
 })->with([
-    'non-string path' => ['comments.routes.public.prefix', ['api'], 'path', 'must be a string'],
-    'blank path' => ['comments.routes.public.prefix', '///', 'path', 'safe route prefix'],
-    'traversing path' => ['comments.routes.public.prefix', 'api/../private', 'path', 'safe route prefix'],
-    'double-slash path' => ['comments.routes.public.prefix', 'api//private', 'path', 'safe route prefix'],
-    'non-string name' => ['comments.routes.public.name', 42, 'name', 'must be a string'],
-    'blank name' => ['comments.routes.public.name', '...', 'name', 'safe route-name prefix'],
-    'non-array middleware' => ['comments.routes.public.middleware', 'api', 'middleware', 'must be an array'],
+    'non-string path' => ['nvl-comments.routes.public.prefix', ['api'], 'path', 'must be a string'],
+    'blank path' => ['nvl-comments.routes.public.prefix', '///', 'path', 'safe route prefix'],
+    'traversing path' => ['nvl-comments.routes.public.prefix', 'api/../private', 'path', 'safe route prefix'],
+    'double-slash path' => ['nvl-comments.routes.public.prefix', 'api//private', 'path', 'safe route prefix'],
+    'non-string name' => ['nvl-comments.routes.public.name', 42, 'name', 'must be a string'],
+    'blank name' => ['nvl-comments.routes.public.name', '...', 'name', 'safe route-name prefix'],
+    'non-array middleware' => ['nvl-comments.routes.public.middleware', 'api', 'middleware', 'must be an array'],
     'associative middleware' => [
-        'comments.routes.public.middleware',
+        'nvl-comments.routes.public.middleware',
         ['transport' => 'api'],
         'middleware',
         'must be a non-empty list',
     ],
-    'empty middleware' => ['comments.routes.public.middleware', [], 'middleware', 'must be a non-empty list'],
-    'blank middleware' => ['comments.routes.public.middleware', ['api', '  '], 'middleware', 'non-blank strings'],
-    'non-string middleware' => ['comments.routes.public.middleware', ['api', 42], 'middleware', 'non-blank strings'],
+    'empty middleware' => ['nvl-comments.routes.public.middleware', [], 'middleware', 'must be a non-empty list'],
+    'blank middleware' => ['nvl-comments.routes.public.middleware', ['api', '  '], 'middleware', 'non-blank strings'],
+    'non-string middleware' => ['nvl-comments.routes.public.middleware', ['api', 42], 'middleware', 'non-blank strings'],
 ]);
 
 it('enforces byte locale tag format and metadata limits at the direct action boundary', function (): void {
     $guard = app(CommentContentGuard::class);
 
-    config()->set('comments.content.maximum_bytes', 4);
+    config()->set('nvl-comments.content.maximum_bytes', 4);
     expect(fn () => $guard->create(new CreateCommentData('12345')))
         ->toThrow(InvalidCommentMutationException::class, 'exceeds 4 bytes');
 
-    config()->set('comments.content.maximum_bytes', 20_000);
-    config()->set('comments.content.allowed_formats', ['plain']);
+    config()->set('nvl-comments.content.maximum_bytes', 20_000);
+    config()->set('nvl-comments.content.allowed_formats', ['plain']);
     expect(fn () => $guard->create(new CreateCommentData('Body', CommentFormat::Markdown)))
         ->toThrow(InvalidCommentMutationException::class, 'format [markdown] is not enabled');
 
     expect(fn () => $guard->create(new CreateCommentData('Body', locale: str_repeat('a', 36))))
         ->toThrow(InvalidCommentMutationException::class, 'at most 35 characters');
 
-    config()->set('comments.content.allowed_formats', ['plain', 'markdown']);
-    config()->set('comments.content.maximum_tags', 1);
+    config()->set('nvl-comments.content.allowed_formats', ['plain', 'markdown']);
+    config()->set('nvl-comments.content.maximum_tags', 1);
     expect(fn () => $guard->create(new CreateCommentData('Body', tags: ['one', 'two'])))
         ->toThrow(InvalidCommentMutationException::class, 'at most 1 tags');
 
-    config()->set('comments.content.maximum_tags', 20);
+    config()->set('nvl-comments.content.maximum_tags', 20);
     expect(fn () => $guard->create(new CreateCommentData('Body', tags: ['same', 'same'])))
         ->toThrow(InvalidCommentMutationException::class, 'must be distinct');
 
@@ -320,7 +321,7 @@ it('enforces byte locale tag format and metadata limits at the direct action bou
         metadata: ['invalid' => "\xB1\x31"],
     )))->toThrow(InvalidCommentMutationException::class, 'valid JSON data');
 
-    config()->set('comments.metadata.maximum_bytes', 4);
+    config()->set('nvl-comments.metadata.maximum_bytes', 4);
     expect(fn () => $guard->create(new CreateCommentData('Body', metadata: ['key' => 'value'])))
         ->toThrow(InvalidCommentMutationException::class, 'exceeds the metadata byte limit');
 });
@@ -344,7 +345,7 @@ it('enforces lifecycle tokens and terminal anonymization audit reasons', functio
 
 it('renders middleware exceptions as private JSON errors inside the cache boundary', function (): void {
     $middleware = new CommentsResponseCache(app(ExceptionHandler::class));
-    $request = Request::create('/api/v1/discussions', 'POST');
+    $request = Request::create('/nvl/api/v1/comments/public', 'POST');
     $response = $middleware->handle(
         $request,
         static function (Request $request): never {
@@ -460,15 +461,15 @@ it('rejects malformed production configuration in strict diagnostics', function 
         ->and($report['configuration.values'])->toBeFalse()
         ->and($report['healthy'])->toBeFalse();
 })->with([
-    'string boolean' => ['comments.anonymous.enabled', 'false'],
-    'string byte limit' => ['comments.content.maximum_bytes', '20000'],
-    'negative cache lifetime' => ['comments.cache.public_max_age', -1],
-    'string optional integration flag' => ['comments.attachments.enabled', 'false'],
-    'unsafe route prefix' => ['comments.routes.public.prefix', '../private-comments'],
-    'duplicate formats' => ['comments.content.allowed_formats', ['plain', 'plain']],
-    'unknown format' => ['comments.content.allowed_formats', ['plain', 'html']],
-    'associative reaction list' => ['comments.reactions.allowed', ['positive' => 'like']],
-    'unknown moderation status' => ['comments.moderation.new_status', 'APPROVED'],
+    'string boolean' => ['nvl-comments.anonymous.enabled', 'false'],
+    'string byte limit' => ['nvl-comments.content.maximum_bytes', '20000'],
+    'negative cache lifetime' => ['nvl-comments.cache.public_max_age', -1],
+    'string optional integration flag' => ['nvl-comments.attachments.enabled', 'false'],
+    'unsafe route prefix' => ['nvl-comments.routes.public.prefix', '../private-comments'],
+    'duplicate formats' => ['nvl-comments.content.allowed_formats', ['plain', 'plain']],
+    'unknown format' => ['nvl-comments.content.allowed_formats', ['plain', 'html']],
+    'associative reaction list' => ['nvl-comments.reactions.allowed', ['positive' => 'like']],
+    'unknown moderation status' => ['nvl-comments.moderation.new_status', 'APPROVED'],
 ]);
 
 it('renders the complete human-readable Doctor report', function (): void {
@@ -486,3 +487,12 @@ it('renders the complete human-readable Doctor report', function (): void {
             'true',
         );
 });
+
+it('validates canonical configured contracts while preserving foreign comment settings', function (string $key): void {
+    $foreign = ['actor_resolver' => ['class' => 'host-only']];
+    config(['comments' => $foreign, 'nvl-comments.'.$key => stdClass::class]);
+
+    expect(fn () => (new CommentsServiceProvider(app()))->register())
+        ->toThrow(InvalidArgumentException::class, 'nvl-comments.'.$key.' must implement')
+        ->and(config('comments'))->toBe($foreign);
+})->with(['query_scope.class', 'actor_resolver.class', 'author_presenter.class']);

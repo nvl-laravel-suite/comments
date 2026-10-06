@@ -26,11 +26,11 @@ final class CommentMutationLockConfiguration
      */
     public static function settings(): array
     {
-        $configuration = config('comments.mutation_lock');
+        $configuration = config('nvl-comments.mutation_lock');
 
         if (! is_array($configuration)) {
             throw new CommentMutationLockConfigurationException(
-                'comments.mutation_lock must be an array.',
+                'nvl-comments.mutation_lock must be an array.',
             );
         }
 
@@ -42,7 +42,7 @@ final class CommentMutationLockConfiguration
 
         if (! is_bool($enabled)) {
             throw new CommentMutationLockConfigurationException(
-                'comments.mutation_lock.enabled must be a boolean.',
+                'nvl-comments.mutation_lock.enabled must be a boolean.',
             );
         }
 
@@ -50,33 +50,33 @@ final class CommentMutationLockConfiguration
             $storeName = null;
         } elseif (! is_string($store)) {
             throw new CommentMutationLockConfigurationException(
-                'comments.mutation_lock.store must be null or a non-blank cache store name.',
+                'nvl-comments.mutation_lock.store must be null or a non-blank cache store name.',
             );
         } else {
             $storeName = trim($store);
 
             if ($storeName === '') {
                 throw new CommentMutationLockConfigurationException(
-                    'comments.mutation_lock.store must be null or a non-blank cache store name.',
+                    'nvl-comments.mutation_lock.store must be null or a non-blank cache store name.',
                 );
             }
         }
 
         if (! is_int($seconds) || $seconds < 1) {
             throw new CommentMutationLockConfigurationException(
-                'comments.mutation_lock.seconds must be a positive integer.',
+                'nvl-comments.mutation_lock.seconds must be a positive integer.',
             );
         }
 
         if (! is_int($waitSeconds) || $waitSeconds < 1) {
             throw new CommentMutationLockConfigurationException(
-                'comments.mutation_lock.wait_seconds must be a positive integer.',
+                'nvl-comments.mutation_lock.wait_seconds must be a positive integer.',
             );
         }
 
         if (! is_bool($allowLocalStore)) {
             throw new CommentMutationLockConfigurationException(
-                'comments.mutation_lock.allow_local_store must be a boolean.',
+                'nvl-comments.mutation_lock.allow_local_store must be a boolean.',
             );
         }
 

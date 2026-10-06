@@ -153,7 +153,7 @@ final readonly class CommentStateReconciler
         $bodyProjectionMismatches = 0;
         $drifted += $orphanMentionRows;
         $maximumDepth = CommentsConfiguration::positiveInteger(
-            'comments.threading.maximum_depth',
+            'nvl-comments.threading.maximum_depth',
             6,
         );
         $query = $this->query($target, $maximumDepth);
@@ -1090,13 +1090,13 @@ final readonly class CommentStateReconciler
             static fn (MimeType $type): string => $type->value,
             [...MimeType::images(), ...MimeType::documents()],
         );
-        $allowPublicMedia = config('comments.attachments.allow_public_media', false) === true;
+        $allowPublicMedia = config('nvl-comments.attachments.allow_public_media', false) === true;
         $maximum = CommentsConfiguration::positiveInteger(
-            'comments.attachments.maximum_per_comment',
+            'nvl-comments.attachments.maximum_per_comment',
             5,
         );
         $maximumFileBytes = CommentsConfiguration::positiveInteger(
-            'comments.attachments.maximum_file_bytes',
+            'nvl-comments.attachments.maximum_file_bytes',
             10 * 1024 * 1024,
         );
         $invalidAssociations = [];

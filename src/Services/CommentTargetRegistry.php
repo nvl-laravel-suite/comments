@@ -78,7 +78,7 @@ final class CommentTargetRegistry
             throw new InvalidArgumentException("Comments resolver [{$alias}] returned a different shared owner model.");
         }
 
-        if ($this->config->get('tenancy.enabled') === true) {
+        if ($this->config->get('nvl-tenancy.enabled') === true) {
             $this->boundary->assertRecord($target, $this->resources->forModel($target)->key);
         }
 

@@ -136,7 +136,7 @@ final readonly class RestoreCommentAction
                         }
 
                         $configuredStatus = config(
-                            'comments.moderation.restored_status',
+                            'nvl-comments.moderation.restored_status',
                             CommentStatus::Pending->value,
                         );
                         $status = is_string($configuredStatus)
@@ -177,7 +177,7 @@ final readonly class RestoreCommentAction
 
                         return $comment;
                     }, attempts: CommentsConfiguration::positiveInteger(
-                        'comments.transactions.attempts',
+                        'nvl-comments.transactions.attempts',
                         3,
                     ));
             },

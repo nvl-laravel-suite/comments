@@ -135,7 +135,7 @@ final readonly class RestoreCommentRevisionAction
                         );
 
                         $currentRevision = CommentRevision::query()->create([
-                            ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                            ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                             'comment_id' => $comment->id,
                             'revision' => $comment->revision,
                             'body' => $comment->body,
@@ -155,7 +155,7 @@ final readonly class RestoreCommentRevisionAction
                         }
 
                         $configuredStatus = config(
-                            'comments.moderation.edited_status',
+                            'nvl-comments.moderation.edited_status',
                             CommentStatus::Pending->value,
                         );
                         $status = is_string($configuredStatus)
@@ -228,7 +228,7 @@ final readonly class RestoreCommentRevisionAction
 
                         return $comment;
                     }, attempts: CommentsConfiguration::positiveInteger(
-                        'comments.transactions.attempts',
+                        'nvl-comments.transactions.attempts',
                         3,
                     ));
             },

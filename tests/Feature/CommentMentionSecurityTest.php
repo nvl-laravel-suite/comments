@@ -36,7 +36,7 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
  */
 function commentsMentionSecurityRegisterCustom(): void
 {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'organization',
         TestCommentMentionResourceResolver::class,
@@ -48,7 +48,7 @@ function commentsMentionSecurityRegisterCustom(): void
  */
 function commentsMentionSecurityRegisterEloquent(bool $public = false): void
 {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->registerEloquent('organization', [
         'model' => TestCommentMentionResource::class,
         'searchable_fields' => ['name', 'registration_number'],
@@ -269,7 +269,7 @@ it('keeps nonpublic mention resources out of viewer-independent public projectio
 });
 
 it('allows marked viewer-independent resources in public projections', function (): void {
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     app(CommentMentionResourceRegistry::class)->register(
         'public-resource',
         TestViewerIndependentCommentMentionResourceResolver::class,

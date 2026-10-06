@@ -147,7 +147,7 @@ final readonly class ResolveCommentReportAction
 
                     return $report->refresh()->load('comment');
                 }, attempts: CommentsConfiguration::positiveInteger(
-                    'comments.transactions.attempts',
+                    'nvl-comments.transactions.attempts',
                     3,
                 )),
         );

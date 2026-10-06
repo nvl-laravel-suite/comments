@@ -40,7 +40,7 @@ it('rejects comment resolvers returning a different shared owner model', functio
 
 it('diagnoses valid owner references alongside target resolver behavior', function (): void {
     config()->set('nvl-core.owners', ['post' => TestCommentTarget::class]);
-    config()->set('comments.targets', ['article' => ['owner' => 'post', 'resolver' => TestCommentTargetResolver::class]]);
+    config()->set('nvl-comments.targets', ['article' => ['owner' => 'post', 'resolver' => TestCommentTargetResolver::class]]);
     $registry = app()->build(CommentTargetRegistry::class);
     $registry->register('article', TestCommentTargetResolver::class, 'post');
     app()->instance(CommentTargetRegistry::class, $registry);

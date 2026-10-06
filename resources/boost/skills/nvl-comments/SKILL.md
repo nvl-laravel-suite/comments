@@ -20,28 +20,28 @@ will own:
 
 ```bash
 composer require nvl/laravel-suite:^2.0
-php artisan vendor:publish --tag=comments-config
-php artisan vendor:publish --tag=comments-migrations
-php artisan vendor:publish --tag=comments-skills
+php artisan vendor:publish --tag=nvl-comments-config
+php artisan vendor:publish --tag=nvl-comments-migrations
+php artisan vendor:publish --tag=nvl-comments-skills
 php artisan migrate
 ```
 
 - Use automatic migrations on the effective Comments/Core connection and
   configured logical table names. If publishing the migrations, set
-  `comments.migrations.enabled=false` before migrating so exactly one source
+  `nvl-comments.migrations.enabled=false` before migrating so exactly one source
   owns the tables. Use the verified schema upgrade for existing NVL storage.
 - Register target resolvers and the final Laravel morph map before the first
-  write through `comments.targets`. When enforcing a morph map, include
+  write through `nvl-comments.targets`. When enforcing a morph map, include
   target/actor models and `Nvl\Comments\Models\Comment` for Media ownership.
   Never rename a persisted morph alias or fallback class name.
 - Bind consumer `CommentActorResolver`, `CommentQueryScope`,
   `CommentAuthorization`, and `CommentAuthorPresenter` implementations before
-  enabling routes through `comments.actor_resolver.class`,
-  `comments.query_scope.class`, `comments.authorization.class`, and
-  `comments.author_presenter.class`. Public, member, and management groups under
-  `comments.routes` are disabled by default; add the documented throttling and
+  enabling routes through `nvl-comments.actor_resolver.class`,
+  `nvl-comments.query_scope.class`, `nvl-comments.authorization.class`, and
+  `nvl-comments.author_presenter.class`. Public, member, and management groups under
+  `nvl-comments.routes` are disabled by default; add the documented throttling and
   authentication middleware.
-- Configure one shared mutation-lock store. Treat Media as optional: `comments.attachments.enabled=null` selects its
+- Configure one shared mutation-lock store. Treat Media as optional: `nvl-comments.attachments.enabled=null` selects its
   loaded provider, `true` requires it, and `false` disables the surface. An
   installed package with discovery disabled does not activate attachments.
 - Rebuild configuration/routes after changes, generate TypeScript declarations,
@@ -118,7 +118,7 @@ and signed-asset delivery responses are private/no-store.
 - Construct `CommentSelectorData` as `new CommentSelectorData(
   tags: ['candidacy-workflow'], status: CommentStatus::Approved)`. `tags` is a
   distinct list of at most 20 non-blank UTF-8 strings of at most 64 characters
-  each, further limited by a lower `comments.content.maximum_tags`. Every tag
+  each, further limited by a lower `nvl-comments.content.maximum_tags`. Every tag
   must match; status is nullable. Never accept a raw column or JSON path from
   consumer input.
 - Consume only the returned `PublicCommentData`, `MemberCommentData`, or
@@ -187,14 +187,14 @@ inside Actions; transport validation is not sufficient.
 
 ## Keep one mutation-lock domain
 
-- Keep `comments.mutation_lock.enabled` exactly `true` for production.
-- Configure `comments.mutation_lock.store` as one canonical Laravel
+- Keep `nvl-comments.mutation_lock.enabled` exactly `true` for production.
+- Configure `nvl-comments.mutation_lock.store` as one canonical Laravel
   `Illuminate\Contracts\Cache\LockProvider` store shared by HTTP processes,
   workers, schedulers, and reconciliation. `null` selects `cache.default`.
 - Use Redis or a shared database cache/lock table for multi-process and
   multi-node deployments.
 - Reject `array`, `null`, and `failover` drivers. File locks are single-host
-  only; set `comments.mutation_lock.allow_local_store` to exactly `true` only
+  only; set `nvl-comments.mutation_lock.allow_local_store` to exactly `true` only
   when every process shares that host filesystem.
 - Keep `seconds` and `wait_seconds` as positive integers. Treat any Doctor
   `mutation_lock.configuration_ready` or `mutation_lock.ready` failure as a
@@ -296,11 +296,11 @@ Doctor `column_definition.*` failure as a deployment blocker.
 
 ## Shared owner identities
 
-- Declare canonical owner identity once in `nvl-core.owners`; reference its alias in `comments` capability configuration.
+- Declare owner class lists in `nvl-core.owners` and reference model classes in `comments` capability configuration. Laravel `getMorphClass()` supplies the host-authored stored identity; declarations do not add global host morph mappings.
 - Keep the target resolver and its visibility/identifier checks. The route alias may differ from the shared owner alias. A resolver must return the exact model declared by its owner reference.
 - Keep the package allowlist and authorization independent of Core registration. Never authorize a model merely because Core knows it.
-- Accept legacy class/resolver/handler inputs during the documented one-major compatibility cycle. Report deprecated host identity inputs through `nvl:doctor`; preserve established write-time morph types.
-- Before introducing an alias for historical FQCN-backed data, explicitly convert reviewed package-owned columns and reconcile affected host relations. Never silently rewrite host morph tables or enable `enforceMorphMap()` globally.
+- Preserve resolvers, handlers and authorization. Legacy aliases require agreement with native `getMorphClass()` and are removed in major 6; Doctor reports mismatches and stored identity drift without conversion.
+- If the host changes its morph map, explicitly reconcile reviewed package-owned columns and affected host relations before cutover. Core and package capability registration never mutate the host morph map or rewrite stored values.
 
 ## Shared consumer diagnostics
 
@@ -322,4 +322,17 @@ Run `php artisan nvl:doctor --strict --format=json` to combine checks from loade
 
 ### Brownfield storage identities
 
-Resolve all package tables through the table helper and canonical `comments.tables.*`, connections through `comments.connection` with Core/Laravel inheritance. Defaults use `nvl_comments_*`; migration filenames include that package slug. Never silently adopt a matching table or generic migration filename. Run shared `nvl:doctor --strict --format=json` and the explicit `nvl:schema:upgrade --package=comments --claim-legacy --dry-run --format=json` before upgrading owned legacy storage. Validate the complete plan and choose one migration owner. Preserve host records, constraint names and stored morph values. Deprecated config inputs last one major; canonical options take precedence.
+Resolve all package tables through the table helper and canonical `nvl-comments.tables.*`, connections through `nvl-comments.connection` with Core/Laravel inheritance. Defaults use `nvl_comments_*`; migration filenames include that package slug. Never silently adopt a matching table or generic migration filename. Run shared `nvl:doctor --strict --format=json` and the explicit `nvl:schema:upgrade --package=comments --claim-legacy --dry-run --format=json` before upgrading owned legacy storage. Validate the complete plan and choose one migration owner. Preserve host records, constraint names and stored morph values. Deprecated config inputs last one major; canonical options take precedence.
+
+## Cache and lock ownership
+
+Comment mutation locks use `nvl:comments:mutation:` instead of `comments:mutation:`. The selected cache store and tenant partitioning are unchanged; generic host locks are never acquired or removed.
+
+Drain old mutation workers and maintenance processes, then wait for their outstanding lock leases to end before starting the new major across all nodes. Running old and new lock prefixes concurrently would create independent serialization domains. Restart workers after cutover; preserve host-selected stores and keys, and do not flush a shared cache to remove old NVL entries.
+
+## Canonical configuration ownership
+
+- Read/write `nvl-comments` configuration and publish only canonical `nvl-<package>-<resource>` tags. Keep logical package/tenant resource identifiers unchanged.
+- Generic config roots and unprefixed package environment names are foreign by default. For an upgrading NVL host only, select `nvl-core.compatibility.legacy_config` package IDs and `legacy_env` explicitly; both default off. Canonical presence wins, including false/null/empty values. Legacy inputs are read without writing back and are removed in major 6.
+- Use canonical `NVL_<PACKAGE>_*` variables only in config evaluation, then rebuild configuration caches and restart workers after cutover. Shared Laravel environment variables retain their names. Consult Core's versioned `support/resources/global-names.json` for all renames.
+- Old global aliases and legacy route families require separate explicit `global_aliases`/`legacy_routes` package selections. Preserve collisions and use Doctor diagnostics; never grant generic permissions automatically or claim signed-link compatibility without the same authorization/signature checks.

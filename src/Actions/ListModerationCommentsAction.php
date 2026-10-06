@@ -53,8 +53,8 @@ final readonly class ListModerationCommentsAction
             audience: CommentAudience::Management,
             context: ['operation' => 'list'],
         );
-        $maximum = CommentsConfiguration::positiveInteger('comments.pagination.maximum', 100);
-        $perPage ??= CommentsConfiguration::positiveInteger('comments.pagination.default', 25);
+        $maximum = CommentsConfiguration::positiveInteger('nvl-comments.pagination.maximum', 100);
+        $perPage ??= CommentsConfiguration::positiveInteger('nvl-comments.pagination.default', 25);
         $filterSet ??= FilterSet::none();
         $actionableStatusHashes = array_map(
             static fn (string $status): string => CommentIdentity::value(
@@ -95,7 +95,7 @@ final readonly class ListModerationCommentsAction
      */
     private function actionableStatuses(): array
     {
-        $configured = config('comments.moderation.actionable_statuses', [
+        $configured = config('nvl-comments.moderation.actionable_statuses', [
             CommentStatus::Pending->value,
             CommentStatus::Spam->value,
         ]);

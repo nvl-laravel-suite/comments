@@ -45,7 +45,7 @@ final readonly class SetCommentReactionAction
         CommentAudience $audience = CommentAudience::Public,
     ): ?CommentReaction {
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
-        $allowed = config('comments.reactions.allowed', []);
+        $allowed = config('nvl-comments.reactions.allowed', []);
 
         if (! mb_check_encoding($type, 'UTF-8')
             || preg_match('/\S/u', $type) !== 1
@@ -111,7 +111,7 @@ final readonly class SetCommentReactionAction
 
                     if ($active && $reaction === null) {
                         $reaction = CommentReaction::query()->create([
-                            ...(config('tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                            ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                             'comment_id' => $comment->id,
                             'actor_type' => $actor->type,
                             'actor_id' => $actor->id,
@@ -157,7 +157,7 @@ final readonly class SetCommentReactionAction
 
                     return $reaction;
                 }, attempts: CommentsConfiguration::positiveInteger(
-                    'comments.transactions.attempts',
+                    'nvl-comments.transactions.attempts',
                     3,
                 )),
         );

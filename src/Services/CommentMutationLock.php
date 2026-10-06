@@ -177,11 +177,11 @@ final class CommentMutationLock
      */
     private function lockKey(string $commentId): string
     {
-        $identity = config('tenancy.enabled') === true
+        $identity = config('nvl-tenancy.enabled') === true
             ? $this->boundary->key('comments.comments', 'mutation:'.$commentId)
             : $commentId;
 
-        return 'comments:mutation:'.hash('sha256', $identity);
+        return 'nvl:comments:mutation:'.hash('sha256', $identity);
     }
 
     /**

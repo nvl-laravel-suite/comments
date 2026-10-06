@@ -91,7 +91,7 @@ function commentsMentionSeedResources(): array
 }
 
 it('ships rich mention registration disabled with every bounded default', function (): void {
-    expect(config('comments.mentions'))->toMatchArray([
+    expect(config('nvl-comments.mentions'))->toMatchArray([
         'enabled' => false,
         'maximum_per_comment' => 25,
         'maximum_resource_types_per_comment' => 10,
@@ -153,7 +153,7 @@ it('registers explicitly allowlisted models that retain Laravel default wildcard
 it('returns deterministic bounded suggestions and escapes SQL wildcard input', function (): void {
     commentsMentionSeedResources();
     commentsMentionRegisterEloquent();
-    config()->set('comments.mentions.enabled', true);
+    config()->set('nvl-comments.mentions.enabled', true);
     $context = commentsMentionContext();
     $action = app(SuggestCommentMentionResourcesAction::class);
     $suggestions = $action->execute(
@@ -200,7 +200,7 @@ it('supports custom resource resolvers through the same registry', function (): 
 });
 
 it('registers configured custom and declarative definitions through one registry', function (): void {
-    config()->set('comments.mentions.resources', [
+    config()->set('nvl-comments.mentions.resources', [
         'organization' => [
             'model' => TestCommentMentionResource::class,
             'searchable_fields' => ['name'],
@@ -351,9 +351,9 @@ it('enforces hard query suggestion and batch bounds', function (): void {
     $registry = app(CommentMentionResourceRegistry::class);
     $registry->register('custom', TestCommentMentionResourceResolver::class);
     $context = commentsMentionContext();
-    config()->set('comments.mentions.maximum_query_length', 10_000);
-    config()->set('comments.mentions.maximum_suggestion_limit', 10_000);
-    config()->set('comments.mentions.maximum_batch_size', 10_000);
+    config()->set('nvl-comments.mentions.maximum_query_length', 10_000);
+    config()->set('nvl-comments.mentions.maximum_suggestion_limit', 10_000);
+    config()->set('nvl-comments.mentions.maximum_batch_size', 10_000);
 
     expect(fn () => $registry->suggest('custom', $context, str_repeat('x', 161), 10))
         ->toThrow(InvalidCommentMutationException::class)

@@ -56,7 +56,7 @@ final readonly class AttachCommentMediaAction
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
         $mediaId = $media instanceof Media ? $media->id : $media;
 
-        if (config('comments.attachments.enabled') === false) {
+        if (config('nvl-comments.attachments.enabled') === false) {
             throw new InvalidCommentMutationException(
                 'Comment attachments are disabled.',
             );
@@ -130,7 +130,7 @@ final readonly class AttachCommentMediaAction
                     }
 
                     if ($media->is_public
-                        && config('comments.attachments.allow_public_media', false) !== true) {
+                        && config('nvl-comments.attachments.allow_public_media', false) !== true) {
                         throw new InvalidCommentMutationException(
                             'Public media is not enabled for comment attachments.',
                         );
@@ -160,7 +160,7 @@ final readonly class AttachCommentMediaAction
                     }
 
                     $maximum = CommentsConfiguration::positiveInteger(
-                        'comments.attachments.maximum_per_comment',
+                        'nvl-comments.attachments.maximum_per_comment',
                         5,
                     );
                     $existing = $comment->attachmentAssociations()
@@ -181,7 +181,7 @@ final readonly class AttachCommentMediaAction
                         metadata: ['slot' => 'attachments'],
                     );
                 }, attempts: CommentsConfiguration::positiveInteger(
-                    'comments.transactions.attempts',
+                    'nvl-comments.transactions.attempts',
                     3,
                 )),
             ),

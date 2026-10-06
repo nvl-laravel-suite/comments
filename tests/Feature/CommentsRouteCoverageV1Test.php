@@ -34,9 +34,9 @@ use Nvl\Media\Models\Media;
 
 beforeEach(function (): void {
     config()->set([
-        'comments.routes.public.enabled' => true,
-        'comments.routes.member.enabled' => true,
-        'comments.routes.management.enabled' => true,
+        'nvl-comments.routes.public.enabled' => true,
+        'nvl-comments.routes.member.enabled' => true,
+        'nvl-comments.routes.management.enabled' => true,
     ]);
 
     require dirname(__DIR__, 2).'/routes/api.php';

@@ -584,7 +584,7 @@ final readonly class CommentProjectionFactory
      */
     private function reactionTypes(): array
     {
-        $configured = config('comments.reactions.allowed', []);
+        $configured = config('nvl-comments.reactions.allowed', []);
 
         if (! is_array($configured)) {
             return [];

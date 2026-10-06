@@ -105,7 +105,7 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
     /** Preserve force deletion cleanup while retaining assets shared with other owners. */
     public function deleteOwnerMedia(Comment $comment): void
     {
-        if (config('media.delete_media_on_model_delete', true) !== true) {
+        if (config('nvl-media.delete_media_on_model_delete', true) !== true) {
             return;
         }
         $association = new MediaAssociation;

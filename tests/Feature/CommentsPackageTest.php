@@ -252,7 +252,7 @@ it('enforces private attachment uploader ownership and remains idempotent', func
 });
 
 it('enforces bounded content and thread depth', function (): void {
-    config()->set('comments.threading.maximum_depth', 1);
+    config()->set('nvl-comments.threading.maximum_depth', 1);
     $target = TestCommentTarget::query()->create(['name' => 'Article']);
     $actor = new CommentActorData('member', '42');
     $root = app(CreateCommentAction::class)->execute(
@@ -303,7 +303,7 @@ it('authorizes replies against their parent and inherits its visibility', functi
         CommentAudience::Member,
     );
 
-    config()->set('comments.moderation.new_status', CommentStatus::Pending->value);
+    config()->set('nvl-comments.moderation.new_status', CommentStatus::Pending->value);
     $pendingRoot = app(CreateCommentAction::class)->execute(
         $target,
         new CreateCommentData('Pending root'),
@@ -327,14 +327,14 @@ it('rolls back comment mutations on the configured database connection', functio
     ]);
     $defaultConnection = config('database.default');
     config()->set('database.default', 'comments');
-    config()->set('comments.connection', null);
+    config()->set('nvl-comments.connection', null);
 
     foreach (glob(__DIR__.'/../../database/migrations/*.php') ?: [] as $migrationPath) {
         (require $migrationPath)->up();
     }
 
     config()->set('database.default', $defaultConnection);
-    config()->set('comments.connection', 'comments');
+    config()->set('nvl-comments.connection', 'comments');
 
     Schema::connection('comments')->create('comment_configured_targets', function (Blueprint $table): void {
         $table->id();
@@ -400,14 +400,14 @@ it('supports cross-connection target reads and rejects impossible SQL joins and 
     ]);
     $defaultConnection = config('database.default');
     config()->set('database.default', 'comments_cross');
-    config()->set('comments.connection', null);
+    config()->set('nvl-comments.connection', null);
 
     foreach (glob(__DIR__.'/../../database/migrations/*.php') ?: [] as $migrationPath) {
         (require $migrationPath)->up();
     }
 
     config()->set('database.default', $defaultConnection);
-    config()->set('comments.connection', 'comments_cross');
+    config()->set('nvl-comments.connection', 'comments_cross');
 
     $target = TestCommentTarget::query()->create(['name' => 'Cross connection']);
     $comment = Comment::query()->create([
@@ -449,7 +449,7 @@ it('fails migration collisions without replacing a consumer table', function ():
     ]);
     $defaultConnection = config('database.default');
     config()->set('database.default', 'comments_collision');
-    config()->set('comments.connection', null);
+    config()->set('nvl-comments.connection', null);
 
     Schema::connection('comments_collision')->create(CommentsTables::get(CommentsTables::Comments), function (Blueprint $table): void {
         $table->uuid('id')->primary();
@@ -475,7 +475,7 @@ it('creates package-managed storage on an explicit package connection', function
         'prefix' => '',
         'foreign_key_constraints' => true,
     ]);
-    config()->set('comments.connection', 'comments_custom');
+    config()->set('nvl-comments.connection', 'comments_custom');
     $migration = require __DIR__
         .'/../../database/migrations/2026_07_27_110001_nvl_comments_create_comments_table.php';
 
@@ -490,21 +490,21 @@ it('creates package-managed storage on an explicit package connection', function
 });
 
 it('replaces consumer configuration lists atomically while retaining nested defaults', function (): void {
-    config()->set('comments.content.allowed_formats', ['markdown']);
-    config()->set('comments.reactions.allowed', []);
-    config()->set('comments.moderation.actionable_statuses', ['spam']);
+    config()->set('nvl-comments.content.allowed_formats', ['markdown']);
+    config()->set('nvl-comments.reactions.allowed', []);
+    config()->set('nvl-comments.moderation.actionable_statuses', ['spam']);
 
     (new CommentsServiceProvider(app()))->register();
 
-    expect(config('comments.content.allowed_formats'))->toBe(['markdown'])
-        ->and(config('comments.reactions.allowed'))->toBe([])
-        ->and(config('comments.moderation.actionable_statuses'))->toBe(['spam'])
-        ->and(config('comments.content.maximum_bytes'))->toBe(20_000)
-        ->and(config('comments.routes.public.prefix'))->toBe('api/v1/discussions');
+    expect(config('nvl-comments.content.allowed_formats'))->toBe(['markdown'])
+        ->and(config('nvl-comments.reactions.allowed'))->toBe([])
+        ->and(config('nvl-comments.moderation.actionable_statuses'))->toBe(['spam'])
+        ->and(config('nvl-comments.content.maximum_bytes'))->toBe(20_000)
+        ->and(config('nvl-comments.routes.public.prefix'))->toBe('nvl/api/v1/comments/public');
 });
 
 it('rejects a non-array comments configuration root', function (): void {
-    config()->set('comments', 'invalid');
+    config()->set('nvl-comments', 'invalid');
 
     expect(fn () => (new CommentsServiceProvider(app()))->register())
         ->toThrow(RuntimeException::class, 'must be a map');

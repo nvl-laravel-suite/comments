@@ -154,7 +154,7 @@ final readonly class DetachCommentMediaAction
                                     'attachments',
                                 ) > 0;
                             }, attempts: CommentsConfiguration::positiveInteger(
-                                'comments.transactions.attempts',
+                                'nvl-comments.transactions.attempts',
                                 3,
                             ));
                     },

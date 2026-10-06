@@ -427,13 +427,13 @@ final class PublicCommentsController extends Controller
         bool $containsSignedUrls = false,
     ): JsonResponse {
         $seconds = CommentsConfiguration::positiveInteger(
-            'comments.cache.public_max_age',
+            'nvl-comments.cache.public_max_age',
             60,
         );
 
         if ($containsSignedUrls) {
             $signedLifetimeSeconds = CommentsConfiguration::positiveInteger(
-                'comments.attachments.signed_url_lifetime',
+                'nvl-comments.attachments.signed_url_lifetime',
                 5,
             ) * 60;
             $seconds = min(

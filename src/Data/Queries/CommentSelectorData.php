@@ -48,7 +48,7 @@ final class CommentSelectorData extends Data
         $maximumTags = min(
             20,
             CommentsConfiguration::positiveInteger(
-                'comments.content.maximum_tags',
+                'nvl-comments.content.maximum_tags',
                 20,
             ),
         );

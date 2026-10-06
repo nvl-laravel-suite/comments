@@ -46,6 +46,6 @@ it('creates projects reconciles and anonymizes comments without a loaded Media p
 
 it('rejects explicitly requested attachments when Media discovery is disabled', function (): void {
     expect(fn () => app(AttachCommentMediaAction::class))->toThrow(InvalidArgumentException::class, 'requires the loaded provider');
-    config()->set('comments.attachments.enabled', true);
+    config()->set('nvl-comments.attachments.enabled', true);
     expect(fn () => app(CommentProjectionFactory::class))->toThrow(InvalidArgumentException::class, 'requires the loaded provider');
 });

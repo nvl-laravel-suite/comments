@@ -47,9 +47,9 @@ use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 function commentsMetadataConfigure(array $schemas, bool $strict = false): CommentMetadataRegistry
 {
     config()->set([
-        'comments.metadata.schemas' => $schemas,
-        'comments.metadata.strict' => $strict,
-        'comments.metadata.digest_key' => 'comments-metadata-test-key',
+        'nvl-comments.metadata.schemas' => $schemas,
+        'nvl-comments.metadata.strict' => $strict,
+        'nvl-comments.metadata.digest_key' => 'comments-metadata-test-key',
     ]);
     app()->forgetInstance(CommentMetadataRegistry::class);
 
@@ -57,7 +57,7 @@ function commentsMetadataConfigure(array $schemas, bool $strict = false): Commen
 }
 
 it('publishes bounded registered metadata defaults', function (): void {
-    expect(config('comments.metadata'))->toBe([
+    expect(config('nvl-comments.metadata'))->toBe([
         'strict' => false,
         'maximum_bytes' => 16_384,
         'maximum_registered_fields' => 50,
@@ -141,7 +141,7 @@ it('adds and rolls back metadata storage on released schemas and configured tabl
     ]);
     $defaultConnection = config('database.default');
     config()->set('database.default', 'comments_metadata_upgrade');
-    config()->set('comments.connection', null);
+    config()->set('nvl-comments.connection', null);
 
     foreach ([
         '2026_07_27_110001_nvl_comments_create_comments_table.php',
@@ -164,7 +164,7 @@ it('adds and rolls back metadata storage on released schemas and configured tabl
 
     expect(Schema::connection('comments_metadata_upgrade')->hasTable(CommentsTables::MetadataValues))->toBeFalse();
 
-    config()->set('comments.tables.comment_metadata_values', 'tenant_comment_metadata_values');
+    config()->set('nvl-comments.tables.comment_metadata_values', 'tenant_comment_metadata_values');
     $metadataMigration->up();
 
     expect(Schema::connection('comments_metadata_upgrade')->hasColumns(
@@ -201,7 +201,7 @@ it('uses actual application-owned metadata storage for every write and selector 
             'tenant_comment_metadata_lookup_index',
         );
     });
-    config()->set('comments.tables.comment_metadata_values', $table);
+    config()->set('nvl-comments.tables.comment_metadata_values', $table);
     commentsMetadataConfigure([TestCommentMetadataSchema::class]);
     $target = TestCommentTarget::query()->create(['name' => 'Application-owned metadata']);
     $actor = new CommentActorData('member', 'application-storage-author');
@@ -387,7 +387,7 @@ it('round-trips dotted namespaces and enforces metadata index storage widths', f
         CommentAudience::Member,
     )?->id)->toBe($comment->id);
 
-    config()->set('comments.metadata.schemas', [OverlongCommentMetadataNamespaceSchema::class]);
+    config()->set('nvl-comments.metadata.schemas', [OverlongCommentMetadataNamespaceSchema::class]);
     app()->forgetInstance(CommentMetadataRegistry::class);
 
     expect(fn () => app(CommentMetadataRegistry::class))->toThrow(
@@ -432,8 +432,8 @@ it('rejects unknown keys in strict mode without disclosing their names or values
 it('enforces independent metadata byte and registered field limits', function (): void {
     commentsMetadataConfigure([TestCommentMetadataSchema::class]);
     config()->set([
-        'comments.content.maximum_bytes' => 1000,
-        'comments.metadata.maximum_bytes' => 20,
+        'nvl-comments.content.maximum_bytes' => 1000,
+        'nvl-comments.metadata.maximum_bytes' => 20,
     ]);
     $target = TestCommentTarget::query()->create(['name' => 'Metadata limits']);
     $actor = new CommentActorData('member', 'limit-author');
@@ -446,8 +446,8 @@ it('enforces independent metadata byte and registered field limits', function ()
     ))->toThrow(InvalidCommentMutationException::class, 'metadata byte limit');
 
     config()->set([
-        'comments.metadata.maximum_bytes' => 16_384,
-        'comments.metadata.maximum_registered_fields' => 1,
+        'nvl-comments.metadata.maximum_bytes' => 16_384,
+        'nvl-comments.metadata.maximum_registered_fields' => 1,
     ]);
 
     expect(fn () => app(CreateCommentAction::class)->execute(
@@ -462,7 +462,7 @@ it('enforces independent metadata byte and registered field limits', function ()
 });
 
 it('rejects duplicate storage ownership during registry resolution', function (): void {
-    config()->set('comments.metadata.schemas', [
+    config()->set('nvl-comments.metadata.schemas', [
         TestCommentMetadataSchema::class,
         DuplicateCommentMetadataSchema::class,
     ]);

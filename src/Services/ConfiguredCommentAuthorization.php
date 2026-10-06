@@ -51,11 +51,11 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
                 && ! $this->isAnonymized($comment),
             CommentAbility::Update => $this->isMutableAuthor($actor, $comment),
             CommentAbility::Delete => config(
-                'comments.moderation.allow_author_delete',
+                'nvl-comments.moderation.allow_author_delete',
                 true,
             ) === true && $this->isMutableAuthor($actor, $comment),
             CommentAbility::Restore => config(
-                'comments.moderation.allow_author_restore',
+                'nvl-comments.moderation.allow_author_restore',
                 true,
             ) === true && $this->isAuthor($actor, $comment)
                 && $comment?->trashed() === true
@@ -67,7 +67,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
                 && $this->isVisibleToActor($actor, $comment, $audience)
                 && ! $this->isDeleted($comment)
                 && ! $this->isAnonymized($comment),
-            CommentAbility::Attach => config('comments.attachments.enabled') !== false
+            CommentAbility::Attach => config('nvl-comments.attachments.enabled') !== false
                 && $actor->id !== null
                 && $this->isMutableAuthor($actor, $comment),
             CommentAbility::Detach => $actor->id !== null
@@ -198,7 +198,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
         }
 
         return $audience === CommentAudience::Public
-            && config('comments.anonymous.enabled', false) === true;
+            && config('nvl-comments.anonymous.enabled', false) === true;
     }
 
     private function isAuthor(CommentActorData $actor, ?Comment $comment): bool

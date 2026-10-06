@@ -151,7 +151,7 @@ final class CommentIdempotencyDigest
      */
     private function keyBytes(): string
     {
-        $configured = config('comments.idempotency.digest_key');
+        $configured = config('nvl-comments.idempotency.digest_key');
 
         if (! is_string($configured) || $configured === '') {
             $configured = config('app.key');
