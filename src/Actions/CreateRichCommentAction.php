@@ -13,6 +13,8 @@ use Nvl\Comments\Services\CommentCreationWriter;
 
 /**
  * Creates one bounded rich comment and its current mention rows atomically.
+ *
+ * @api
  */
 final readonly class CreateRichCommentAction
 {

@@ -17,6 +17,8 @@ use Nvl\Comments\Services\CommentTargetLocator;
 
 /**
  * Lists authorized, deliverable attachment associations for one scoped comment.
+ *
+ * @api
  */
 final readonly class ListCommentAttachmentsAction
 {

@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Review lifecycle of a comment report.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentReportStatus: string

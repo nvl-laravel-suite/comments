@@ -20,6 +20,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Lists one comment's reports after target-aware moderator authorization.
+ *
+ * @api
  */
 final readonly class ListCommentReportsAction
 {

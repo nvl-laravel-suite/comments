@@ -13,6 +13,8 @@ use Nvl\Comments\Services\CommentCreationWriter;
 
 /**
  * Creates an idempotent root comment or bounded reply atomically.
+ *
+ * @api
  */
 final readonly class CreateCommentAction
 {

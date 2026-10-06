@@ -30,6 +30,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Attaches available media only after comment and media ownership authorization.
+ *
+ * @api
  */
 final readonly class AttachCommentMediaAction
 {

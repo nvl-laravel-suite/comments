@@ -30,7 +30,11 @@ final class LatestCommentSummaryData extends Data
         public readonly string $updatedAt,
     ) {}
 
-    /** Project a bounded hydrated row without relationships or policy callbacks. */
+    /**
+     * Project a bounded hydrated row without relationships or policy callbacks.
+     *
+     * @internal
+     */
     public static function fromModel(Comment $comment): self
     {
         $omitted = Optional::create();

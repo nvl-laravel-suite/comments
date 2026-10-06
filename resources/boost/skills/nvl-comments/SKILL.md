@@ -96,8 +96,11 @@ php artisan migrate
   and IDs up to the 255-character domain limit are supported; `/` is not. Map a
   slash-containing external ID to a reversible slash-free application route ID.
 - Define the target connection on a fresh registered model. Cross-connection
-  lazy/eager relationships and Comments read Actions are supported, but
-  `has`/`whereHas`/`withCount` require a shared connection. Create comments only
+  Comments read Actions are supported. Package-internal lazy/eager relations
+  can cross connections; consumers use `ListCommentsAction` or
+  `ListOwnerCommentSummariesAction` with explicit actor/audience instead of
+  `comments()` traversal, lazy properties, `load`, or eager loading. Authorized
+  C1 host scopes retain their same-connection requirements. Create comments only
   after a cross-connection target transaction commits, and coordinate target
   deletion with comment retention/anonymization.
 - Bind `CommentActorResolver` for HTTP actors and return stable application-owned

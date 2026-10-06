@@ -26,6 +26,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Creates or refreshes one actor's report without count inflation.
+ *
+ * @api
  */
 final readonly class ReportCommentAction
 {

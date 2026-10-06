@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Stable audience boundaries used for comment authorization and projection.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentAudience: string

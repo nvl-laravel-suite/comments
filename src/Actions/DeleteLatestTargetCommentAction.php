@@ -22,6 +22,8 @@ use Nvl\Comments\Support\CommentsConfiguration;
 
 /**
  * Deletes one deterministic latest target match without exposing persistence models.
+ *
+ * @api
  */
 final readonly class DeleteLatestTargetCommentAction
 {

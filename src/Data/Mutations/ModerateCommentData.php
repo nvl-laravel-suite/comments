@@ -16,6 +16,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Explicit moderation transition with concurrency protection.
+ *
+ * @api
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]

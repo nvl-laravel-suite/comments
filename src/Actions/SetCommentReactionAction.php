@@ -23,6 +23,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Idempotently enables or removes one configured reaction type.
+ *
+ * @api
  */
 final readonly class SetCommentReactionAction
 {

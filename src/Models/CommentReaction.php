@@ -27,6 +27,8 @@ use Nvl\Support\Config\PackageStorage;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Comment $comment
+ *
+ * @api
  */
 final class CommentReaction extends Model
 {

@@ -12,6 +12,8 @@ use Nvl\Comments\Models\Comment;
 
 /**
  * Consumer-owned policy boundary for all comment capabilities.
+ *
+ * @api
  */
 interface CommentAuthorization
 {

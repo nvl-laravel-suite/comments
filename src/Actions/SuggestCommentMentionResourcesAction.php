@@ -18,6 +18,8 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 /**
  * Suggests one authorized registered resource type for a rich comment editor.
+ *
+ * @api
  */
 final readonly class SuggestCommentMentionResourcesAction
 {

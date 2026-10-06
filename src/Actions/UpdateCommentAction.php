@@ -27,6 +27,8 @@ use Spatie\LaravelData\Optional;
 
 /**
  * Replaces editable comment content while retaining immutable history.
+ *
+ * @api
  */
 final readonly class UpdateCommentAction
 {

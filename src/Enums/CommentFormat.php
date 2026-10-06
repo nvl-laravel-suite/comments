@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Non-executable author content format.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentFormat: string

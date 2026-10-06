@@ -94,6 +94,23 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @method MorphMany<MediaAssociation, $this> attachmentAssociations()
  * @method MorphMany<MediaAssociation, $this> mediaAssociations()
+ *
+ * @api
+ *
+ * @nvl-consumer-read id
+ * @nvl-consumer-read format
+ * @nvl-consumer-read locale
+ * @nvl-consumer-read status
+ * @nvl-consumer-read visibility
+ * @nvl-consumer-read revision
+ * @nvl-consumer-read reply_count
+ * @nvl-consumer-read reaction_count
+ * @nvl-consumer-read report_count
+ * @nvl-consumer-read open_report_count
+ * @nvl-consumer-read is_pinned
+ * @nvl-consumer-read created_at
+ * @nvl-consumer-read updated_at
+ * @nvl-consumer-read deleted_at
  */
 final class Comment extends Model
 {

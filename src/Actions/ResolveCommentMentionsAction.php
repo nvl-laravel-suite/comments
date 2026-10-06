@@ -17,6 +17,8 @@ use Spatie\LaravelData\Optional;
 
 /**
  * Resolves one authorized comment's current viewer-safe mention projections.
+ *
+ * @api
  */
 final readonly class ResolveCommentMentionsAction
 {

@@ -26,6 +26,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Resolves or dismisses one report through moderator authorization.
+ *
+ * @api
  */
 final readonly class ResolveCommentReportAction
 {

@@ -18,6 +18,10 @@ use Nvl\Comments\Services\CommentBatchQueryBuilder;
  * Adds a string-key-compatible comment relationship to a model.
  *
  * @mixin Model
+ *
+ * @api
+ *
+ * @nvl-consumer-relation comments
  */
 trait InteractsWithComments
 {
@@ -34,6 +38,8 @@ trait InteractsWithComments
 
     /**
      * @return MorphMany<Comment, $this>
+     *
+     * @internal
      */
     public function comments(): MorphMany
     {

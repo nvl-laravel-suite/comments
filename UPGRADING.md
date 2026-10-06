@@ -228,3 +228,11 @@ DDL transactions are driver dependent and per connection. Inspect dry-run warnin
 Comment mutation locks use `nvl:comments:mutation:` instead of `comments:mutation:`. The selected cache store and tenant partitioning are unchanged; generic host locks are never acquired or removed.
 
 Drain old mutation workers and maintenance processes, then wait for their outstanding lock leases to end before starting the new major across all nodes. Running old and new lock prefixes concurrently would create independent serialization domains. Restart workers after cutover; preserve host-selected stores and keys, and do not flush a shared cache to remove old NVL entries.
+
+## Tagged consumer PHP boundary
+
+Use source `@api` workflows, extension contracts, and value types for application integration. Direct use of untagged implementations or `@internal` members is unsupported. This classification keeps existing concrete Action signatures and runtime behavior; it does not authorize package model persistence, ad hoc queries, relation traversal, or generic model serialization. Returned models are identity/result handles with only the explicitly declared in-memory read fields described in the README.
+
+`InteractsWithComments::comments()` are internal storage or lifecycle seams. Migrate direct traversal, eager/lazy loading, and aggregate queries to the package authorized read Actions or explicit C1 host scopes/adapters. Native host queries and opted-in Translatable behavior remain supported.
+
+`CommentManagementData::fromModel`, `MemberCommentData::fromModel`, `PublicCommentData::fromModel`, and `LatestCommentSummaryData::fromModel` are internal package projectors, even for already-loaded rows. Use audience-aware `ListCommentsAction`/`GetCommentAction` for comment display or `ListOwnerCommentSummariesAction`/`ListOwnerCommentSummariesContract` for owner summaries with the explicit actor and audience. These workflows own redaction, body/anonymization handling, and policy.

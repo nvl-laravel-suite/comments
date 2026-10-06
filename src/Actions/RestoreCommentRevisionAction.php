@@ -32,6 +32,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Restores historical comment content as a new optimistic revision.
+ *
+ * @api
  */
 final readonly class RestoreCommentRevisionAction
 {

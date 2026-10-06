@@ -18,6 +18,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Lists one comment's authorized immutable content history.
+ *
+ * @api
  */
 final readonly class ListCommentRevisionsAction
 {

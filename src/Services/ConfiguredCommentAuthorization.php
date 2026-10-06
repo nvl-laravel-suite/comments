@@ -24,6 +24,8 @@ use Nvl\Support\Owners\OwnerBatch;
  *
  * Applications with tenant, role, private-thread, or moderator rules should bind
  * their own CommentAuthorization implementation.
+ *
+ * @api
  */
 final class ConfiguredCommentAuthorization implements CommentAuthorization, CommentBatchQueryScope, CommentQueryScope
 {

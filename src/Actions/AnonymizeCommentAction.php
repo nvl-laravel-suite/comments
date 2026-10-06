@@ -33,6 +33,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Irreversibly anonymizes one comment while retaining thread and audit structure.
+ *
+ * @api
  */
 final readonly class AnonymizeCommentAction
 {

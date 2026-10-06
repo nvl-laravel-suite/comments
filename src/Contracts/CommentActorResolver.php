@@ -9,6 +9,8 @@ use Nvl\Comments\Data\CommentActorData;
 
 /**
  * Resolves a transport request to a stable comment actor identity.
+ *
+ * @api
  */
 interface CommentActorResolver
 {

@@ -17,6 +17,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Privileged moderation representation containing actor and report facts.
+ *
+ * @api
  */
 #[TypeScript]
 final class CommentManagementData extends Data
@@ -78,6 +80,8 @@ final class CommentManagementData extends Data
      *
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<CommentMentionData>|Optional  $mentions
+     *
+     * @internal
      */
     public static function fromModel(
         Comment $comment,

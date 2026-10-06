@@ -8,6 +8,8 @@ use Nvl\Comments\Definitions\CommentMetadataField;
 
 /**
  * Defines one stable namespace of application-owned comment metadata fields.
+ *
+ * @api
  */
 interface CommentMetadataSchema
 {

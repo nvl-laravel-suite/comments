@@ -9,6 +9,8 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 /**
  * Applies an application-owned authorization scope to declarative mention resources.
+ *
+ * @api
  */
 interface CommentMentionResourceAuthorization
 {

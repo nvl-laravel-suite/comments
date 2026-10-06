@@ -13,6 +13,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Stable actor identity independent of an application's user model.
+ *
+ * @api
  */
 #[TypeScript]
 final class CommentActorData extends Data

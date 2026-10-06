@@ -6,6 +6,8 @@ namespace Nvl\Comments\Enums;
 
 /**
  * Enumerates the scalar value types accepted by registered comment metadata.
+ *
+ * @api
  */
 enum CommentMetadataValueType: string
 {

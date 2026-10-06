@@ -7,7 +7,11 @@ namespace Nvl\Comments\Contracts;
 use Closure;
 use Nvl\Comments\Models\Comment;
 
-/** Preserves optional attachment cleanup and locking during comment anonymization. */
+/**
+ * Preserves optional attachment cleanup and locking during comment anonymization.
+ *
+ * @api
+ */
 interface CommentAttachmentLifecycle
 {
     /** Determine whether an enabled or historical attachment state requires cleanup. */

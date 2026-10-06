@@ -20,6 +20,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Viewer-aware member projection with status and explicit mutation abilities.
+ *
+ * @api
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
@@ -73,6 +75,8 @@ final class MemberCommentData extends Data
      * @param  list<MemberCommentReactionSummaryData>  $reactions
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<CommentMentionData>|Optional  $mentions
+     *
+     * @internal
      */
     public static function fromModel(
         Comment $comment,

@@ -19,6 +19,8 @@ use Nvl\Comments\Support\CommentIdentity;
 
 /**
  * Resolves one newest authorized target comment through bounded selectors.
+ *
+ * @api
  */
 final readonly class FindLatestTargetCommentAction
 {

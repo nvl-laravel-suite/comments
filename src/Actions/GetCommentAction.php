@@ -11,6 +11,8 @@ use Nvl\Comments\Services\CommentReadService;
 
 /**
  * Loads and authorizes one comment for display.
+ *
+ * @api
  */
 final readonly class GetCommentAction
 {

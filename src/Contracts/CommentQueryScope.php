@@ -17,6 +17,8 @@ use Nvl\Comments\Models\Comment;
  * Implementations only constrain the query. Ability denial belongs to
  * CommentAuthorization so scoped aggregates cannot reopen an unrelated
  * authorization gate after their owning operation was authorized.
+ *
+ * @api
  */
 interface CommentQueryScope
 {

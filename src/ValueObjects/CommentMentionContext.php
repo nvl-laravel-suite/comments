@@ -10,6 +10,8 @@ use Nvl\Comments\Enums\CommentAudience;
 
 /**
  * Carries the authorized target, actor, and audience into mention resolution.
+ *
+ * @api
  */
 final readonly class CommentMentionContext
 {

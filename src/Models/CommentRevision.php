@@ -30,6 +30,8 @@ use Nvl\Support\Config\PackageStorage;
  * @property string|null $edited_by
  * @property Carbon $created_at
  * @property-read Comment $comment
+ *
+ * @api
  */
 final class CommentRevision extends Model
 {

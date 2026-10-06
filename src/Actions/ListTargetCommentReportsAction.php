@@ -24,6 +24,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Lists one target's actionable reports including reports on soft-deleted comments.
+ *
+ * @api
  */
 final readonly class ListTargetCommentReportsAction
 {

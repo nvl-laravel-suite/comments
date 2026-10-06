@@ -27,6 +27,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Detaches one authorized comment association without deleting its Media record.
+ *
+ * @api
  */
 final readonly class DetachCommentMediaAction
 {

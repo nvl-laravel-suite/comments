@@ -6,5 +6,7 @@ namespace Nvl\Comments\Contracts;
 
 /**
  * Marks a custom mention resolver whose output is safe for shared public projections.
+ *
+ * @api
  */
 interface ViewerIndependentCommentMentionResource {}

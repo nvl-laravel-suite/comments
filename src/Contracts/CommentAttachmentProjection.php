@@ -12,7 +12,11 @@ use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 
-/** Supplies optional attachment projections without importing Media persistence types. */
+/**
+ * Supplies optional attachment projections without importing Media persistence types.
+ *
+ * @api
+ */
 interface CommentAttachmentProjection
 {
     /**

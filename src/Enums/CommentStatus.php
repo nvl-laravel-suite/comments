@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Moderation state of a comment.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentStatus: string

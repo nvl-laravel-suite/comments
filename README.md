@@ -162,10 +162,13 @@ access or replace stored ownership.
 
 The registered target model must define its connection on a fresh model
 instance; a caller-only `setConnection(...)` override is not a registry
-contract. Targets may live on another connection: lazy/eager `comments`
-relationships and Comments read Actions remain available, while SQL existence
-queries such as `whereHas('comments')`, `has`, and `withCount` require the target
-and Comments to share one connection and fail explicitly otherwise.
+contract. Targets may live on another connection: Comments read Actions remain
+available. Consumers use audience-aware `ListCommentsAction` or
+`ListOwnerCommentSummariesContract` with the explicit actor/audience, and the
+authorized C1 host scopes for counts/existence. Direct `comments` lazy/eager
+loading, `whereHas`, `has`, and `withCount` traversal are internal. Package-internal
+lazy/eager relationships can cross connections; correlated SQL scopes retain
+their same-connection requirements and fail explicitly otherwise.
 Cross-connection comment creation must run after the target transaction commits
 because no atomic transaction spans both stores. The consuming application must
 also coordinate target deletion with comment retention/anonymization; strict
@@ -1022,6 +1025,14 @@ composer quality
 The development suite uses `ext-pcntl` for Unix process/concurrency coverage.
 Production consumers install with `--no-dev` and do not require that extension;
 run the complete contributor suite on Linux or macOS.
+
+## Supported PHP usage
+
+The source `@api` declarations identify supported workflows, extension contracts, and value types. Public members marked `@internal` and untagged implementation types remain package-owned. Concrete Actions retain their existing constructors, qualifiers, and `execute()` signatures.
+
+A package model returned or accepted by a public workflow is an identity/result handle. Use its declared type and `getKey()`, `getKeyName()`, `getMorphClass()`, `getRouteKey()`, `getRouteKeyName()`, `is()`, `isNot()`, and `relationLoaded()`. Read only explicitly declared in-memory `@nvl-consumer-read` fields; ordinary model PHPDocs and fillable attributes do not grant consumer reads. Obtain display projections through public reads. Persistence, additional model queries, relation access/loading, and generic model serialization are outside this contract. Host-model queries remain available, while traversal or aggregates of package capability relations require the package public reader or authorized adapter.
+
+The current readable handle fields are `Comment`: `id`, `format`, `locale`, `status`, `visibility`, `revision`, `reply_count`, `reaction_count`, `report_count`, `open_report_count`, `is_pinned`, `created_at`, `updated_at`, `deleted_at`. All other package model handles have no readable attribute grant.
 
 ## License
 

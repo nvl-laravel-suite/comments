@@ -24,6 +24,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Lists the moderation queue only after the privileged capability check.
+ *
+ * @api
  */
 final readonly class ListModerationCommentsAction
 {

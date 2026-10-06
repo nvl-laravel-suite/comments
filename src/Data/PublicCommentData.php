@@ -18,6 +18,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Viewer-independent public comment projection with no policy or actor internals.
+ *
+ * @api
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
@@ -67,6 +69,8 @@ final class PublicCommentData extends Data
      * @param  list<CommentReactionSummaryData>  $reactions
      * @param  list<CommentMetadataProjectionData>|Optional  $metadata
      * @param  list<CommentMentionData>|Optional  $mentions
+     *
+     * @internal
      */
     public static function fromModel(
         Comment $comment,

@@ -19,6 +19,8 @@ use Nvl\Filterable\Services\EloquentFilterApplier;
 
 /**
  * Lists one target's thread through a fixed filter/sort allowlist.
+ *
+ * @api
  */
 final readonly class ListCommentsAction
 {

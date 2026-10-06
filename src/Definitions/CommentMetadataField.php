@@ -10,6 +10,8 @@ use Nvl\Comments\Enums\CommentMetadataValueType;
 
 /**
  * Describes one registered scalar metadata field and its safe capabilities.
+ *
+ * @api
  */
 final readonly class CommentMetadataField
 {

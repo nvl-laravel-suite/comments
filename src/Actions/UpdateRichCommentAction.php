@@ -31,6 +31,8 @@ use Spatie\LaravelData\Optional;
 
 /**
  * Replaces rich comment content and mention rows while retaining history.
+ *
+ * @api
  */
 final readonly class UpdateRichCommentAction
 {

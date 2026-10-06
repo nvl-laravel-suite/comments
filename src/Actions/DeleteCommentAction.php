@@ -12,6 +12,8 @@ use Nvl\Comments\Services\CommentDeletionWriter;
 
 /**
  * Soft-deletes a comment while preserving its reply thread and audit history.
+ *
+ * @api
  */
 final readonly class DeleteCommentAction
 {

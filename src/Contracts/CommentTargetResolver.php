@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Resolves an API-safe target alias and string-compatible identifier.
+ *
+ * @api
  */
 interface CommentTargetResolver
 {

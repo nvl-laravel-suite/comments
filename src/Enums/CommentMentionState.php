@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Describes whether a stored mention has an authorized live resource projection.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentMentionState: string

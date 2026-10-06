@@ -27,6 +27,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Restores one soft-deleted comment without reviving an invalid reply branch.
+ *
+ * @api
  */
 final readonly class RestoreCommentAction
 {

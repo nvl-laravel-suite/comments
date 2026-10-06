@@ -11,6 +11,8 @@ use Nvl\Comments\Models\Comment;
 
 /**
  * Presents stored comment authors without exposing polymorphic actor identities.
+ *
+ * @api
  */
 interface CommentAuthorPresenter
 {

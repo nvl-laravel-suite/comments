@@ -9,6 +9,8 @@ use InvalidArgumentException;
 
 /**
  * Produces collation-independent fingerprints for persisted Comments identities.
+ *
+ * @api
  */
 final class CommentIdentity
 {

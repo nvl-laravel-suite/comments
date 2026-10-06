@@ -9,6 +9,8 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 /**
  * Produces server-owned URLs for already-authorized mention resources.
+ *
+ * @api
  */
 interface CommentMentionUrlResolver
 {

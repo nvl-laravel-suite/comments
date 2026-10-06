@@ -9,7 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Tenancy\ValueObjects\TenantId;
 
-/** Narrows an intentionally global mention catalog to principals visible in one tenant. */
+/**
+ * Narrows an intentionally global mention catalog to principals visible in one tenant.
+ *
+ * @api
+ */
 interface CommentMentionTenantProjection
 {
     /** @param Builder<Model> $query */

@@ -8,6 +8,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Stable capabilities protected by the comment policy boundary.
+ *
+ * @api
  */
 #[TypeScript]
 enum CommentAbility: string

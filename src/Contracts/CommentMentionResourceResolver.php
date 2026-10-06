@@ -10,6 +10,8 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 /**
  * Resolves one registered mention resource type in bounded batches.
+ *
+ * @api
  */
 interface CommentMentionResourceResolver
 {

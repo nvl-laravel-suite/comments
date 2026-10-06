@@ -25,6 +25,8 @@ use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 
 /**
  * Applies an explicit moderation state and pin transition.
+ *
+ * @api
  */
 final readonly class ModerateCommentAction
 {
