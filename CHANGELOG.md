@@ -1,15 +1,9 @@
 # Changelog
 
-## Unreleased — consumer runtime integration
-
-- Added focused consumer contract/testing guidance and shipped-factory usage limits.
-- Versioned committed event payloads and documented canonical aliases, source connections, failure metadata and optional safe rendering.
-- Added explicit first-use/installer and deployment guidance; new acceptance checks remain pending.
-
 
 All notable changes to `nvl/comments` are documented here.
 
-## [Unreleased]
+## [5.0.0] — release candidate (unpublished)
 
 ### Added
 
