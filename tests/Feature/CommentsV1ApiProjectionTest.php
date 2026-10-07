@@ -70,7 +70,7 @@ use Nvl\Media\Enums\MediaType;
 use Nvl\Media\Enums\MediaVisibility;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
-use Nvl\Tenancy\Services\TenantInstallationState;
+use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
 use Nvl\Translatable\Services\ContentLocale;
 
 /**
