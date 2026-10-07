@@ -80,6 +80,7 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
+use Nvl\Comments\Services\CommentMutationLockStore;
 use Nvl\Comments\Services\CommentsDoctor;
 use Nvl\Comments\Services\CommentTargetRegistry;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
@@ -94,6 +95,7 @@ use Nvl\Support\Globals\GlobalNames;
 use Nvl\Support\Integrations\OptionalIntegration;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Support\Providers\TenantServiceProvider;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
 use Nvl\Support\Traits\RegistersNamespacedResources;
@@ -180,11 +182,11 @@ final class CommentsServiceProvider extends ServiceProvider
             'nvl-comments.author_presenter.class',
             SafeCommentAuthorPresenter::class,
         );
-        $this->app->alias(
-            'db.transactions',
-            DatabaseTransactionsManager::class,
-        );
-        $this->app->scoped(CommentMutationLock::class);
+        $this->app->scoped(CommentMutationLock::class, static fn (Application $app): CommentMutationLock => new CommentMutationLock(
+            transactions: static fn (): DatabaseTransactionsManager => $app->make('db.transactions'),
+            store: $app->make(CommentMutationLockStore::class),
+            boundary: $app->make(TenantBoundary::class),
+        ));
         $this->app->singleton(CommentMetadataRegistry::class);
         $this->app->singleton(
             CommentMentionResourceRegistry::class,

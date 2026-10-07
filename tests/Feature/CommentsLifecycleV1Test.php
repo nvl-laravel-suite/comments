@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use Illuminate\Database\DatabaseTransactionsManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -1659,4 +1660,33 @@ it('does not reintroduce a deletion identity during authorized self anonymizatio
         ->and($erased->deleted_at)->not->toBeNull()
         ->and($erased->anonymized_by_type)->toBe($author->type)
         ->and($erased->anonymized_by)->toBe($author->id);
+});
+
+it('retains mutation locks with a rebound manager after early scoped resolution', function (): void {
+    $coordinator = app(CommentMutationLock::class);
+    $original = app('db.transactions');
+    $manager = new DatabaseTransactionsManager;
+    $name = 'comments_rebound_manager';
+    config()->set('database.connections.'.$name, ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']);
+    config()->set('nvl-comments.connection', $name);
+    app()->instance('db.transactions', $manager);
+    $connection = DB::connection($name);
+    $connection->setTransactionManager($manager);
+    $commentId = 'rebound-manager-'.Str::uuid()->toString();
+    $contender = Cache::store('file')->lock('nvl:comments:mutation:'.hash('sha256', $commentId), 5, 'independent-contender');
+
+    try {
+        $connection->beginTransaction();
+        $coordinator->execute($commentId, static fn (): null => null);
+        expect($contender->get())->toBeFalse();
+        $connection->commit();
+        expect($contender->get())->toBeTrue();
+    } finally {
+        while ($connection->transactionLevel() > 0) {
+            $connection->rollBack();
+        }
+        $contender->release();
+        DB::purge($name);
+        app()->instance('db.transactions', $original);
+    }
 });

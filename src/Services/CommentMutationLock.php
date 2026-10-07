@@ -37,9 +37,11 @@ final class CommentMutationLock
 
     /**
      * Create the request-scoped comment mutation lock coordinator.
+     *
+     * @param  Closure(): DatabaseTransactionsManager  $transactions
      */
     public function __construct(
-        private readonly DatabaseTransactionsManager $transactions,
+        private readonly Closure $transactions,
         private readonly CommentMutationLockStore $store,
         private readonly TenantBoundary $boundary,
     ) {}
@@ -195,7 +197,7 @@ final class CommentMutationLock
             return null;
         }
 
-        $root = $this->transactions
+        $root = ($this->transactions)()
             ->callbackApplicableTransactions()
             ->filter(
                 static fn (DatabaseTransactionRecord $transaction): bool => $transaction->connection === $connection->getName(),
