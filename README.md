@@ -1037,7 +1037,7 @@ composer audit --locked --no-interaction
 The release matrix additionally runs package and integration Pest suites on
 SQLite, MySQL 8.4, MariaDB 12.3, and PostgreSQL 17; concurrency coverage;
 strict Doctor; TypeScript and public-contract checks; clean source and
-relocated-artifact consumers on Laravel 13; and every supported PHP version.
+relocated-artifact consumers on Laravel 12–13; and every supported PHP version.
 
 From the suite root:
 
