@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Database\DatabaseTransactionsManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -65,6 +64,8 @@ use Nvl\Media\Enums\MediaType;
 use Nvl\Media\Enums\MediaVisibility;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Support\Contracts\DomainEvent;
+use Nvl\Support\Http\PackageExceptionRenderer;
 
 it('delivers every user event after the root commit and discards rollback events', function (): void {
     $target = TestCommentTarget::query()->create(['name' => 'After-commit article']);
@@ -848,8 +849,9 @@ it('rejects a conflicting idempotency replay with the stable 409 domain response
     expect(fn () => $create->execute($secondTarget, $data, $actor))
         ->toThrow(CommentIdempotencyConflictException::class);
 
-    $response = CommentIdempotencyConflictException::forKey()->render(
-        Request::create('/comments', 'POST'),
+    $response = app(PackageExceptionRenderer::class)->render(
+        CommentIdempotencyConflictException::forKey(),
+        Request::create('/comments', 'POST', server: ['HTTP_ACCEPT' => 'application/json']),
     );
 
     expect($response->getStatusCode())->toBe(409)
@@ -1434,7 +1436,7 @@ it('anonymizes terminally scrubs identifying state and replays only the same tom
 
     expect(is_a(
         CommentChanged::class,
-        ShouldDispatchAfterCommit::class,
+        DomainEvent::class,
         true,
     ))->toBeTrue();
     Event::assertDispatchedTimes(CommentChanged::class, 4);

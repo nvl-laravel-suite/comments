@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -24,6 +23,7 @@ use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResourceResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
+use Nvl\Support\Contracts\DomainEvent;
 
 /**
  * Register deterministic mention event resources.
@@ -102,7 +102,7 @@ it('emits bounded after-commit facts for newly added mention identities', functi
         CommentAudience::Member,
     );
 
-    expect(is_a(CommentMentionsChanged::class, ShouldDispatchAfterCommit::class, true))
+    expect(is_a(CommentMentionsChanged::class, DomainEvent::class, true))
         ->toBeTrue();
     Event::assertDispatchedTimes(CommentMentionsChanged::class, 1);
     Event::assertDispatched(
