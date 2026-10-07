@@ -2,7 +2,6 @@
     "schema_version": 1,
     "configs": {
         "nvl-comments": {
-            "required": [],
             "common": [
                 "anonymous.enabled",
                 "attachments.enabled",
