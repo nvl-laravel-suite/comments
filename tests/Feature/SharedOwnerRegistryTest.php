@@ -26,7 +26,7 @@ it('uses declared shared identities while retaining comment resolvers and target
 
     expect($registry->resolve('article', $target->getKey())->is($target))->toBeTrue()
         ->and(fn () => $registry->resolve('private-post', $target->getKey()))->toThrow(CommentTargetNotFoundException::class)
-        ->and(fn () => $registry->resolve('article', 'missing'))->toThrow(CommentTargetNotFoundException::class);
+        ->and(fn () => $registry->resolve('article', 'ffffffff-ffff-4fff-8fff-ffffffffffff'))->toThrow(CommentTargetNotFoundException::class);
 });
 
 it('rejects comment resolvers returning a different shared owner model', function (): void {

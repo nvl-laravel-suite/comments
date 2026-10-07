@@ -6,6 +6,7 @@ namespace Nvl\Comments\Tests;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Comments\Tests\Fixtures\TestCommentTargetResolver;
@@ -22,6 +23,21 @@ use Orchestra\Testbench\TestCase as Orchestra;
 abstract class TestCase extends Orchestra
 {
     use RefreshDatabase;
+
+    /** @var list<string>|null Native schemas belong to a provider composition. */
+    private static ?array $schemaProviders = null;
+
+    /** Rebuild when a standalone fixture changes the native migration closure. */
+    protected function beforeRefreshingDatabase(): void
+    {
+        $providers = array_keys($this->app->getLoadedProviders());
+        sort($providers);
+        if (self::$schemaProviders !== $providers) {
+            RefreshDatabaseState::$migrated = false;
+            RefreshDatabaseState::$inMemoryConnections = [];
+        }
+        self::$schemaProviders = $providers;
+    }
 
     /**
      * @return list<class-string>
