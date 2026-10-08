@@ -2,13 +2,7 @@
 
 Submit reports through [this package's private vulnerability reporting form](https://github.com/nvl-laravel-suite/comments/security/advisories/new).
 
-Coordinated security fixes are provided for the prepared `5.x` release line on
-PHP 8.3–8.4 and Laravel 13. Comments also supports PHP 8.5 at runtime and
-tests it in CI, but PHP 8.5 is not yet in the coordinated package-family
-security promise because the mandatory Media and Filterable dependencies
-currently publish security support through PHP 8.4. Promote the promise after
-those dependency policies are aligned. Report vulnerabilities privately
-through the repository host's security-advisory feature.
+Security fixes are provided for the published `5.x` release line. Composer declares PHP `^8.4` and Laravel `^12.0|^13.0`. The local Dagger release gate verifies PHP 8.4/Laravel 13 with MySQL 8.4 and PostgreSQL 17 persistence contracts; PHP 8.5, Laravel 12 and MariaDB require separate compatibility evidence. Upstream security lifecycle limits still apply.
 
 Include the target alias, audience, visibility, actor type, Action or route,
 Media visibility, and impact. Do not include personal production content,

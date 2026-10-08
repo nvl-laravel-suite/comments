@@ -1020,7 +1020,7 @@ composer install
 composer quality
 ```
 
-Maintainer CI also runs package-family, dependency, archive, and contract checks from the private source workbench. In a consuming Laravel application, run `php artisan nvl:comments:doctor --strict --format=json` after configuring the package.
+Local Dagger verification also runs package-family, dependency, archive, and contract checks from the private source workbench. In a consuming Laravel application, run `php artisan nvl:comments:doctor --strict --format=json` after configuring the package.
 
 For maintainers with access to the source workbench, the release gate also runs:
 
@@ -1034,10 +1034,12 @@ composer validate
 composer audit --locked --no-interaction
 ```
 
-The release matrix additionally runs package and integration Pest suites on
-SQLite, MySQL 8.4, MariaDB 12.3, and PostgreSQL 17; concurrency coverage;
-strict Doctor; TypeScript and public-contract checks; clean source and
-relocated-artifact consumers on Laravel 12–13; and every supported PHP version.
+The local Dagger release gate runs owning and integration Pest suites on
+PHP 8.4/Laravel 13 with SQLite, selected MySQL 8.4/PostgreSQL 17 persistence
+contracts, TypeScript/public-contract checks and sealed Tenancy consumers.
+PHP 8.5, Laravel 12, MariaDB, full independent archive installations and
+additional engine-specific concurrency cases require separate evidence.
+Run strict Doctor and application tests for the configured consumer host.
 
 From the suite root:
 
@@ -1233,7 +1235,7 @@ parameters:
         exceptions: []
 ```
 
-Rules read installed public metadata without suite boot. They flag internal symbols, package model queries/writes, capability relations and owned tables; they cannot prove dynamic code or runtime authorization. Exact exceptions require `file`, `identifier`, `symbol`, and a documented `reason`. New C3/C4/E tests, archives and guide execution remain pending until the integration phase records results.
+Rules read installed public metadata without suite boot. They flag internal symbols, package model queries/writes, capability relations and owned tables; they cannot prove dynamic code or runtime authorization. Exact exceptions require `file`, `identifier`, `symbol`, and a documented `reason`. The published 5.x family is verified through the local Dagger release gate on PHP 8.4/Laravel 13, including owning suites, MySQL/PostgreSQL persistence contracts and sealed Tenancy consumers. Fresh public Composer installation, discovery and configuration/route caching are verified. PHP 8.5, Laravel 12, MariaDB and the full independent archive matrix require separate evidence. See the [verification and release policy](https://github.com/nvl-laravel-suite/laravel-suite#verification-and-releases).
 
 ### Shipped factory states
 
