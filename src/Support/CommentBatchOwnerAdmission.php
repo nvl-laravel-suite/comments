@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Support;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Relations\TextColumnComparison;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Tenancy\CommentTenantParentResolver;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Owners\OwnerIdentity;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
+use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
@@ -20,7 +22,7 @@ use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 final readonly class CommentBatchOwnerAdmission
 {
     /** Retain the active ownership runtime and explicit host target allowlist. */
-    public function __construct(private Repository $configuration, private TenantBoundary $boundary, private TenantResourceRegistry $resources, private CommentTenantParentResolver $targets) {}
+    public function __construct(private OwnershipBoundary $boundary, private TenantResourceRegistry $resources, private CommentTenantParentResolver $targets, private OwnershipResourceRegistry $ownershipResources) {}
 
     /** Canonically admit complete input with one scoped reload per concrete class. */
     public function admit(OwnerBatch $input): OwnerBatch
@@ -65,7 +67,7 @@ final readonly class CommentBatchOwnerAdmission
     public function assertPrototype(Model $owner): void
     {
         $prototype = new ($owner::class);
-        $comments = new Comment;
+        $comments = CommentModelRegistry::newInstance();
         if (($prototype->getConnectionName() !== null && $owner->getConnectionName() !== $prototype->getConnectionName())
             || ($owner->getConnectionName() !== null && $owner->getConnectionName() !== $prototype->getConnection()->getName())
             || $prototype->getTable() !== $owner->getTable()
@@ -73,7 +75,12 @@ final readonly class CommentBatchOwnerAdmission
             || $owner->getConnection() !== $comments->getConnection()) {
             throw new TenantBoundaryViolation('Comment owners must retain their canonical table and package connection.');
         }
-        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
+        if (CommentsOwnership::declared()) {
+            $key = CommentsOwnership::resource($prototype);
+            if (! in_array($key, $this->ownershipResources->get('comments.comments')->parents(), true)) {
+                throw new OwnershipViolation('Comment targets require their explicit parent resource.');
+            }
+        } elseif (CommentsOwnership::active()) {
             $this->resources->forModel($prototype);
             if (($this->targets->types()[$prototype->getMorphClass()] ?? null) !== $prototype::class) {
                 throw new TenantBoundaryViolation('Comment batch owners require an exact nvl-comments.tenancy.target_types registration.');
@@ -91,8 +98,8 @@ final readonly class CommentBatchOwnerAdmission
      */
     public function scope(Builder $query): Builder
     {
-        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
-            return $this->boundary->query($query, $this->resources->forModel($query->getModel())->key);
+        if (CommentsOwnership::active()) {
+            return $this->boundary->query($query, CommentsOwnership::resource($query->getModel()));
         }
 
         return $query;

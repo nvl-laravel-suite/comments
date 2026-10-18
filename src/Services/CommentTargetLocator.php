@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Resolves a comment's canonical target on the target model's own connection.
@@ -21,9 +20,7 @@ use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 final readonly class CommentTargetLocator
 {
     public function __construct(
-        private TenantBoundary $boundary,
-        private TenantResourceRegistry $resources,
-        private Repository $config,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -35,8 +32,8 @@ final readonly class CommentTargetLocator
         $lookupKey = CommentTargetIdentifier::lookupKey($prototype, $target->getKey());
 
         $query = $prototype->newQuery();
-        if ($this->config->get('nvl-tenancy.enabled') === true) {
-            $query = $this->boundary->query($query, $this->resources->forModel($prototype)->key);
+        if (CommentsOwnership::active()) {
+            $query = $this->boundary->query($query, CommentsOwnership::resource($prototype));
         }
 
         return $query->find($lookupKey)
@@ -76,8 +73,8 @@ final readonly class CommentTargetLocator
         }
 
         $query = $prototype->newQuery();
-        if ($this->config->get('nvl-tenancy.enabled') === true) {
-            $query = $this->boundary->query($query, $this->resources->forModel($prototype)->key);
+        if (CommentsOwnership::active()) {
+            $query = $this->boundary->query($query, CommentsOwnership::resource($prototype));
         }
         $target = $query->find($lookupKey);
 

@@ -7,13 +7,12 @@ namespace Nvl\Comments\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
-use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Services\CommentAttachmentAssetResponder;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Services\MediaConfiguredVariationService;
 use Nvl\Media\Services\MediaQueryService;
-use Nvl\Support\Tenancy\Contracts\TenantContext;
-use Nvl\Support\Tenancy\Enums\TenantContextMode;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -26,7 +25,6 @@ final class CommentAttachmentAssetController extends Controller
         private readonly CommentAttachmentAssetResponder $assets,
         private readonly MediaQueryService $mediaQueries,
         private readonly MediaConfiguredVariationService $variations,
-        private readonly TenantContext $context,
     ) {}
 
     /**
@@ -57,17 +55,13 @@ final class CommentAttachmentAssetController extends Controller
         string $associationId,
         bool $thumbnail,
     ): BinaryFileResponse|StreamedResponse|Response {
-        $snapshot = $this->context->snapshot();
-        if ($snapshot->mode !== TenantContextMode::Disabled) {
-            $expected = hash(
-                'sha256',
-                $snapshot->mode->value."\0".($snapshot->tenantId !== null ? $snapshot->tenantId->value : ''),
-            );
+        $expected = CommentsOwnership::capability();
+        if ($expected !== null) {
             abort_unless(hash_equals($expected, (string) $request->query('partition')), 404);
         }
         $association = $this->mediaQueries->activeAssociation(
             $associationId,
-            (new Comment)->getMorphClass(),
+            (CommentModelRegistry::newInstance())->getMorphClass(),
             'attachments',
         );
         $media = $association->getRelation('media');

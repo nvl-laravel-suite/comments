@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentTargetResolver;
 use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Support\OwnerRegistry;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Allowlist for API-visible comment target aliases.
@@ -28,9 +27,7 @@ final class CommentTargetRegistry
     /** Create the package resolver registry with its identity and tenancy boundaries. */
     public function __construct(
         private readonly Container $container,
-        private readonly TenantBoundary $boundary,
-        private readonly TenantResourceRegistry $resources,
-        private readonly Repository $config,
+        private readonly OwnershipBoundary $boundary,
         private readonly OwnerRegistry $identities,
     ) {}
 
@@ -78,8 +75,8 @@ final class CommentTargetRegistry
             throw new InvalidArgumentException("Comments resolver [{$alias}] returned a different shared owner model.");
         }
 
-        if ($this->config->get('nvl-tenancy.enabled') === true) {
-            $this->boundary->assertRecord($target, $this->resources->forModel($target)->key);
+        if (CommentsOwnership::active()) {
+            $this->boundary->assertRecord($target, CommentsOwnership::resource($target));
         }
 
         return $target;

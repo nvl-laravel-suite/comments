@@ -24,12 +24,12 @@ use Nvl\Comments\Exceptions\CommentIdempotencyConflictException;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Owns the reusable atomic creation workflow shared by plain and rich entrypoints.
@@ -52,8 +52,7 @@ final readonly class CommentCreationWriter
         private CommentMetadataIndexWriter $metadataIndex,
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
-        private TenantBoundary $boundary,
-        private TenantResourceRegistry $resources,
+        private OwnershipBoundary $boundary,
         private Repository $config,
         private DomainEventDispatcher $domainEvents,
     ) {}
@@ -111,7 +110,7 @@ final readonly class CommentCreationWriter
         $idempotencyKey = $this->lifecycle->idempotencyKey($data->idempotencyKey);
         $targetPrototype = new ($target::class);
         $targetLookupKey = CommentTargetIdentifier::lookupKey($targetPrototype, $target->getKey());
-        $commentConnectionName = (new Comment)->getConnectionName();
+        $commentConnectionName = (CommentModelRegistry::newInstance())->getConnectionName();
         $targetConnectionName = $targetPrototype->getConnectionName();
         $sharesConnection = DB::connection($commentConnectionName)->getName()
             === DB::connection($targetConnectionName)->getName();
@@ -160,10 +159,10 @@ final readonly class CommentCreationWriter
                         ): Comment {
                             $targetQuery = $targetPrototype->newQuery();
 
-                            if ($this->config->get('nvl-tenancy.enabled') === true) {
+                            if (CommentsOwnership::active()) {
                                 $targetQuery = $this->boundary->query(
                                     $targetQuery,
-                                    $this->resources->forModel($targetPrototype)->key,
+                                    CommentsOwnership::resource($targetPrototype),
                                 );
                             }
 
@@ -182,7 +181,7 @@ final readonly class CommentCreationWriter
                             $targetIdentity = CommentTargetIdentifier::canonical($canonicalTarget);
                             $existing = $idempotencyKey === null
                                 ? null
-                                : $this->boundary->query(Comment::query(), 'comments.comments')
+                                : $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                                     ->withTrashed()
                                     ->where('idempotency_key', $idempotencyKey)
                                     ->lockForUpdate()
@@ -299,7 +298,7 @@ final readonly class CommentCreationWriter
                             $status = is_string($configuredStatus)
                                 ? CommentStatus::tryFrom($configuredStatus)
                                 : null;
-                            $comment = Comment::query()->create([
+                            $comment = CommentModelRegistry::create([
                                 ...$this->ownershipAttributes($canonicalTarget),
                                 'commentable_type' => $targetIdentity['type'],
                                 'commentable_id' => $targetIdentity['id'],
@@ -377,7 +376,7 @@ final readonly class CommentCreationWriter
                         throw $exception;
                     }
 
-                    $existing = $this->boundary->query(Comment::query(), 'comments.comments')
+                    $existing = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                         ->withTrashed()
                         ->where('idempotency_key', $idempotencyKey)
                         ->first();
@@ -387,10 +386,10 @@ final readonly class CommentCreationWriter
                     }
 
                     $targetQuery = $targetPrototype->newQuery();
-                    if ($this->config->get('nvl-tenancy.enabled') === true) {
+                    if (CommentsOwnership::active()) {
                         $targetQuery = $this->boundary->query(
                             $targetQuery,
-                            $this->resources->forModel($targetPrototype)->key,
+                            CommentsOwnership::resource($targetPrototype),
                         );
                     }
                     $canonicalTarget = $targetQuery->find($targetLookupKey);

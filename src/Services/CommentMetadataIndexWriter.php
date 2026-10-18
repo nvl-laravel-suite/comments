@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Str;
@@ -13,7 +12,7 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Synchronizes and queries the hash-only registered metadata index.
@@ -25,8 +24,7 @@ final readonly class CommentMetadataIndexWriter
      */
     public function __construct(
         private CommentMetadataRegistry $registry,
-        private TenantBoundary $boundary,
-        private Repository $config,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -50,7 +48,7 @@ final readonly class CommentMetadataIndexWriter
         $records = array_map(
             fn (array $row): array => [
                 'id' => (string) Str::uuid(),
-                ...($this->config->get('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                ...$this->boundary->attributes('comments.metadata'),
                 'comment_id' => $comment->id,
                 ...$row,
                 'created_at' => $timestamp,
@@ -80,7 +78,7 @@ final readonly class CommentMetadataIndexWriter
     public function apply(Builder $query, array $criteria): void
     {
         $table = CommentsConfiguration::table(CommentsTables::get(CommentsTables::MetadataValues));
-        $commentId = (new Comment)->qualifyColumn('id');
+        $commentId = (CommentModelRegistry::newInstance())->qualifyColumn('id');
 
         foreach ($this->registry->selectorRows($criteria) as $index => $row) {
             $alias = "comment_metadata_selector_{$index}";

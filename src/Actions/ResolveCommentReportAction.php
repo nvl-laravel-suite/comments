@@ -24,7 +24,7 @@ use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Resolves or dismisses one report through moderator authorization.
@@ -40,7 +40,7 @@ final readonly class ResolveCommentReportAction implements ResolveCommentReportC
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 

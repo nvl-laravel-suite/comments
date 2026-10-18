@@ -7,6 +7,7 @@ namespace Nvl\Comments\Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Services\CommentModelRegistry;
 
 /**
  * Builds Comment fixture rows and their declared package parents.
@@ -18,6 +19,12 @@ use Nvl\Comments\Models\Comment;
 final class CommentFactory extends Factory
 {
     protected $model = Comment::class;
+
+    /** Resolve the exact configured consumer class. @return class-string<Comment> */
+    public function modelName(): string
+    {
+        return CommentModelRegistry::modelClass();
+    }
 
     /**
      * Prepare native parent and owner facts after Laravel expands relationships.
@@ -67,7 +74,7 @@ final class CommentFactory extends Factory
      */
     public function forOwner(Model $owner): static
     {
-        FactoryGuard::parent($owner, new Comment);
+        FactoryGuard::parent($owner, CommentModelRegistry::newInstance());
 
         return $this->state([
             'commentable_type' => $owner->getMorphClass(),

@@ -26,6 +26,7 @@ use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Support\Integrations\OptionalIntegration;
 use Nvl\Support\OwnerRegistry;
 use Throwable;
@@ -1199,8 +1200,8 @@ final class CommentsDoctor
     private function attachmentReadiness(): array
     {
         try {
-            $comment = new Comment;
-            $media = new Media;
+            $comment = CommentModelRegistry::newInstance();
+            $media = MediaModelRegistry::newInstance();
             $association = new MediaAssociation;
             $commentConnection = DB::connection($comment->getConnectionName())->getName();
             $mediaConnection = DB::connection($media->getConnectionName())->getName();
@@ -1235,7 +1236,7 @@ final class CommentsDoctor
             }
 
             $hasHistoricalState = MediaAssociation::query()
-                ->where('associable_type', (new Comment)->getMorphClass())
+                ->where('associable_type', (CommentModelRegistry::newInstance())->getMorphClass())
                 ->where('collection', 'attachments')
                 ->exists();
 
@@ -1468,7 +1469,7 @@ final class CommentsDoctor
 
         $incompatibleRecords = 0;
 
-        Comment::query()
+        CommentModelRegistry::query()
             ->withTrashed()
             ->select(['id', 'metadata'])
             ->chunkById(500, function ($comments) use (

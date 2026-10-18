@@ -25,12 +25,14 @@ use Nvl\Comments\Services\CommentLifecycleGuard;
 use Nvl\Comments\Services\CommentMentionWriter;
 use Nvl\Comments\Services\CommentMetadataGuard;
 use Nvl\Comments\Services\CommentMetadataIndexWriter;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
+use Nvl\Comments\Services\CommentRecordWriter;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Restores historical comment content as a new optimistic revision.
@@ -52,7 +54,7 @@ final readonly class RestoreCommentRevisionAction implements RestoreCommentRevis
         private CommentMetadataIndexWriter $metadataIndex,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 
@@ -79,7 +81,7 @@ final readonly class RestoreCommentRevisionAction implements RestoreCommentRevis
                 $data,
                 $revisionId,
             ): Comment {
-                return DB::connection((new Comment)->getConnectionName())
+                return DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                     ->transaction(function () use (
                         $actor,
                         $audience,
@@ -139,7 +141,7 @@ final readonly class RestoreCommentRevisionAction implements RestoreCommentRevis
                             $currentMetadata,
                         );
 
-                        $currentRevision = CommentRevision::query()->create([
+                        $currentRevision = CommentRecordWriter::create(CommentRevision::class, [
                             ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                             'comment_id' => $comment->id,
                             'revision' => $comment->revision,
@@ -151,7 +153,7 @@ final readonly class RestoreCommentRevisionAction implements RestoreCommentRevis
                             'document' => $comment->document,
                             'edited_by_type' => $actor->type,
                             'edited_by' => $actor->id,
-                        ]);
+                        ], restoring: true);
 
                         if (! $currentRevision->exists) {
                             throw new InvalidCommentLifecycleException(

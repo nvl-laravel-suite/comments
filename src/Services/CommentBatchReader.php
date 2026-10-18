@@ -13,7 +13,6 @@ use Nvl\Comments\Data\OwnerCommentSummaries;
 use Nvl\Comments\Data\OwnerCommentSummaryData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentBatchReadException;
-use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Support\Owners\OwnerBatch;
@@ -53,7 +52,7 @@ final readonly class CommentBatchReader
                 }
                 $attributes[$column] = $value;
             }
-            $comment = (new Comment)->newFromBuilder($attributes);
+            $comment = (CommentModelRegistry::newInstance())->newFromBuilder($attributes);
             $latest[$comment->commentable_identity_hash][] = LatestCommentSummaryData::fromModel($comment);
         }
         $values = [];

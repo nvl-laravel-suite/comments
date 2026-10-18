@@ -14,8 +14,9 @@ use Illuminate\Support\Facades\DB;
 use Nvl\Comments\Exceptions\CommentMutationBusyException;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentMutationLockConfiguration;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Throwable;
 
 /**
@@ -43,7 +44,7 @@ final class CommentMutationLock
     public function __construct(
         private readonly Closure $transactions,
         private readonly CommentMutationLockStore $store,
-        private readonly TenantBoundary $boundary,
+        private readonly OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -179,7 +180,7 @@ final class CommentMutationLock
      */
     private function lockKey(string $commentId): string
     {
-        $identity = config('nvl-tenancy.enabled') === true
+        $identity = CommentsOwnership::active()
             ? $this->boundary->key('comments.comments', 'mutation:'.$commentId)
             : $commentId;
 
@@ -191,7 +192,7 @@ final class CommentMutationLock
      */
     private function rootTransaction(): ?DatabaseTransactionRecord
     {
-        $connection = DB::connection((new Comment)->getConnectionName());
+        $connection = DB::connection((CommentModelRegistry::newInstance())->getConnectionName());
 
         if ($connection->transactionLevel() === 0) {
             return null;

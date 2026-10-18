@@ -13,6 +13,7 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Relations\StringMorphMany;
 use Nvl\Comments\Services\CommentBatchQueryBuilder;
+use Nvl\Comments\Services\CommentModelRegistry;
 
 /**
  * Adds a string-key-compatible comment relationship to a model.
@@ -43,7 +44,7 @@ trait InteractsWithComments
      */
     public function comments(): MorphMany
     {
-        $related = new Comment;
+        $related = CommentModelRegistry::newInstance();
 
         return new StringMorphMany(
             $related->newQuery(),

@@ -1391,7 +1391,8 @@
             "file": "database/factories/CommentFactory.php",
             "methods": [
                 "definition",
-                "forOwner"
+                "forOwner",
+                "modelName"
             ],
             "properties": [],
             "constants": []
@@ -1683,6 +1684,7 @@
             "file": "src/Events/CommentChanged.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -1701,6 +1703,7 @@
             "file": "src/Events/CommentMentionsChanged.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -1719,6 +1722,7 @@
             "file": "src/Events/CommentReactionChanged.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -1735,6 +1739,7 @@
             "file": "src/Events/CommentReported.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [

@@ -17,14 +17,16 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
+use Nvl\Comments\Services\CommentRecordWriter;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Creates or refreshes one actor's report without count inflation.
@@ -39,7 +41,7 @@ final readonly class ReportCommentAction implements ReportCommentContract
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 
@@ -66,7 +68,7 @@ final readonly class ReportCommentAction implements ReportCommentContract
 
         return $this->mutationLock->execute(
             $commentId,
-            fn (): CommentReport => DB::connection((new Comment)->getConnectionName())
+            fn (): CommentReport => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                 ->transaction(function () use (
                     $actor,
                     $audience,
@@ -132,7 +134,7 @@ final readonly class ReportCommentAction implements ReportCommentContract
                         'reviewed_at' => null,
                     ]);
 
-                    if (! $report->save()) {
+                    if (! CommentRecordWriter::persist($report)) {
                         throw new InvalidCommentMutationException(
                             'The comment report could not be saved.',
                         );

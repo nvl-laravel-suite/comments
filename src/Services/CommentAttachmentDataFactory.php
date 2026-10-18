@@ -11,6 +11,7 @@ use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Media\Contracts\MediaAuthorization;
 use Nvl\Media\Data\MediaActorData;
 use Nvl\Media\Enums\MediaAbility;
@@ -18,7 +19,7 @@ use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Services\MediaConfiguredVariationService;
 use Nvl\Media\Services\MediaLocaleResolver;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use RuntimeException;
 
 /**
@@ -32,7 +33,7 @@ final readonly class CommentAttachmentDataFactory
         private MediaAuthorization $mediaAuthorization,
         private MediaConfiguredVariationService $configuredVariations,
         private MediaLocaleResolver $localeResolver,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -45,6 +46,7 @@ final readonly class CommentAttachmentDataFactory
         CommentActorData $actor,
         CommentAudience $audience,
     ): ?CommentAttachmentData {
+        CommentsOwnership::assertAttachmentSupport();
         $this->boundary->assertRecord($association, 'media.associations');
         if ($association->associable_type !== $comment->getMorphClass()
             || $association->associable_id !== $comment->id

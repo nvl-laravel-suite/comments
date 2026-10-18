@@ -15,7 +15,7 @@ use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Lists one comment's authorized immutable content history.
@@ -31,7 +31,7 @@ final readonly class ListCommentRevisionsAction implements ListCommentRevisionsC
         private CommentAccessService $access,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**

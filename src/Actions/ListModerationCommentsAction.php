@@ -15,13 +15,14 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Filterable\Data\FilterSet;
 use Nvl\Filterable\Services\EloquentFilterApplier;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Lists the moderation queue only after the privileged capability check.
@@ -35,7 +36,7 @@ final readonly class ListModerationCommentsAction implements ListModerationComme
         private EloquentFilterApplier $filters,
         private CommentQueryScope $queryScope,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -66,7 +67,7 @@ final readonly class ListModerationCommentsAction implements ListModerationComme
             ),
             $this->actionableStatuses(),
         );
-        $query = $this->boundary->query(Comment::query(), 'comments.comments')
+        $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->where(
                 'commentable_identity_hash',

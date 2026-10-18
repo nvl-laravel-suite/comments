@@ -12,7 +12,9 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -23,8 +25,9 @@ use Nvl\Media\Data\MediaActorData;
 use Nvl\Media\Enums\MediaAbility;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Media\Services\MediaMutationLock;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Detaches one authorized comment association without deleting its Media record.
@@ -41,7 +44,7 @@ final readonly class DetachCommentMediaAction implements DetachCommentMediaContr
         private MediaMutationLock $mediaLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -53,6 +56,7 @@ final readonly class DetachCommentMediaAction implements DetachCommentMediaContr
         CommentActorData $actor,
         CommentAudience $audience,
     ): bool {
+        CommentsOwnership::assertAttachmentSupport();
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
 
         return $this->commentLock->execute(
@@ -90,7 +94,7 @@ final readonly class DetachCommentMediaAction implements DetachCommentMediaContr
                         $commentId,
                         $mediaId,
                     ): bool {
-                        return DB::connection((new Comment)->getConnectionName())
+                        return DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                             ->transaction(function () use (
                                 $actor,
                                 $associationId,
@@ -106,7 +110,7 @@ final readonly class DetachCommentMediaAction implements DetachCommentMediaContr
                                     withTrashed: false,
                                     lockForUpdate: true,
                                 );
-                                $media = $this->boundary->query(Media::query(), 'media.assets')
+                                $media = $this->boundary->query(MediaModelRegistry::query(), 'media.assets')
                                     ->withTrashed()
                                     ->lockForUpdate()
                                     ->findOrFail($mediaId);

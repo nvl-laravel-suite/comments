@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\ValueObjects\TenantContextSnapshot;
@@ -109,6 +110,9 @@ final readonly class CommentsResponseCache
     /** Resolve one stable cache partition from an optional tenant snapshot. */
     private function tenantPartition(?TenantContextSnapshot $snapshot): string
     {
+        if (CommentsOwnership::declared()) {
+            return CommentsOwnership::capability() ?? throw new \LogicException('Ownership cache identity is required.');
+        }
         if ($snapshot === null) {
             return 'disabled';
         }

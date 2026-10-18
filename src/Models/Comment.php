@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Models;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -23,7 +24,9 @@ use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
+use Nvl\Comments\Ownership\CommentGraphOwnership;
 use Nvl\Comments\Relations\CommentTargetMorphTo;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Filterable\Definitions\FilterDefinition;
@@ -33,6 +36,8 @@ use Nvl\Filterable\Enums\FilterOperator;
 use Nvl\Filterable\Enums\FilterValueType;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * Polymorphic user-authored comment or reply.
@@ -114,11 +119,12 @@ use Nvl\Support\Config\PackageStorage;
  * @nvl-consumer-read updated_at
  * @nvl-consumer-read deleted_at
  */
-final class Comment extends Model
+class Comment extends Model implements Ownable
 {
     /** @use HasFactory<CommentFactory> */
     use HasFactory;
 
+    use HasOwnership { save as private saveOwned; }
     use HasUuids;
     use SoftDeletes;
 
@@ -198,7 +204,11 @@ final class Comment extends Model
     {
         $this->synchronizeIdentityFingerprints();
 
-        return parent::save($options);
+        return $this->getConnection()->transaction(function () use ($options): bool {
+            Container::getInstance()->make(CommentGraphOwnership::class)->assertHierarchy($this);
+
+            return $this->saveOwned($options);
+        });
     }
 
     private function synchronizeIdentityFingerprints(): void
@@ -331,7 +341,7 @@ final class Comment extends Model
      */
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'parent_id')->withTrashed();
+        return $this->belongsTo(CommentModelRegistry::modelClass(), 'parent_id')->withTrashed();
     }
 
     /**
@@ -339,7 +349,7 @@ final class Comment extends Model
      */
     public function root(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'root_id')->withTrashed();
+        return $this->belongsTo(CommentModelRegistry::modelClass(), 'root_id')->withTrashed();
     }
 
     /**
@@ -347,7 +357,7 @@ final class Comment extends Model
      */
     public function replies(): HasMany
     {
-        return $this->hasMany(self::class, 'parent_id')
+        return $this->hasMany(CommentModelRegistry::modelClass(), 'parent_id')
             ->orderByDesc('is_pinned')
             ->orderBy('created_at')
             ->orderBy('id');
@@ -358,7 +368,7 @@ final class Comment extends Model
      */
     public function reactions(): HasMany
     {
-        return $this->hasMany(CommentReaction::class);
+        return $this->hasMany(CommentReaction::class, 'comment_id');
     }
 
     /**
@@ -366,7 +376,7 @@ final class Comment extends Model
      */
     public function revisions(): HasMany
     {
-        return $this->hasMany(CommentRevision::class)->orderByDesc('revision');
+        return $this->hasMany(CommentRevision::class, 'comment_id')->orderByDesc('revision');
     }
 
     /**
@@ -374,7 +384,7 @@ final class Comment extends Model
      */
     public function reports(): HasMany
     {
-        return $this->hasMany(CommentReport::class);
+        return $this->hasMany(CommentReport::class, 'comment_id');
     }
 
     /**
@@ -384,7 +394,7 @@ final class Comment extends Model
      */
     public function metadataValues(): HasMany
     {
-        return $this->hasMany(CommentMetadataValue::class);
+        return $this->hasMany(CommentMetadataValue::class, 'comment_id');
     }
 
     /**
@@ -394,7 +404,7 @@ final class Comment extends Model
      */
     public function mentions(): HasMany
     {
-        return $this->hasMany(CommentMention::class)->orderBy('position');
+        return $this->hasMany(CommentMention::class, 'comment_id')->orderBy('position');
     }
 
     /**

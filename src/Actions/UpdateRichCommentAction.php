@@ -18,13 +18,16 @@ use Nvl\Comments\Events\CommentMentionsChanged;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentContentGuard;
 use Nvl\Comments\Services\CommentDocumentNormalizer;
 use Nvl\Comments\Services\CommentMentionWriter;
 use Nvl\Comments\Services\CommentMetadataIndexWriter;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
+use Nvl\Comments\Services\CommentRecordWriter;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
@@ -67,7 +70,7 @@ final readonly class UpdateRichCommentAction implements UpdateRichCommentContrac
 
         return $this->mutationLock->execute(
             $commentId,
-            fn (): Comment => DB::connection((new Comment)->getConnectionName())
+            fn (): Comment => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                 ->transaction(function () use (
                     $actor,
                     $audience,
@@ -134,7 +137,7 @@ final readonly class UpdateRichCommentAction implements UpdateRichCommentContrac
                         return $comment;
                     }
 
-                    $revision = $comment->revisions()->create([
+                    $revision = CommentRecordWriter::create(CommentRevision::class, ['comment_id' => $comment->id,
                         ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                         'revision' => $comment->revision,
                         'body' => $comment->body,

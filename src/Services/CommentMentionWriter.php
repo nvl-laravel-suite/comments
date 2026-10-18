@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Str;
 use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Synchronizes current normalized mention rows from canonical documents.
@@ -22,8 +21,7 @@ final readonly class CommentMentionWriter
      */
     public function __construct(
         private CommentDocumentNormalizer $documents,
-        private TenantBoundary $boundary,
-        private Repository $config,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -44,7 +42,7 @@ final readonly class CommentMentionWriter
         foreach ($this->documents->references($document) as $reference) {
             $rows[] = [
                 'id' => (string) Str::uuid(),
-                ...($this->config->get('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
+                ...$this->boundary->attributes('comments.mentions'),
                 'comment_id' => $comment->id,
                 'token_id' => $reference->tokenId,
                 'resource_alias' => $reference->resourceAlias,

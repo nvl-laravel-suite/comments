@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Tenancy;
 
-use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
 use Nvl\Comments\Models\CommentMetadataValue;
 use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Support\Tenancy\Enums\TenantResourceKind;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Tenancy\ValueObjects\TenantResourceDefinition;
@@ -25,7 +25,7 @@ final readonly class CommentsResourceRegistrar
         }
         $resources->registerParentResolver('comments.comments', CommentTenantParentResolver::class);
         foreach ([
-            new TenantResourceDefinition('comments.comments', 'comments', Comment::class, TenantResourceKind::Inherited, null, 'commentable'),
+            new TenantResourceDefinition('comments.comments', 'comments', CommentModelRegistry::modelClass(), TenantResourceKind::Inherited, null, 'commentable'),
             new TenantResourceDefinition('comments.reactions', 'comments', CommentReaction::class, TenantResourceKind::Inherited, 'comments.comments', 'comment'),
             new TenantResourceDefinition('comments.revisions', 'comments', CommentRevision::class, TenantResourceKind::Inherited, 'comments.comments', 'comment'),
             new TenantResourceDefinition('comments.reports', 'comments', CommentReport::class, TenantResourceKind::Inherited, 'comments.comments', 'comment'),

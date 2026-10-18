@@ -17,13 +17,14 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWorkflowGuard;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Applies an explicit moderation state and pin transition.
@@ -38,7 +39,7 @@ final readonly class ModerateCommentAction implements ModerateCommentContract
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 
@@ -55,7 +56,7 @@ final readonly class ModerateCommentAction implements ModerateCommentContract
 
         return $this->mutationLock->execute(
             $commentId,
-            fn (): Comment => DB::connection((new Comment)->getConnectionName())
+            fn (): Comment => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                 ->transaction(function () use ($actor, $commentId, $data): Comment {
                     $comment = $this->reads->resolveById(
                         $commentId,
@@ -92,7 +93,7 @@ final readonly class ModerateCommentAction implements ModerateCommentContract
                         && $comment->moderated_by === $actor->id
                         && $comment->moderation_reason === $data->reason
                         && $comment->moderated_at !== null) {
-                        return $this->boundary->query(Comment::query(), 'comments.comments')
+                        return $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                             ->withTrashed()
                             ->findOrFail($comment->id);
                     }
@@ -122,7 +123,7 @@ final readonly class ModerateCommentAction implements ModerateCommentContract
                         $actor,
                     ), $comment->getConnection());
 
-                    return $this->boundary->query(Comment::query(), 'comments.comments')
+                    return $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                         ->withTrashed()
                         ->findOrFail($comment->id);
                 }, attempts: CommentsConfiguration::positiveInteger(

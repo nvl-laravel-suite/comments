@@ -12,8 +12,11 @@ use Illuminate\Support\Carbon;
 use Nvl\Comments\Database\Factories\CommentRevisionFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * Immutable snapshot of comment content before an edit.
@@ -35,11 +38,12 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @api
  */
-final class CommentRevision extends Model
+final class CommentRevision extends Model implements Ownable
 {
     /** @use HasFactory<CommentRevisionFactory> */
     use HasFactory;
 
+    use HasOwnership;
     use HasUuids;
 
     public const null UPDATED_AT = null;
@@ -94,7 +98,7 @@ final class CommentRevision extends Model
      */
     public function comment(): BelongsTo
     {
-        return $this->belongsTo(Comment::class)->withTrashed();
+        return $this->belongsTo(CommentModelRegistry::modelClass(), 'comment_id')->withTrashed();
     }
 
     /**

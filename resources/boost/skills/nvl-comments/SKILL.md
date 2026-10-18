@@ -11,7 +11,20 @@ translated variants. The package stores but does not render Markdown.
 
 Resolve canonical target ownership before host scopes or authorization. Global
 mention catalogs require a host membership projection; attachments, public
-caches, idempotency, locks, retention, and restoration remain tenant-bound.
+caches, idempotency, locks, retention, and restoration retain canonical ownership.
+
+## Optional ownership
+
+The base `Comment` remains unscoped. Configure `nvl-comments.models.comment` with a concrete
+subclass returning `OwnershipDefinition::inherited('commentable')`, and allowlist its canonical
+host resource keys in `nvl-comments.ownership.target_resources`. Host models choose their native
+owner column or exclusive primary pivot; Comments cannot declare a separate primary owner.
+Use the optional `nvl/ownership` runtime and reviewed package adapter for historical rows.
+All child rows retain their comment's partition, thread links retain the exact target, and
+batch scopes apply before ranking or pagination. Use `CommentModelRegistry` for configured
+model construction and queries. Existing Tenancy installations use the compatibility path
+until explicit adoption. Owned attachments require an owned Media graph; disable the optional
+attachment surface when Media stays unscoped. Signed capabilities retain owner and generation.
 
 ## Install and configure the consumer
 

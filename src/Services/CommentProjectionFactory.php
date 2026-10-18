@@ -26,7 +26,7 @@ use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Spatie\LaravelData\Optional;
 
 /**
@@ -41,7 +41,7 @@ final readonly class CommentProjectionFactory
         private CommentQueryScope $queryScope,
         private CommentMentionProjectionFactory $mentions,
         private CommentMetadataRegistry $metadata,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -382,10 +382,10 @@ final readonly class CommentProjectionFactory
         CommentAbility $ability = CommentAbility::List,
     ): array {
         $commentIds = $this->commentIds($comments);
-        $parentColumn = (new Comment)->qualifyColumn('parent_id');
+        $parentColumn = (CommentModelRegistry::newInstance())->qualifyColumn('parent_id');
         $identity = CommentTargetIdentifier::canonical($target);
 
-        $query = $this->boundary->query(Comment::query(), 'comments.comments')
+        $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->where(
                 'commentable_identity_hash',

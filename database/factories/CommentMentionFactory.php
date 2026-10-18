@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
+use Nvl\Comments\Services\CommentModelRegistry;
 
 /**
  * Builds CommentMention fixture rows and their declared package parents.
@@ -39,7 +40,7 @@ final class CommentMentionFactory extends Factory
             }
 
             if ($model->getAttribute('comment_id') !== null) {
-                $parent = Comment::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('comment_id')));
+                $parent = CommentModelRegistry::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('comment_id')));
                 FactoryGuard::parent($parent, $model);
                 FactoryGuard::inherit($model, $parent);
             }

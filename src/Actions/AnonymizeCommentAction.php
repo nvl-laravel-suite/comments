@@ -25,13 +25,14 @@ use Nvl\Comments\Services\CommentAccessService;
 use Nvl\Comments\Services\CommentLifecycleGuard;
 use Nvl\Comments\Services\CommentMentionWriter;
 use Nvl\Comments\Services\CommentMetadataIndexWriter;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Irreversibly anonymizes one comment while retaining thread and audit structure.
@@ -52,7 +53,7 @@ final readonly class AnonymizeCommentAction implements AnonymizeCommentContract
         private CommentMentionWriter $mentions,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 
@@ -83,7 +84,7 @@ final readonly class AnonymizeCommentAction implements AnonymizeCommentContract
             asNotFound: $audience !== CommentAudience::Management,
         );
         $attachmentStateRequired = $this->attachments->stateRequired($resolved);
-        $commentConnection = DB::connection((new Comment)->getConnectionName());
+        $commentConnection = DB::connection((CommentModelRegistry::newInstance())->getConnectionName());
         $lockIds = array_values(array_filter([$resolved->id, $resolved->parent_id]));
 
         return $this->mutationLock->executeMany(
@@ -136,7 +137,7 @@ final readonly class AnonymizeCommentAction implements AnonymizeCommentContract
                         $mediaIds,
                     ): Comment {
                         sort($lockIds, SORT_STRING);
-                        $lockedComments = $this->boundary->query(Comment::query(), 'comments.comments')
+                        $lockedComments = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($lockIds)
                             ->orderBy('id')

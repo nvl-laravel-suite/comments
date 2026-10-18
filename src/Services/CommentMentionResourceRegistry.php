@@ -17,9 +17,10 @@ use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Throwable;
@@ -126,7 +127,7 @@ final class CommentMentionResourceRegistry
     ): void {
         $this->assertNewAlias($alias);
 
-        if (! is_string($resolver) && config('nvl-tenancy.enabled') === true) {
+        if (! is_string($resolver) && CommentsOwnership::active()) {
             throw new InvalidArgumentException(
                 'Enabled tenant mention resources must register a resolver class.',
             );
@@ -504,7 +505,7 @@ final class CommentMentionResourceRegistry
             urlResolver: $urlResolver,
             tenantProjection: $tenantProjection,
             tenantContext: $this->container->make(TenantContext::class),
-            boundary: $this->container->make(TenantBoundary::class),
+            boundary: $this->container->make(OwnershipBoundary::class),
             resources: $this->container->make(TenantResourceRegistry::class),
             config: $this->container->make(Repository::class),
         );

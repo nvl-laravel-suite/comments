@@ -32,8 +32,9 @@ use Nvl\Media\Enums\MimeType;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Support\Integrations\OptionalIntegration;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Audits denormalized counters and thread lineage with race-safe optional repairs.
@@ -49,7 +50,7 @@ final readonly class CommentStateReconciler
         private CommentDocumentNormalizer $documents,
         private CommentMentionWriter $mentions,
         private CommentMutationLock $mutationLock,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private OptionalIntegration $integrations,
         private Application $app,
     ) {}
@@ -350,7 +351,7 @@ final readonly class CommentStateReconciler
             return false;
         }
         $association = new MediaAssociation;
-        $media = new Media;
+        $media = MediaModelRegistry::newInstance();
         $associationSchema = $association->getConnection()->getSchemaBuilder();
         $associationTableExists = $associationSchema->hasTable($association->getTable());
 
@@ -368,7 +369,7 @@ final readonly class CommentStateReconciler
         $this->whereExactAssociationValue(
             $historicalStateQuery,
             'associable_type',
-            (new Comment)->getMorphClass(),
+            (CommentModelRegistry::newInstance())->getMorphClass(),
         );
         $this->whereExactAssociationValue(
             $historicalStateQuery,
@@ -381,7 +382,7 @@ final readonly class CommentStateReconciler
             return false;
         }
 
-        $commentConnection = DB::connection((new Comment)->getConnectionName())->getName();
+        $commentConnection = DB::connection((CommentModelRegistry::newInstance())->getConnectionName())->getName();
         $associationConnection = DB::connection($association->getConnectionName())->getName();
         $mediaConnection = DB::connection($media->getConnectionName())->getName();
         $mediaTableExists = $media->getConnection()->getSchemaBuilder()
@@ -409,7 +410,7 @@ final readonly class CommentStateReconciler
         $this->whereExactAssociationValue(
             $query,
             'associable_type',
-            (new Comment)->getMorphClass(),
+            (CommentModelRegistry::newInstance())->getMorphClass(),
         );
         $danglingOwners = [];
         $danglingAssociations = 0;
@@ -426,10 +427,10 @@ final readonly class CommentStateReconciler
                 ->all();
             $existingIds = $candidateIds === []
                 ? []
-                : $this->boundary->query(Comment::query(), 'comments.comments')
+                : $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                     ->withTrashed()
-                    ->whereIn((new Comment)->getKeyName(), $candidateIds)
-                    ->pluck((new Comment)->getKeyName())
+                    ->whereIn((CommentModelRegistry::newInstance())->getKeyName(), $candidateIds)
+                    ->pluck((CommentModelRegistry::newInstance())->getKeyName())
                     ->all();
             $existing = array_fill_keys(array_filter($existingIds, 'is_string'), true);
 
@@ -453,7 +454,7 @@ final readonly class CommentStateReconciler
      */
     private function query(?Model $target, int $maximumDepth): Builder
     {
-        $query = $this->boundary->query(Comment::query(), 'comments.comments')
+        $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->with('mentions')
             ->with('metadataValues')
@@ -639,7 +640,7 @@ final readonly class CommentStateReconciler
             function () use ($comment, $expectedDocument): bool {
                 return DB::connection($comment->getConnectionName())->transaction(
                     function () use ($comment, $expectedDocument): bool {
-                        $current = $this->boundary->query(Comment::query(), 'comments.comments')
+                        $current = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                             ->withTrashed()
                             ->with('mentions')
                             ->whereKey($comment->id)
@@ -1024,7 +1025,7 @@ final readonly class CommentStateReconciler
         $this->whereExactAssociationValue(
             $associationQuery,
             'associable_type',
-            (new Comment)->getMorphClass(),
+            (CommentModelRegistry::newInstance())->getMorphClass(),
         );
         $associationQuery
             ->whereExists($this->exactCommentOwnerQuery($commentIds))
@@ -1062,7 +1063,7 @@ final readonly class CommentStateReconciler
             return [];
         }
 
-        $mediaById = Media::query()
+        $mediaById = MediaModelRegistry::query()
             ->withTrashed()
             ->whereIn('id', $mediaIds)
             ->get()
@@ -1163,7 +1164,7 @@ final readonly class CommentStateReconciler
      */
     private function exactCommentOwnerQuery(array $commentIds = []): Builder
     {
-        $comment = new Comment;
+        $comment = CommentModelRegistry::newInstance();
         $association = new MediaAssociation;
         $connection = $comment->getConnection();
         $driver = $connection->getDriverName();
@@ -1176,7 +1177,7 @@ final readonly class CommentStateReconciler
             $grammar->wrap($association->qualifyColumn('associable_id')),
             $driver,
         );
-        $query = $this->boundary->query(Comment::query(), 'comments.comments')
+        $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->selectRaw('1')
             ->whereRaw(new TextColumnComparison(
@@ -1288,7 +1289,7 @@ final readonly class CommentStateReconciler
         $repaired = $this->mutationLock->execute(
             $comment->id,
             function () use ($comment, $updates): bool {
-                $query = $this->boundary->query(Comment::query(), 'comments.comments')->withTrashed()->whereKey($comment->id);
+                $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')->withTrashed()->whereKey($comment->id);
 
                 foreach (array_keys($updates) as $column) {
                     $original = $comment->getRawOriginal($column);
@@ -1380,9 +1381,9 @@ final readonly class CommentStateReconciler
 
             return $this->mutationLock->execute(
                 $comment->id,
-                fn (): bool => DB::connection((new Comment)->getConnectionName())
+                fn (): bool => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                     ->transaction(function () use ($comment): bool {
-                        $locked = $this->boundary->query(Comment::query(), 'comments.comments')
+                        $locked = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($comment->id)
                             ->lockForUpdate()

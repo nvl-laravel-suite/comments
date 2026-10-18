@@ -77,8 +77,11 @@ use Nvl\Comments\Integrations\MediaCommentAttachmentProjection;
 use Nvl\Comments\Integrations\MediaCommentRelations;
 use Nvl\Comments\Integrations\UnavailableCommentAttachments;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsAdoptionAdapter as OwnershipCommentsAdoptionAdapter;
+use Nvl\Comments\Ownership\CommentsResourceRegistrar as OwnershipCommentsResourceRegistrar;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentMutationLockStore;
 use Nvl\Comments\Services\CommentsDoctor;
@@ -90,12 +93,15 @@ use Nvl\Comments\Support\CommentActorFactory;
 use Nvl\Comments\Tenancy\CommentsResourceRegistrar;
 use Nvl\Data\Services\TypeScriptSourceRegistry;
 use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Ownership\Services\OwnershipAdoptionRegistry;
 use Nvl\Support\Doctor\PackageDoctorContributor;
 use Nvl\Support\Globals\GlobalNames;
 use Nvl\Support\Integrations\OptionalIntegration;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipIntegratedProvider;
+use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Support\Providers\TenantServiceProvider;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
 use Nvl\Support\Traits\RegistersNamespacedResources;
@@ -104,7 +110,7 @@ use Nvl\Tenancy\Services\TenantAdoptionRegistry;
 /**
  * Registers the standalone, headless Comments package.
  */
-final class CommentsServiceProvider extends ServiceProvider
+final class CommentsServiceProvider extends ServiceProvider implements OwnershipIntegratedProvider
 {
     use MergesPackageConfiguration;
     use RegistersNamespacedResources;
@@ -142,8 +148,10 @@ final class CommentsServiceProvider extends ServiceProvider
 
         $this->app->register(TenantServiceProvider::class);
         $this->mergePackageConfiguration(__DIR__.'/../../config/nvl-comments.php', 'comments');
+        $this->app->singleton(CommentModelRegistry::class);
+        $this->app->booting(fn () => $this->app->make(CommentModelRegistry::class)->commentClass());
         $this->registerAttachmentAdapters();
-        (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class));
+        $this->app->booting(fn () => (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class)));
         $this->app->booted(function (): void {
             if ($this->app->bound(TenantAdoptionRegistry::class)) {
                 (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class), $this->app->make(TenantAdoptionRegistry::class));
@@ -185,7 +193,7 @@ final class CommentsServiceProvider extends ServiceProvider
         $this->app->scoped(CommentMutationLock::class, static fn (Application $app): CommentMutationLock => new CommentMutationLock(
             transactions: static fn (): DatabaseTransactionsManager => $app->make('db.transactions'),
             store: $app->make(CommentMutationLockStore::class),
-            boundary: $app->make(TenantBoundary::class),
+            boundary: $app->make(OwnershipBoundary::class),
         ));
         $this->app->singleton(CommentMetadataRegistry::class);
         $this->app->singleton(
@@ -206,6 +214,10 @@ final class CommentsServiceProvider extends ServiceProvider
         CommentMetadataRegistry $metadata,
         Dispatcher $events,
     ): void {
+        $this->app->make(OwnershipCommentsResourceRegistrar::class)->register($this->app->make(OwnershipResourceRegistry::class));
+        if ($this->app->bound(OwnershipAdoptionRegistry::class)) {
+            $this->app->make(OwnershipAdoptionRegistry::class)->register('comments', OwnershipCommentsAdoptionAdapter::class);
+        }
         $this->app->make(GlobalNames::class)->translations('comments', __DIR__.'/../../lang', $this->app->make('translation.loader'));
         $this->publishes([
             __DIR__.'/../../lang' => lang_path('vendor/nvl-comments'),
@@ -215,28 +227,28 @@ final class CommentsServiceProvider extends ServiceProvider
         if ($this->app->make(OptionalIntegration::class)->enabled('comments.attachments.enabled', MediaServiceProvider::class)) {
             $this->app->make(TenantResourceRegistry::class)->requireCompatible('comments', 'media');
         }
-        Comment::resolveRelationUsing('mediaAssociations', function (Comment $comment) {
+        CommentModelRegistry::modelClass()::resolveRelationUsing('mediaAssociations', function (Comment $comment) {
             if (($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) !== true) {
                 throw new InvalidArgumentException('Comment attachment relationships require the loaded Media provider.');
             }
 
             return MediaCommentRelations::associations($comment);
         });
-        Comment::resolveRelationUsing('media', function (Comment $comment) {
+        CommentModelRegistry::modelClass()::resolveRelationUsing('media', function (Comment $comment) {
             if (($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) !== true) {
                 throw new InvalidArgumentException('Comment attachment relationships require the loaded Media provider.');
             }
 
             return MediaCommentRelations::media($comment);
         });
-        Comment::resolveRelationUsing('attachmentAssociations', function (Comment $comment) {
+        CommentModelRegistry::modelClass()::resolveRelationUsing('attachmentAssociations', function (Comment $comment) {
             if (($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) !== true) {
                 throw new InvalidArgumentException('Comment attachment relationships require the loaded Media provider.');
             }
 
             return MediaCommentRelations::associations($comment)->where('collection', 'attachments')->where('is_active', true);
         });
-        Comment::deleting(function (Comment $comment): void {
+        CommentModelRegistry::modelClass()::deleting(function (Comment $comment): void {
             if ($comment->isForceDeleting() && ($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) === true) {
                 $this->app->make(MediaCommentAttachmentLifecycle::class)->deleteOwnerMedia($comment);
             }

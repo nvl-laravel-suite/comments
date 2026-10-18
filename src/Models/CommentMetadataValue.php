@@ -11,8 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Nvl\Comments\Database\Factories\CommentMetadataValueFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * Hash-only lookup row for one registered queryable comment metadata value.
@@ -31,11 +34,12 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @nvl-consumer-read id
  */
-final class CommentMetadataValue extends Model
+final class CommentMetadataValue extends Model implements Ownable
 {
     /** @use HasFactory<CommentMetadataValueFactory> */
     use HasFactory;
 
+    use HasOwnership;
     use HasUuids;
 
     /** @var list<string> */
@@ -71,7 +75,7 @@ final class CommentMetadataValue extends Model
      */
     public function comment(): BelongsTo
     {
-        return $this->belongsTo(Comment::class);
+        return $this->belongsTo(CommentModelRegistry::modelClass(), 'comment_id');
     }
 
     /**

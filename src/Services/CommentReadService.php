@@ -15,7 +15,7 @@ use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentTargetIdentifier;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Builds target-bound comment reads with trusted authorization scoping.
@@ -26,7 +26,7 @@ final readonly class CommentReadService
         private CommentQueryScope $queryScope,
         private CommentAccessService $access,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -180,7 +180,7 @@ final readonly class CommentReadService
         bool $lockForUpdate = false,
     ): Comment {
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
-        $unscopedComment = $this->boundary->query(Comment::query(), 'comments.comments')
+        $unscopedComment = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->findOrFail($commentId);
 
@@ -219,7 +219,7 @@ final readonly class CommentReadService
     ): Builder {
         $identity = CommentTargetIdentifier::canonical($target);
 
-        $query = $this->boundary->query(Comment::query(), 'comments.comments')
+        $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->when($withTrashed, static fn (Builder $query): Builder => $query->withTrashed())
             ->where(
                 'commentable_identity_hash',

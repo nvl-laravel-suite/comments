@@ -11,9 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Nvl\Comments\Database\Factories\CommentReactionFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * One actor's idempotent reaction type on a comment.
@@ -32,11 +35,12 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @api
  */
-final class CommentReaction extends Model
+final class CommentReaction extends Model implements Ownable
 {
     /** @use HasFactory<CommentReactionFactory> */
     use HasFactory;
 
+    use HasOwnership { save as private saveOwned; }
     use HasUuids;
 
     /** @var list<string> */
@@ -61,7 +65,7 @@ final class CommentReaction extends Model
             CommentIdentity::value('reaction-type', $this->type),
         );
 
-        return parent::save($options);
+        return $this->saveOwned($options);
     }
 
     public function getTable(): string
@@ -79,7 +83,7 @@ final class CommentReaction extends Model
      */
     public function comment(): BelongsTo
     {
-        return $this->belongsTo(Comment::class)->withTrashed();
+        return $this->belongsTo(CommentModelRegistry::modelClass(), 'comment_id')->withTrashed();
     }
 
     /**

@@ -12,16 +12,16 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentReportStatus;
-use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
 use Nvl\Filterable\Data\FilterSet;
 use Nvl\Filterable\Services\EloquentFilterApplier;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Lists one target's actionable reports including reports on soft-deleted comments.
@@ -35,7 +35,7 @@ final readonly class ListTargetCommentReportsAction implements ListTargetComment
         private EloquentFilterApplier $filters,
         private CommentQueryScope $queryScope,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -62,7 +62,7 @@ final readonly class ListTargetCommentReportsAction implements ListTargetComment
         $perPage ??= CommentsConfiguration::positiveInteger('nvl-comments.pagination.default', 25);
         $filterSet ??= FilterSet::none();
         $targetHash = CommentIdentity::pair($identity['type'], $identity['id']);
-        $commentQuery = $this->boundary->query(Comment::query(), 'comments.comments')
+        $commentQuery = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->where('commentable_identity_hash', $targetHash);
         $this->queryScope->scopeComments(

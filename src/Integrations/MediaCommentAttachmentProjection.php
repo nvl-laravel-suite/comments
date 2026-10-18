@@ -12,15 +12,17 @@ use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Data\CommentAttachmentData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Services\CommentAttachmentDataFactory;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Media\Models\MediaAssociation;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /** Projects deliverable Media associations through both packages' authorization boundaries. */
 final readonly class MediaCommentAttachmentProjection implements CommentAttachmentProjection
 {
     /** Retain the existing privacy-safe factory and tenant boundary. */
-    public function __construct(private CommentAttachmentDataFactory $factory, private TenantBoundary $boundary) {}
+    public function __construct(private CommentAttachmentDataFactory $factory, private OwnershipBoundary $boundary) {}
 
     /**
      * Count deliverable attachments without introducing per-comment queries.
@@ -30,6 +32,7 @@ final readonly class MediaCommentAttachmentProjection implements CommentAttachme
      */
     public function counts(Collection $comments, Model $target, CommentActorData $actor, CommentAudience $audience): array
     {
+        CommentsOwnership::assertAttachmentSupport();
         $active = [];
         foreach ($comments as $comment) {
             if (! $comment->trashed() && $comment->anonymized_at === null) {
@@ -40,7 +43,7 @@ final readonly class MediaCommentAttachmentProjection implements CommentAttachme
             return [];
         }
         $associations = $this->boundary->query(MediaAssociation::query(), 'media.associations')
-            ->where('associable_type', (new Comment)->getMorphClass())
+            ->where('associable_type', (CommentModelRegistry::newInstance())->getMorphClass())
             ->whereIn('associable_id', array_keys($active))
             ->where('collection', 'attachments')->where('is_active', true)
             ->with(['media.imageVariations', 'media.translations'])
@@ -63,6 +66,7 @@ final readonly class MediaCommentAttachmentProjection implements CommentAttachme
      */
     public function attachments(Comment $comment, Model $target, CommentActorData $actor, CommentAudience $audience): SupportCollection
     {
+        CommentsOwnership::assertAttachmentSupport();
         if ($comment->trashed() || $comment->anonymized_at !== null) {
             return new SupportCollection;
         }

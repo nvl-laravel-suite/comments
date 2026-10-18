@@ -7,13 +7,12 @@ namespace Nvl\Comments\Services;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Nvl\Comments\Exceptions\CommentAttachmentDeliveryUnavailableException;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
 use Nvl\Support\Integrations\OptionalIntegration;
-use Nvl\Support\Tenancy\Contracts\TenantContext;
-use Nvl\Support\Tenancy\Enums\TenantContextMode;
 use Throwable;
 
 /**
@@ -21,7 +20,7 @@ use Throwable;
  */
 final class CommentAttachmentUrlFactory
 {
-    public function __construct(private readonly TenantContext $context, private readonly OptionalIntegration $integrations) {}
+    public function __construct(private readonly OptionalIntegration $integrations) {}
 
     /**
      * Require both signed delivery endpoints before any HTTP attachment mutation begins.
@@ -78,13 +77,10 @@ final class CommentAttachmentUrlFactory
             5,
         );
 
-        $snapshot = $this->context->snapshot();
         $parameters = ['association' => $association->id];
-        if ($snapshot->mode !== TenantContextMode::Disabled) {
-            $parameters['partition'] = hash(
-                'sha256',
-                $snapshot->mode->value."\0".($snapshot->tenantId !== null ? $snapshot->tenantId->value : ''),
-            );
+        $partition = CommentsOwnership::capability();
+        if ($partition !== null) {
+            $parameters['partition'] = $partition;
         }
 
         return URL::temporarySignedRoute(

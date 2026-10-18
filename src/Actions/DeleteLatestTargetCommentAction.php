@@ -16,6 +16,7 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentDeletionWriter;
 use Nvl\Comments\Services\CommentMetadataIndexWriter;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
@@ -48,7 +49,7 @@ final readonly class DeleteLatestTargetCommentAction implements DeleteLatestTarg
         CommentActorData $actor,
         CommentAudience $audience,
     ): bool {
-        return DB::connection((new Comment)->getConnectionName())
+        return DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
             ->transaction(function () use ($actor, $audience, $selector, $target): bool {
                 $target = $this->targets->reload($target);
                 $query = $this->reads->query(

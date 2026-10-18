@@ -17,14 +17,14 @@ use Nvl\Comments\Relations\TextColumnComparison;
 use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Support\Owners\OwnerBatch;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
 /** Composes mandatory ownership/deletion predicates around nested SQL authorization. */
 final readonly class CommentBatchQueryBuilder
 {
     /** Retain active package ownership and canonical host admission. */
-    public function __construct(private TenantBoundary $boundary, private CommentBatchOwnerAdmission $owners) {}
+    public function __construct(private OwnershipBoundary $boundary, private CommentBatchOwnerAdmission $owners) {}
 
     /**
      * Build the identical visible set used by aggregate counts and ranked latest rows.
@@ -131,7 +131,7 @@ final readonly class CommentBatchQueryBuilder
      */
     private function base(): Builder
     {
-        $query = Comment::query()->withoutEagerLoads();
+        $query = CommentModelRegistry::query()->withoutEagerLoads();
         if (! in_array($query->getModel()->getConnection()->getDriverName(), ['sqlite', 'pgsql', 'mysql', 'mariadb'], true)) {
             throw new CommentBatchReadException('Comment batch reads require SQLite, PostgreSQL, MySQL or MariaDB window-query support.');
         }

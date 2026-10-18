@@ -17,8 +17,9 @@ use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
 use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
@@ -43,7 +44,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         private ?CommentMentionUrlResolver $urlResolver = null,
         private ?CommentMentionTenantProjection $tenantProjection = null,
         private ?TenantContext $tenantContext = null,
-        private ?TenantBoundary $boundary = null,
+        private ?OwnershipBoundary $boundary = null,
         private ?TenantResourceRegistry $resources = null,
         private ?Repository $config = null,
     ) {}
@@ -126,6 +127,9 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     private function tenantQuery(Model $model, CommentMentionContext $context): Builder
     {
         $query = $model->newQuery();
+        if (CommentsOwnership::declared()) {
+            return ($this->boundary ?? throw new InvalidCommentMutationException('Ownership boundary is required for owned mention resources.'))->query($query, CommentsOwnership::resource($model));
+        }
         if ($this->config?->get('nvl-tenancy.enabled') !== true) {
             return $query;
         }
@@ -136,11 +140,11 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
 
             return $query;
         }
-        if (! $this->boundary instanceof TenantBoundary || ! $this->resources instanceof TenantResourceRegistry) {
+        if (! $this->boundary instanceof OwnershipBoundary || ! $this->resources instanceof TenantResourceRegistry) {
             throw new InvalidCommentMutationException('Comment mention tenancy is unavailable.');
         }
 
-        return $this->boundary->query($query, $this->resources->forModel($model)->key);
+        return $this->boundary->query($query, CommentsOwnership::resource($model));
     }
 
     /**

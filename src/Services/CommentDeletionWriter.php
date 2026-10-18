@@ -17,7 +17,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Owns the atomic deletion lifecycle shared by direct and latest-match Actions.
@@ -37,7 +37,7 @@ final readonly class CommentDeletionWriter
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 
@@ -63,7 +63,7 @@ final readonly class CommentDeletionWriter
         return $this->mutationLock->executeMany(
             $lockIds,
             function () use ($actor, $audience, $commentId, $data, $lockIds): bool {
-                return DB::connection((new Comment)->getConnectionName())
+                return DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                     ->transaction(function () use (
                         $actor,
                         $audience,
@@ -72,7 +72,7 @@ final readonly class CommentDeletionWriter
                         $lockIds,
                     ): bool {
                         sort($lockIds, SORT_STRING);
-                        $lockedComments = $this->boundary->query(Comment::query(), 'comments.comments')
+                        $lockedComments = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                             ->withTrashed()
                             ->whereKey($lockIds)
                             ->orderBy('id')

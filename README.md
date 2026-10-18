@@ -1273,3 +1273,19 @@ The table lists enum discriminators, including any successful codes retained for
 ## License
 
 Owner capability relations `metafields()`, `comments()`, `nvlMediaAssociations()` and `termables()` are enforced statically, not at runtime. They remain ordinary Eloquent relations for package internals. Enable `vendor/nvl/core/support/consumer-audit.neon` in the host PHPStan configuration, and use public workflow contracts and batch readers in consumer code. The static rules do not replace runtime authorization.
+
+### Optional ownership and configured models
+
+Set `nvl-comments.models.comment` to a concrete subclass of `Nvl\Comments\Models\Comment`.
+The base stays unscoped. An owned subclass must return `OwnershipDefinition::inherited('commentable')`;
+register the canonical host resource keys in `nvl-comments.ownership.target_resources`.
+Comments cannot declare an independent owner column or pivot: replies, mentions, revisions,
+reactions and reports retain the canonical target's primary owner. Use the host's native owner
+column or exclusive primary pivot on that target instead.
+
+Install the optional `nvl/ownership` runtime only for isolation. Keep the same native morph
+identities and run its reviewed `comments` adoption adapter with explicit mappings for every
+historical row before enabling traffic. Prepared/adopted storage remains inaccessible when
+ownership is disabled or unavailable. Existing Tenancy consumers retain the compatibility path
+until their explicit cutover. Private attachments require the same canonical owner partition in
+Comments and Media; signed attachment and cache identities include the active generation.

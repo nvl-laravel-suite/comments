@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Nvl\Comments\Definitions\Tables\CommentsTables;
+use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
 use Nvl\Comments\Services\SafeCommentAuthorPresenter;
 use Nvl\Comments\Support\CommentActorFactory;
@@ -10,6 +11,9 @@ use Nvl\Support\Config\PackageEnvironment;
 
 /** Complete runtime defaults; publication sections are declared in ../resources/config/sections.json. */
 return [
+    'models' => ['comment' => Comment::class],
+    'ownership' => ['target_resources' => []],
+
     'tenancy' => [
         'target_types' => [],
     ],

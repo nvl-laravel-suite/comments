@@ -14,6 +14,7 @@ use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Relations\StringMorphMany;
 use Nvl\Media\Relations\StringMorphToMany;
+use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Media\Slots\MediaSlot;
 
 /** Defines explicit optional Media relationships and the Comments attachment slot policy. */
@@ -26,7 +27,7 @@ final class MediaCommentRelations
      */
     public static function media(Comment $comment): MorphToMany
     {
-        $related = new Media;
+        $related = MediaModelRegistry::newInstance();
 
         return (new StringMorphToMany($related->newQuery(), $comment, 'associable',
             MediaTables::get(MediaTables::Associations), 'associable_id', 'media_id',

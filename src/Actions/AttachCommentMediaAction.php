@@ -14,7 +14,9 @@ use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Integrations\MediaCommentRelations;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
 use Nvl\Comments\Services\CommentTargetLocator;
@@ -25,9 +27,10 @@ use Nvl\Media\Data\MediaActorData;
 use Nvl\Media\Enums\MediaAbility;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
+use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Media\Services\MediaMutationLock;
 use Nvl\Media\Slots\MediaSlot;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Attaches available media only after comment and media ownership authorization.
@@ -44,7 +47,7 @@ final readonly class AttachCommentMediaAction implements AttachCommentMediaContr
         private MediaMutationLock $mediaLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -56,6 +59,7 @@ final readonly class AttachCommentMediaAction implements AttachCommentMediaContr
         CommentActorData $actor,
         CommentAudience $audience = CommentAudience::Public,
     ): MediaAssociation {
+        CommentsOwnership::assertAttachmentSupport();
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
         $mediaId = $media instanceof Media ? $media->id : $media;
 
@@ -65,8 +69,8 @@ final readonly class AttachCommentMediaAction implements AttachCommentMediaContr
             );
         }
 
-        $commentConnection = DB::connection((new Comment)->getConnectionName());
-        $mediaConnection = DB::connection((new Media)->getConnectionName());
+        $commentConnection = DB::connection((CommentModelRegistry::newInstance())->getConnectionName());
+        $mediaConnection = DB::connection((MediaModelRegistry::newInstance())->getConnectionName());
 
         if ($commentConnection->getName() !== $mediaConnection->getName()) {
             throw new InvalidArgumentException(
@@ -92,7 +96,7 @@ final readonly class AttachCommentMediaAction implements AttachCommentMediaContr
                         withTrashed: false,
                         lockForUpdate: true,
                     );
-                    $media = $this->boundary->query(Media::query(), 'media.assets')
+                    $media = $this->boundary->query(MediaModelRegistry::query(), 'media.assets')
                         ->lockForUpdate()->findOrFail($mediaId);
                     $target = $this->targets->locate($comment);
                     $this->access->authorize(

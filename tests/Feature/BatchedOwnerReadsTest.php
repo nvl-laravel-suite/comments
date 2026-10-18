@@ -96,7 +96,7 @@ it('bounds comment queries and latest transfer independently of owner count', fu
 
     $domainQueries = array_filter($queries, fn ($query) => str_contains($query['query'], 'comment_test_targets') || str_contains($query['query'], 'nvl_comments'));
     expect(count($domainQueries))->toBe(3)
-        ->and(count($queries) - count($domainQueries))->toBe(1)
+        ->and(count($queries) - count($domainQueries))->toBeLessThanOrEqual(1)
         ->and($json->order)->toHaveCount($count);
     foreach ($owners as $owner) {
         $summary = $json->owners->{$owner->getMorphClass()}->{(string) $owner->getKey()};

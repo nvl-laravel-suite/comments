@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Nvl\Comments\Database\Factories\CommentReportFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentReportStatus;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Filterable\Definitions\FilterDefinition;
@@ -20,6 +21,8 @@ use Nvl\Filterable\Definitions\SortDefinition;
 use Nvl\Filterable\Enums\FilterOperator;
 use Nvl\Filterable\Enums\FilterValueType;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * One actor's reviewable report against a comment.
@@ -43,11 +46,12 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @api
  */
-final class CommentReport extends Model
+final class CommentReport extends Model implements Ownable
 {
     /** @use HasFactory<CommentReportFactory> */
     use HasFactory;
 
+    use HasOwnership { save as private saveOwned; }
     use HasUuids;
 
     /** @var list<string> */
@@ -87,7 +91,7 @@ final class CommentReport extends Model
             CommentIdentity::value('report-status', $this->status),
         );
 
-        return parent::save($options);
+        return $this->saveOwned($options);
     }
 
     /**
@@ -113,7 +117,7 @@ final class CommentReport extends Model
      */
     public function comment(): BelongsTo
     {
-        return $this->belongsTo(Comment::class)->withTrashed();
+        return $this->belongsTo(CommentModelRegistry::modelClass(), 'comment_id')->withTrashed();
     }
 
     /**

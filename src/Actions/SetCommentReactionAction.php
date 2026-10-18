@@ -15,13 +15,15 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Services\CommentAccessService;
+use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentReadService;
+use Nvl\Comments\Services\CommentRecordWriter;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Events\DomainEventDispatcher;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Idempotently enables or removes one configured reaction type.
@@ -35,7 +37,7 @@ final readonly class SetCommentReactionAction implements SetCommentReactionContr
         private CommentMutationLock $mutationLock,
         private CommentReadService $reads,
         private CommentTargetLocator $targets,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private DomainEventDispatcher $domainEvents,
     ) {}
 
@@ -71,7 +73,7 @@ final readonly class SetCommentReactionAction implements SetCommentReactionContr
 
         return $this->mutationLock->execute(
             $commentId,
-            fn (): ?CommentReaction => DB::connection((new Comment)->getConnectionName())
+            fn (): ?CommentReaction => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                 ->transaction(function () use (
                     $active,
                     $actor,
@@ -115,7 +117,7 @@ final readonly class SetCommentReactionAction implements SetCommentReactionContr
                     $changed = false;
 
                     if ($active && $reaction === null) {
-                        $reaction = CommentReaction::query()->create([
+                        $reaction = CommentRecordWriter::create(CommentReaction::class, [
                             ...(config('nvl-tenancy.enabled') === true ? ['tenant_id' => $comment->tenant_id] : []),
                             'comment_id' => $comment->id,
                             'actor_type' => $actor->type,
@@ -144,7 +146,7 @@ final readonly class SetCommentReactionAction implements SetCommentReactionContr
                         }
 
                         $reaction = null;
-                        $this->boundary->query(Comment::query(), 'comments.comments')
+                        $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
                             ->whereKey($comment->id)
                             ->where('reaction_count', '>', 0)
                             ->decrement('reaction_count');

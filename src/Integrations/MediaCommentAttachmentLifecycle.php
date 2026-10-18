@@ -14,6 +14,7 @@ use Nvl\Media\Contracts\DetachMediaContract;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Media\Services\MediaMutationLock;
 use Nvl\Support\Integrations\OptionalIntegration;
 
@@ -52,7 +53,7 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
             return false;
         }
 
-        $media = new Media;
+        $media = MediaModelRegistry::newInstance();
         $commentConnection = DB::connection($comment->getConnectionName())->getName();
         $associationConnection = DB::connection($association->getConnectionName())->getName();
         $mediaConnection = DB::connection($media->getConnectionName())->getName();
