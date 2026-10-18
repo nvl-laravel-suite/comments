@@ -38,7 +38,13 @@ final class CommentsOwnership
     public static function envelope(): OwnershipJobEnvelope
     {
         $context = app(OwnershipContext::class);
-        if ($context->snapshot()->mode === OwnershipContextMode::Unresolved && ! self::declared()) {
+        if ($context->snapshot()->mode === OwnershipContextMode::Unresolved) {
+            foreach (app(OwnershipResourceRegistry::class)->all() as $resource) {
+                if ($resource->ownership->strategy !== 'unscoped') {
+                    return OwnershipJobEnvelope::capture($context);
+                }
+            }
+
             return OwnershipJobEnvelope::fromSnapshot(new OwnershipSnapshot(OwnershipContextMode::Disabled));
         }
 

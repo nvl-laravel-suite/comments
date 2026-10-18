@@ -19,6 +19,9 @@ it('uses exact configured factories and denies stale base classes or disabled ru
         expect(OwnershipComment::factory()->forOwner($target)->make()::class)->toBe(OwnershipComment::class);
         expect(fn () => Comment::query()->get())->toThrow(OwnershipViolation::class);
         $comment = OwnershipCommentScenario::comment($target);
+        expect((new Comment)->resolveRouteBinding($comment->id)::class)->toBe(OwnershipComment::class);
+        expect((new Comment)->resolveSoftDeletableRouteBinding($comment->id)::class)->toBe(OwnershipComment::class);
+        expect($comment->body)->toBe('configured:Private comment');
         config(['nvl-ownership.enabled' => false]);
         expect(fn () => CommentModelRegistry::query()->get())->toThrow(OwnershipSchemaNotReady::class);
         expect(fn () => $comment->saveQuietly())->toThrow(OwnershipSchemaNotReady::class);

@@ -9,6 +9,13 @@ use Nvl\Support\Ownership\ValueObjects\OwnershipDefinition;
 
 class OwnershipComment extends Comment
 {
+    protected static function booted(): void
+    {
+        static::creating(static function (self $comment): void {
+            $comment->body = 'configured:'.$comment->body;
+        });
+    }
+
     public static function ownershipDefinition(): OwnershipDefinition
     {
         return OwnershipDefinition::inherited('commentable');

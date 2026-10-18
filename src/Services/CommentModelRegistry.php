@@ -22,13 +22,15 @@ final class CommentModelRegistry
     /** @var class-string<Comment>|null */
     private ?string $comment = null;
 
+    private bool $validated = false;
+
     /** Retain deployment configuration and the shared identity registry. */
     public function __construct(private readonly Repository $configuration, private readonly OwnerRegistry $identities) {}
 
-    /** Resolve and freeze the validated concrete Comment class before resource compilation.
+    /** Resolve and freeze the concrete Comment class before resource compilation. @internal
      * @return class-string<Comment>
      */
-    public function commentClass(): string
+    public function prepare(): string
     {
         if ($this->comment !== null) {
             return $this->comment;
@@ -44,6 +46,21 @@ final class CommentModelRegistry
         if ($class::ownershipDefinition()->strategy === 'inherited' && $class::ownershipDefinition()->relation !== 'commentable') {
             throw new OwnershipConfigurationInvalid('Comments must inherit their canonical target.');
         }
+        $this->identities->registerReplacement('comments.comments', Comment::class, $class);
+        $this->comment = $class;
+
+        return $class;
+    }
+
+    /** Validate native capabilities after Laravel installs Eloquent's dispatcher.
+     * @return class-string<Comment>
+     */
+    public function commentClass(): string
+    {
+        $class = $this->prepare();
+        if ($this->validated) {
+            return $class;
+        }
         $model = new $class;
         $base = new Comment;
         foreach ($base->getCasts() as $attribute => $cast) {
@@ -57,11 +74,10 @@ final class CommentModelRegistry
             }
         }
         if (! $model->hasGlobalScope(OwnershipScope::class)
-            || $model->getKeyType() !== 'string' || $model->getIncrementing()) {
+            || $model->getKeyName() !== $base->getKeyName() || $model->getKeyType() !== 'string' || $model->getIncrementing()) {
             throw new OwnershipConfigurationInvalid('Configured Comment models must retain the builder, UUID and ownership capabilities.');
         }
-        $this->identities->registerReplacement('comments.comments', Comment::class, $class);
-        $this->comment = $class;
+        $this->validated = true;
 
         return $class;
     }

@@ -149,9 +149,9 @@ final class CommentsServiceProvider extends ServiceProvider implements Ownership
         $this->app->register(TenantServiceProvider::class);
         $this->mergePackageConfiguration(__DIR__.'/../../config/nvl-comments.php', 'comments');
         $this->app->singleton(CommentModelRegistry::class);
-        $this->app->booting(fn () => $this->app->make(CommentModelRegistry::class)->commentClass());
+        $this->app->booting(fn () => $this->app->make(CommentModelRegistry::class)->prepare());
         $this->registerAttachmentAdapters();
-        $this->app->booting(fn () => (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class)));
+
         $this->app->booted(function (): void {
             if ($this->app->bound(TenantAdoptionRegistry::class)) {
                 (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class), $this->app->make(TenantAdoptionRegistry::class));
@@ -214,6 +214,7 @@ final class CommentsServiceProvider extends ServiceProvider implements Ownership
         CommentMetadataRegistry $metadata,
         Dispatcher $events,
     ): void {
+        (new CommentsResourceRegistrar)->register($this->app->make(TenantResourceRegistry::class));
         $this->app->make(OwnershipCommentsResourceRegistrar::class)->register($this->app->make(OwnershipResourceRegistry::class));
         if ($this->app->bound(OwnershipAdoptionRegistry::class)) {
             $this->app->make(OwnershipAdoptionRegistry::class)->register('comments', OwnershipCommentsAdoptionAdapter::class);

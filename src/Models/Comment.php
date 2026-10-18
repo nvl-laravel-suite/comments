@@ -256,6 +256,28 @@ class Comment extends Model implements Ownable
         );
     }
 
+    /** Resolve Laravel bindings through the exact configured root.
+     * @param  mixed  $value
+     * @param  string|null  $field
+     */
+    public function resolveRouteBinding($value, $field = null): ?Comment
+    {
+        $model = CommentModelRegistry::newInstance();
+
+        return $model->newQuery()->where($field ?? $model->getRouteKeyName(), $value)->first();
+    }
+
+    /** Resolve explicit trashed bindings without losing canonical ownership.
+     * @param  mixed  $value
+     * @param  string|null  $field
+     */
+    public function resolveSoftDeletableRouteBinding($value, $field = null): ?Comment
+    {
+        $model = CommentModelRegistry::newInstance();
+
+        return $model->newQuery()->withTrashed()->where($field ?? $model->getRouteKeyName(), $value)->first();
+    }
+
     public function getTable(): string
     {
         return CommentsConfiguration::table(CommentsTables::get(CommentsTables::Comments));
