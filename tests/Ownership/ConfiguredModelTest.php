@@ -23,7 +23,7 @@ it('uses exact configured factories and denies stale base classes or disabled ru
         expect((new Comment)->resolveSoftDeletableRouteBinding($comment->id)::class)->toBe(OwnershipComment::class);
         expect($comment->body)->toBe('configured:Private comment');
         config(['nvl-ownership.enabled' => false]);
-        expect(fn () => CommentModelRegistry::query()->get())->toThrow(OwnershipSchemaNotReady::class);
+        expect(fn () => CommentModelRegistry::query()->get())->toThrow(OwnershipViolation::class);
         expect(fn () => $comment->saveQuietly())->toThrow(OwnershipSchemaNotReady::class);
     });
 });
