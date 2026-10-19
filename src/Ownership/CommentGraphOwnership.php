@@ -8,7 +8,11 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Checks canonical thread identities inside the actual source transaction. @internal */
+/**
+ * Checks canonical thread identities inside the actual source transaction.
+ *
+ * @internal
+ */
 final readonly class CommentGraphOwnership
 {
     public function assertHierarchy(Comment $comment): void

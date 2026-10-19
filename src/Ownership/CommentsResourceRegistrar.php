@@ -15,7 +15,11 @@ use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Ownership\ValueObjects\OwnershipDefinition;
 use Nvl\Support\Ownership\ValueObjects\OwnershipResourceDefinition;
 
-/** Compiles target-derived ownership for the complete discussion graph. @internal */
+/**
+ * Compiles target-derived ownership for the complete discussion graph.
+ *
+ * @internal
+ */
 final readonly class CommentsResourceRegistrar
 {
     public function __construct(private CommentModelRegistry $models) {}

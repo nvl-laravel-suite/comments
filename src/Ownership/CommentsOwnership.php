@@ -16,7 +16,11 @@ use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Enums\TenantContextMode;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
-/** Resolves canonical metadata without retaining request admission. @internal */
+/**
+ * Resolves canonical metadata without retaining request admission.
+ *
+ * @internal
+ */
 final class CommentsOwnership
 {
     public static function declared(): bool

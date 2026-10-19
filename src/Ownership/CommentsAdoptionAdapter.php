@@ -14,10 +14,18 @@ use Nvl\Ownership\ValueObjects\OwnershipVerification;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 
-/** Adopts exact reviewed Comment records without guessing primary owners from associations. @internal */
+/**
+ * Adopts exact reviewed Comment records without guessing primary owners from associations.
+ *
+ * @internal
+ */
 final readonly class CommentsAdoptionAdapter implements OwnershipAdoptionAdapter
 {
-    public function __construct(private OwnershipResourceRegistry $resources, private OwnershipAdoptionStore $mappings, private OwnershipSchema $schema) {}
+    public function __construct(
+        private OwnershipResourceRegistry $resources,
+        private OwnershipAdoptionStore $mappings,
+        private OwnershipSchema $schema,
+    ) {}
 
     /** @return list<string> */
     public function resources(): array

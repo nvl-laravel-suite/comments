@@ -9,7 +9,11 @@ use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 
-/** Persists package children with server-assigned canonical partitions. @internal */
+/**
+ * Persists package children with server-assigned canonical partitions.
+ *
+ * @internal
+ */
 final readonly class CommentRecordWriter
 {
     /** Save new reports through their canonical assignment and retain native veto behavior. */

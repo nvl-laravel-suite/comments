@@ -2019,6 +2019,16 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Services\\CommentModelRegistry": {
+            "kind": "class",
+            "file": "src/Services/CommentModelRegistry.php",
+            "methods": [
+                "__construct",
+                "commentClass"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Services\\ConfiguredCommentAuthorization": {
             "kind": "class",
             "file": "src/Services/ConfiguredCommentAuthorization.php",
