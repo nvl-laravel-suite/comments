@@ -3,12 +3,12 @@
 ## Quickstart
 
 ```sh
-composer require nvl/comments:^5.0
+composer require nvl/comments:^6.0
 php artisan nvl:install comments --dry-run
 php artisan nvl:install comments
 ```
 
-Required NVL dependencies: `nvl/core` (`^5.0`), `nvl/filterable` (`^5.0`). Register a native persisted owner and CommentTargetResolver; bind CommentAuthorization, CommentQueryScope and CommentBatchQueryScope. The article and CommentActorData come from trusted host state.
+Required NVL dependencies: `nvl/core` (`^6.0`), `nvl/filterable` (`^6.0`). Register a native persisted owner and CommentTargetResolver; bind CommentAuthorization, CommentQueryScope and CommentBatchQueryScope. The article and CommentActorData come from trusted host state.
 Review the published common config, select one migration owner, and run schema preflight before existing-table upgrades. The installer does not enable features or run migrations. Follow the detailed installation and capability sections below before invoking a storage/provider operation.
 
 Inject `Nvl\Comments\Contracts\ListOwnerCommentSummariesContract` in a host service. After supplying the trusted inputs described above, the first public call is:
@@ -34,7 +34,7 @@ See the [installation and publishing guide](https://github.com/nvl-laravel-suite
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/comments:^5.0` |
+| Installed through | `composer require nvl/comments:^6.0` |
 | Module identifier | `nvl/comments` |
 | PHP namespace | `Nvl\Comments` |
 | Service provider | `Nvl\Comments\Providers\CommentsServiceProvider` |
@@ -80,7 +80,7 @@ when the host needs attachment support.
 ## Install
 
 ```bash
-composer require nvl/comments:^5.0
+composer require nvl/comments:^6.0
 php artisan migrate
 ```
 

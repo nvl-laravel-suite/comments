@@ -5,6 +5,12 @@ description: Install, configure, implement, integrate, test, diagnose, or review
 
 # NVL Comments
 
+For major 6, use native Ownership for new isolated integrations and the installed
+Ownership README/UPGRADING runbook for configured subclasses and reviewed adoption.
+Ordinary unowned hosts keep unscoped declarations; installation does not enable
+isolation. Tenant-specific APIs below apply only to the explicitly selected
+deprecated Tenancy bridge; they never substitute for native owner admission.
+
 Treat Comments as a headless domain boundary. Comment text is author-owned
 source content with an optional locale; do not create centrally editable
 translated variants. The package stores but does not render Markdown.
@@ -69,7 +75,8 @@ php artisan migrate
   retain `order`, and include explicit empty summaries. Direct PHP inputs do not
   require HTTP target aliases or `HasComments`.
 - Canonical reloads retain host global/soft-delete scope and package connection.
-  Enabled Tenancy requires registered owner resources and exact
+  Native ownership requires exact host resources in
+  `nvl-comments.ownership.target_resources`; the deprecated bridge instead uses
   `nvl-comments.tenancy.target_types`. Reject foreign/missing/deleted owners before
   Comment SQL and never switch tenant context during a batch.
 - The same SQL predicate feeds visible counts and latest rows; rank after tenant,
@@ -343,18 +350,18 @@ application-owned schema preserving the same columns, critical types, explicit
 lengths, nullability, defaults, constraints, and indexes. Treat any strict
 Doctor `column_definition.*` failure as a deployment blocker.
 
-## Configurable-tenancy release discipline
+## Ownership isolation and release discipline
 
-- Preserve disabled compatibility and package independence; tenant support never creates an undeclared Auth or Suite dependency.
-- Use registered package-owned resources, adoption adapters, Actions, and lifecycle APIs. Never add a generic tenant delete-all path or raw cross-package cleanup.
-- Treat mapping/configuration hashes, interruption checkpoints, conservation evidence, worker context, tenant-leading queries, and standalone consumption as release contracts.
+- Keep unowned applications independent of the enforcement runtime; native ownership never adds an undeclared Auth or Suite dependency. Tenancy-specific APIs are deprecated bridge compatibility.
+- Use registered package-owned resources, adoption adapters, Actions, and lifecycle APIs. Never add a generic owner delete-all path or raw cross-package cleanup.
+- Treat mapping/configuration hashes, interruption checkpoints, conservation evidence, worker context, owner-partitioned queries, and standalone consumption as release contracts.
 
 ## Shared owner identities
 
 - Declare owner class lists in `nvl-core.owners` and reference model classes in `comments` capability configuration. Laravel `getMorphClass()` supplies the host-authored stored identity; declarations do not add global host morph mappings.
 - Keep the target resolver and its visibility/identifier checks. The route alias may differ from the shared owner alias. A resolver must return the exact model declared by its owner reference.
 - Keep the package allowlist and authorization independent of Core registration. Never authorize a model merely because Core knows it.
-- Preserve resolvers, handlers and authorization. Legacy aliases require agreement with native `getMorphClass()` and are removed in major 6; Doctor reports mismatches and stored identity drift without conversion.
+- Preserve resolvers, handlers and authorization. Legacy aliases require agreement with native `getMorphClass()` and remain deprecated in major 6; Doctor reports mismatches and stored identity drift without conversion.
 - If the host changes its morph map, explicitly reconcile reviewed package-owned columns and affected host relations before cutover. Core and package capability registration never mutate the host morph map or rewrite stored values.
 
 ## Shared consumer diagnostics
@@ -388,7 +395,7 @@ Drain old mutation workers and maintenance processes, then wait for their outsta
 ## Canonical configuration ownership
 
 - Read/write `nvl-comments` configuration and publish only canonical `nvl-<package>-<resource>` tags. Keep logical package/tenant resource identifiers unchanged.
-- Generic config roots and unprefixed package environment names are foreign by default. For an upgrading NVL host only, select `nvl-core.compatibility.legacy_config` package IDs and `legacy_env` explicitly; both default off. Canonical presence wins, including false/null/empty values. Legacy inputs are read without writing back and are removed in major 6.
+- Generic config roots and unprefixed package environment names are foreign by default. For an upgrading NVL host only, select `nvl-core.compatibility.legacy_config` package IDs and `legacy_env` explicitly; both default off. Canonical presence wins, including false/null/empty values. Legacy inputs are read without writing back and remain deprecated in major 6.
 - Use canonical `NVL_<PACKAGE>_*` variables only in config evaluation, then rebuild configuration caches and restart workers after cutover. Shared Laravel environment variables retain their names. Consult Core's versioned `support/resources/global-names.json` for all renames.
 - Old global aliases and legacy route families require separate explicit `global_aliases`/`legacy_routes` package selections. Preserve collisions and use Doctor diagnostics; never grant generic permissions automatically or claim signed-link compatibility without the same authorization/signature checks.
 
@@ -401,10 +408,10 @@ Drain old mutation workers and maintenance processes, then wait for their outsta
 
 ## Consumer runtime and testing contracts
 
-Start with the package README Quickstart and Testing your app sections. Use `nvl:install <package>` for loaded-package common config publication; it does not enable features, run schema or refresh caches. Preserve native host owner keys/morph maps and selected auth/tenancy defaults. Read full runtime defaults and publish advanced config only deliberately.
+Start with the package README Quickstart and Testing your app sections. Use `nvl:install <package>` for loaded-package common config publication; it does not enable features, run schema or refresh caches. Preserve native host owner keys/morph maps and selected host Auth and ownership defaults. Read full runtime defaults and publish advanced config only deliberately.
 
 Inject the supported focused interfaces and preserve host bindings. Returned model handles do not permit package-table queries/writes outside documented capability/extension seams. Host tests may substitute contracts in Laravel's container, use shipped model factories (ordinary make may persist parents; withoutParents()->make is detached), and use Laravel effect fakes deliberately. Only Media/Stripe have dedicated provider/library fakes; do not invent a universal package fake. Settings InteractsWithSettings is definition-only. Host PHPStan may include vendor/nvl/core/support/consumer-audit.neon; no unpublished workbench command is a consumer requirement.
 
-Read docs/events.md and the package README error table. Domain events use schemaVersion=1, model-free facts and actual source-connection commit callbacks; only six declared old Event suffix aliases remain for major 5. Migrate exact listeners/fakes and suffix wildcards, drain old queued payloads, rebuild event cache and restart workers. Delivery is not a durable outbox. The Core exception renderer is opt-in, JSON-only for respondable failures, with exactly message/code/context and host-selected locale. Do not expose diagnostics or reinterpret missing bindings as authorization denial.
+Read docs/events.md and the package README error table. Domain events use schemaVersion=1, model-free facts and actual source-connection commit callbacks; only six declared old Event suffix aliases remain deprecated through major 6. Migrate exact listeners/fakes and suffix wildcards, drain old queued payloads, rebuild event cache and restart workers. Delivery is not a durable outbox. The Core exception renderer is opt-in, JSON-only for respondable failures, with exactly message/code/context and host-selected locale. Do not expose diagnostics or reinterpret missing bindings as authorization denial.
 
 Core package logging uses nvl/normal with CSV quiet by default, stable message keys and bounded context; incidents survive quiet. Do not mutate global logger context or log raw row/provider/content/credential payloads. Run only authorized project checks and report new acceptance as pending until actual output exists.

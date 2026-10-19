@@ -15,8 +15,8 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^12.0 || ^13.0",
-        "nvl/core": "^5.1",
-        "nvl/filterable": "^5.0",
+        "nvl/core": "^6.0",
+        "nvl/filterable": "^6.0",
         "php": "^8.4",
         "spatie/laravel-data": "^4.23",
         "symfony/http-foundation": "^7.2 || ^8.0",
@@ -27,10 +27,10 @@
         "larastan/larastan": "^3.10",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
-        "nvl/media": "^5.1",
-        "nvl/ownership": "^5.0",
-        "nvl/tenancy": "^5.0",
-        "nvl/translatable": "^5.0",
+        "nvl/media": "^6.0",
+        "nvl/ownership": "^6.0",
+        "nvl/tenancy": "^6.0",
+        "nvl/translatable": "^6.0",
         "orchestra/testbench": "^10.0 || ^11.0",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0",
@@ -60,7 +60,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "5.x-dev"
+            "dev-main": "6.x-dev"
         },
         "laravel": {
             "providers": [
@@ -102,9 +102,9 @@
         "spatie/typescript-transformer": "Consume the declared TypeScript attributes and metadata (^3.3); Core retains the runtime transformation engine."
     },
     "conflict": {
-        "nvl/media": "<5.1 || >=6.0",
-        "nvl/ownership": "<5.0 || >=6.0",
-        "nvl/tenancy": "<5.0 || >=6.0"
+        "nvl/media": "<6.0 || >=7.0",
+        "nvl/ownership": "<6.0 || >=7.0",
+        "nvl/tenancy": "<6.0 || >=7.0"
     },
     "homepage": "https://github.com/nvl-laravel-suite/comments",
     "authors": [

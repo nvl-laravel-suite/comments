@@ -5,6 +5,13 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-10-20
+
+### Changed
+
+- Resolve configured Comment subclasses and inherit canonical target ownership for roots, documents and maintenance. Retain target authorization and owner isolation for batch reads, mutations and queue work.
+- Align required/development NVL peers on `^6.0`, optional peer conflicts on major 6, and `dev-main` on `6.x-dev`. Review [UPGRADING.md](UPGRADING.md) before rollout.
+
 ## [5.0.1] - 2026-10-08
 
 ### Changed
