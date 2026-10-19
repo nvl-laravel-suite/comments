@@ -9,7 +9,6 @@ use Nvl\Comments\Tests\Fixtures\OwnershipCommentScenario;
 use Nvl\Comments\Tests\Fixtures\OwnershipCompany;
 use Nvl\Comments\Tests\OwnershipTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
-use Nvl\Support\Ownership\Exceptions\OwnershipSchemaNotReady;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 uses(OwnershipTestCase::class);
@@ -24,6 +23,6 @@ it('uses exact configured factories and denies stale base classes or disabled ru
         expect($comment->body)->toBe('configured:Private comment');
         config(['nvl-ownership.enabled' => false]);
         expect(fn () => CommentModelRegistry::query()->get())->toThrow(OwnershipViolation::class);
-        expect(fn () => $comment->saveQuietly())->toThrow(OwnershipSchemaNotReady::class);
+        expect(fn () => $comment->saveQuietly())->toThrow(OwnershipViolation::class);
     });
 });
