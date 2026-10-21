@@ -9,7 +9,7 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
-use Nvl\Support\Models\ConfiguredModelResolver;
+use Nvl\Support\Models\ConfiguredModelRegistration;
 use Nvl\Support\OwnerRegistry;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
@@ -21,16 +21,30 @@ use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
  */
 final class CommentModelRegistry
 {
-    /** @var class-string<Comment>|null */
-    private ?string $comment = null;
-
-    private bool $validated = false;
+    /** @var ConfiguredModelRegistration<Comment> */
+    private readonly ConfiguredModelRegistration $registration;
 
     /** Retain deployment configuration and the shared identity registry. */
     public function __construct(
-        private readonly Repository $configuration,
-        private readonly OwnerRegistry $identities,
-    ) {}
+        Repository $configuration,
+        OwnerRegistry $identities,
+    ) {
+        $this->registration = new ConfiguredModelRegistration(
+            $configuration,
+            $identities,
+            'nvl-comments.models.comment',
+            Comment::class,
+            'comments.comments',
+            static function (string $class): void {
+                if (! in_array($class::ownershipDefinition()->strategy, ['unscoped', 'inherited'], true)) {
+                    throw new OwnershipConfigurationInvalid('Comments require unscoped storage or canonical target inheritance.');
+                }
+                if ($class::ownershipDefinition()->strategy === 'inherited' && $class::ownershipDefinition()->relation !== 'commentable') {
+                    throw new OwnershipConfigurationInvalid('Comments must inherit their canonical target.');
+                }
+            },
+        );
+    }
 
     /** Resolve and freeze the concrete Comment class before resource compilation.
      * @internal
@@ -39,24 +53,7 @@ final class CommentModelRegistry
      */
     public function prepare(): string
     {
-        if ($this->comment !== null) {
-            return $this->comment;
-        }
-        $configured = $this->configuration->get('nvl-comments.models.comment', Comment::class);
-        if (! is_string($configured)) {
-            throw new OwnershipConfigurationInvalid('Comment model configuration must name a concrete Comment subclass.');
-        }
-        $class = (new ConfiguredModelResolver)->resolve($configured, Comment::class);
-        if (! in_array($class::ownershipDefinition()->strategy, ['unscoped', 'inherited'], true)) {
-            throw new OwnershipConfigurationInvalid('Comments require unscoped storage or canonical target inheritance.');
-        }
-        if ($class::ownershipDefinition()->strategy === 'inherited' && $class::ownershipDefinition()->relation !== 'commentable') {
-            throw new OwnershipConfigurationInvalid('Comments must inherit their canonical target.');
-        }
-        $this->identities->registerReplacement('comments.comments', Comment::class, $class);
-        $this->comment = $class;
-
-        return $class;
+        return $this->registration->prepare();
     }
 
     /** Validate native capabilities after Laravel installs Eloquent's dispatcher.
@@ -64,16 +61,7 @@ final class CommentModelRegistry
      */
     public function commentClass(): string
     {
-        $class = $this->prepare();
-        if ($this->validated) {
-            return $class;
-        }
-        $model = new $class;
-        $base = new Comment;
-        (new ConfiguredModelResolver)->assertOwnershipCapabilities($model, $base);
-        $this->validated = true;
-
-        return $class;
+        return $this->registration->modelClass();
     }
 
     /** Resolve the immutable model from native framework entry points.

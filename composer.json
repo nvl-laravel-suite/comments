@@ -15,7 +15,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^12.0 || ^13.0",
-        "nvl/core": "^6.0",
+        "nvl/core": "^6.0.1",
         "nvl/filterable": "^6.0",
         "php": "^8.4",
         "spatie/laravel-data": "^4.23",
@@ -28,7 +28,7 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nvl/media": "^6.0",
-        "nvl/ownership": "^6.0",
+        "nvl/ownership": "^6.0.1",
         "nvl/tenancy": "^6.0",
         "nvl/translatable": "^6.0",
         "orchestra/testbench": "^10.0 || ^11.0",
@@ -103,7 +103,7 @@
     },
     "conflict": {
         "nvl/media": "<6.0 || >=7.0",
-        "nvl/ownership": "<6.0 || >=7.0",
+        "nvl/ownership": "<6.0.1 || >=7.0",
         "nvl/tenancy": "<6.0 || >=7.0"
     },
     "homepage": "https://github.com/nvl-laravel-suite/comments",
