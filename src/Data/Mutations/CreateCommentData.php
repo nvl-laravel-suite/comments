@@ -12,9 +12,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Validated contract for a root comment or reply.
@@ -23,7 +20,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class CreateCommentData extends Data
 {
     use DataTransform;
@@ -36,21 +32,12 @@ final class CreateCommentData extends Data
      */
     public function __construct(
         public readonly string $body,
-        #[TypeScriptOptional]
         public readonly CommentFormat $format = CommentFormat::Plain,
-        #[TypeScriptOptional]
         public readonly CommentVisibility $visibility = CommentVisibility::Public,
-        #[TypeScriptOptional]
         public readonly ?string $locale = null,
-        #[TypeScriptOptional]
         public readonly ?string $parentId = null,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('Array<string>')]
         public readonly array $tags = [],
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('Record<string, unknown>')]
         public readonly array $metadata = [],
-        #[TypeScriptOptional]
         public readonly ?string $idempotencyKey = null,
     ) {}
 

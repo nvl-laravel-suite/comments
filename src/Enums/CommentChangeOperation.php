@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Enums;
 
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
-
 /**
  * Stable durable operations announced by comment change events.
  *
  * @api
  */
-#[TypeScript]
 enum CommentChangeOperation: string
 {
     case Created = 'created';

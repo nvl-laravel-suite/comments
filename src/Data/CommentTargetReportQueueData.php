@@ -9,12 +9,10 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Data\Traits\DataTransform;
 use Spatie\LaravelData\Data;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Privileged target queue row combining one actionable report with its comment.
  */
-#[TypeScript]
 final class CommentTargetReportQueueData extends Data
 {
     use DataTransform;

@@ -9,7 +9,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Audience-safe author presentation without a stored polymorphic identity.
@@ -18,7 +17,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class CommentAuthorData extends Data
 {
     use DataTransform;

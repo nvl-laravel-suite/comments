@@ -9,12 +9,10 @@ use Nvl\Comments\Models\CommentReport;
 use Nvl\Data\Traits\DataTransform;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Privileged report representation exposed only after moderator authorization.
  */
-#[TypeScript]
 final class CommentReportManagementData extends Data
 {
     use DataTransform;

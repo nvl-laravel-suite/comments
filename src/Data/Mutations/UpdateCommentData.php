@@ -12,8 +12,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Presence-aware editable-content patch with an optimistic-lock token.
@@ -22,7 +20,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class UpdateCommentData extends Data
 {
     use DataTransform;
@@ -36,9 +33,7 @@ final class UpdateCommentData extends Data
         public readonly int $expectedRevision,
         public readonly CommentFormat|Optional $format = new Optional,
         public readonly string|Optional|null $locale = new Optional,
-        #[LiteralTypeScriptType('Array<string>')]
         public readonly array|Optional $tags = new Optional,
-        #[LiteralTypeScriptType('Record<string, unknown>')]
         public readonly array|Optional $metadata = new Optional,
     ) {}
 

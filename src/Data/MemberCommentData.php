@@ -15,8 +15,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Viewer-aware member projection with status and explicit mutation abilities.
@@ -25,7 +23,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class MemberCommentData extends Data
 {
     use DataTransform;
@@ -44,7 +41,6 @@ final class MemberCommentData extends Data
         public readonly string|Optional $body,
         public readonly CommentFormat|Optional $format,
         public readonly string|Optional|null $locale,
-        #[LiteralTypeScriptType('Array<string>')]
         public readonly array|Optional $tags,
         #[DataCollectionOf(CommentMetadataProjectionData::class)]
         public readonly array|Optional $metadata,

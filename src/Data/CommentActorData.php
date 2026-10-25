@@ -9,14 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Data\Traits\DataTransform;
 use Spatie\LaravelData\Data;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Stable actor identity independent of an application's user model.
  *
  * @api
  */
-#[TypeScript]
 final class CommentActorData extends Data
 {
     use DataTransform;

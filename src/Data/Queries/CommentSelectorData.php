@@ -11,8 +11,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Bounded selectors for resolving one latest target comment.
@@ -21,15 +19,12 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class CommentSelectorData extends Data
 {
     /** @var list<string> */
-    #[LiteralTypeScriptType('Array<string>')]
     public readonly array $tags;
 
     /** @var array<string, string|int|bool|null> */
-    #[LiteralTypeScriptType('Record<string, string | number | boolean | null>')]
     public readonly array $metadataEquals;
 
     /**

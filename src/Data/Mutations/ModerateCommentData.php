@@ -11,8 +11,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Explicit moderation transition with concurrency protection.
@@ -21,7 +19,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class ModerateCommentData extends Data
 {
     use DataTransform;
@@ -32,9 +29,7 @@ final class ModerateCommentData extends Data
     public function __construct(
         public readonly CommentStatus $status,
         public readonly int $expectedRevision,
-        #[TypeScriptOptional]
         public readonly ?string $reason = null,
-        #[TypeScriptOptional]
         public readonly ?bool $pinned = null,
     ) {}
 

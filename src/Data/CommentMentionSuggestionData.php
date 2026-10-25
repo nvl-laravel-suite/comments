@@ -11,8 +11,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Authorized server-owned suggestion returned to an editor.
@@ -21,7 +19,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class CommentMentionSuggestionData extends Data
 {
     use DataTransform;
@@ -34,7 +31,6 @@ final class CommentMentionSuggestionData extends Data
     public function __construct(
         public readonly string $id,
         public readonly string $label,
-        #[LiteralTypeScriptType('Record<string, string | number | boolean | null>')]
         public readonly array $fields = [],
         public readonly ?string $url = null,
     ) {}

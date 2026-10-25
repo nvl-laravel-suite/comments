@@ -13,15 +13,12 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Safe comment content revision without editor identity or internal metadata.
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class CommentRevisionData extends Data
 {
     use DataTransform;
@@ -37,7 +34,6 @@ final class CommentRevisionData extends Data
         public readonly string $body,
         public readonly CommentFormat $format,
         public readonly ?string $locale,
-        #[LiteralTypeScriptType('Array<string>')]
         public readonly array $tags,
         #[DataCollectionOf(CommentMetadataProjectionData::class)]
         public readonly array|Optional $metadata,

@@ -9,8 +9,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Versioned bounded rich-document mutation payload.
@@ -19,7 +17,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class CommentDocumentData extends Data
 {
     use DataTransform;
@@ -30,9 +27,7 @@ final class CommentDocumentData extends Data
      * @param  array<array-key, mixed>  $blocks
      */
     public function __construct(
-        #[LiteralTypeScriptType('1')]
         public readonly int $version,
-        #[LiteralTypeScriptType('Array<Nvl.Comments.Data.Mutations.CommentDocumentBlockData>')]
         public readonly array $blocks,
     ) {}
 

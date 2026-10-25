@@ -6,14 +6,12 @@ namespace Nvl\Comments\Data;
 
 use Spatie\LaravelData\Attributes\DataCollectionOf;
 use Spatie\LaravelData\Data;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Count and bounded latest list from one identical authorized nondeleted set.
  *
  * @api
  */
-#[TypeScript]
 final class OwnerCommentSummaryData extends Data
 {
     /**

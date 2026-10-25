@@ -6,8 +6,6 @@ namespace Nvl\Comments\Data;
 
 use Nvl\Support\Owners\OwnerResultMap;
 use Spatie\LaravelData\Data;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 use stdClass;
 
 /**
@@ -15,7 +13,6 @@ use stdClass;
  *
  * @api
  */
-#[TypeScript]
 final class OwnerCommentSummaries extends Data
 {
     /**
@@ -24,9 +21,7 @@ final class OwnerCommentSummaries extends Data
      * @param  list<array{type: string, id: string}>  $order
      */
     public function __construct(
-        #[LiteralTypeScriptType('Record<string, Record<string, OwnerCommentSummaryData>>')]
         public readonly stdClass $owners,
-        #[LiteralTypeScriptType('Array<{ type: string; id: string }>')]
         public readonly array $order,
     ) {}
 

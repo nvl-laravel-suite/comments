@@ -13,8 +13,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Viewer-independent public comment projection with no policy or actor internals.
@@ -23,7 +21,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class PublicCommentData extends Data
 {
     use DataTransform;
@@ -42,7 +39,6 @@ final class PublicCommentData extends Data
         public readonly string|Optional $body,
         public readonly CommentFormat|Optional $format,
         public readonly string|Optional|null $locale,
-        #[LiteralTypeScriptType('Array<string>')]
         public readonly array|Optional $tags,
         #[DataCollectionOf(CommentMetadataProjectionData::class)]
         public readonly array|Optional $metadata,

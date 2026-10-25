@@ -9,8 +9,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Validated report reason submitted by one actor.
@@ -19,7 +17,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class ReportCommentData extends Data
 {
     use DataTransform;
@@ -29,7 +26,6 @@ final class ReportCommentData extends Data
      */
     public function __construct(
         public readonly string $reason,
-        #[TypeScriptOptional]
         public readonly ?string $details = null,
     ) {}
 

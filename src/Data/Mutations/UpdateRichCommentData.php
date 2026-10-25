@@ -10,8 +10,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Presence-aware rich-content patch with an optimistic-lock token.
@@ -20,7 +18,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapInputName(CamelCaseMapper::class)]
 #[MapOutputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class UpdateRichCommentData extends Data
 {
     use DataTransform;
@@ -35,9 +32,7 @@ final class UpdateRichCommentData extends Data
         public readonly CommentDocumentData $document,
         public readonly int $expectedRevision,
         public readonly string|Optional|null $locale = new Optional,
-        #[LiteralTypeScriptType('Array<string>')]
         public readonly array|Optional $tags = new Optional,
-        #[LiteralTypeScriptType('Record<string, unknown>')]
         public readonly array|Optional $metadata = new Optional,
     ) {}
 

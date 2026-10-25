@@ -9,14 +9,12 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Data\Traits\DataTransform;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Lightweight pre-authorized comment projection excluding actor and document internals.
  *
  * @api
  */
-#[TypeScript]
 final class LatestCommentSummaryData extends Data
 {
     use DataTransform;
