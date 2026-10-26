@@ -14,7 +14,6 @@ use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyFixtureServiceProvider;
 use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyMaintenanceMode;
 use Nvl\Comments\Tests\Fixtures\CommentBatchTenancyPlatformAccess;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionResource;
-use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Filterable\Providers\FilterableServiceProvider;
 use Nvl\Support\Providers\LocaleServiceProvider;
 use Nvl\Support\Providers\SupportServiceProvider;
@@ -23,6 +22,7 @@ use Nvl\Tenancy\Contracts\TenantDirectory;
 use Nvl\Tenancy\Providers\TenancyServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use ReflectionClass;
+use Spatie\LaravelData\LaravelDataServiceProvider as DataServiceProvider;
 
 /** Boots actual tenant adoption and ownership for Comments' batch contract. */
 abstract class CommentBatchTenancyTestCase extends Orchestra

@@ -17,7 +17,6 @@ use Nvl\Comments\Tests\Fixtures\OwnershipComment;
 use Nvl\Comments\Tests\Fixtures\OwnershipCommentTarget;
 use Nvl\Comments\Tests\Fixtures\OwnershipCommentTargetAdapter;
 use Nvl\Comments\Tests\Fixtures\OwnershipCompany;
-use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Filterable\Providers\FilterableServiceProvider;
 use Nvl\Ownership\Contracts\CentralAccess;
 use Nvl\Ownership\Contracts\OwnerAccess;
@@ -33,6 +32,7 @@ use Nvl\Support\Providers\LocaleServiceProvider;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Translatable\Providers\TranslatableServiceProvider;
 use Orchestra\Testbench\TestCase;
+use Spatie\LaravelData\LaravelDataServiceProvider as DataServiceProvider;
 
 /** Exercises committed ownership and audit behavior without NVL Tenancy or Auth providers. */
 abstract class OwnershipTestCase extends TestCase

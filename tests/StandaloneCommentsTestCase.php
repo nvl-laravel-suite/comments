@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Nvl\Comments\Tests;
 
 use Nvl\Comments\Providers\CommentsServiceProvider;
-use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Filterable\Providers\FilterableServiceProvider;
 use Nvl\Support\Providers\LocaleServiceProvider;
+use Spatie\LaravelData\LaravelDataServiceProvider as DataServiceProvider;
 
 /** Exercises required Comments providers without discovering optional integrations. */
 abstract class StandaloneCommentsTestCase extends TestCase

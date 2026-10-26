@@ -73,7 +73,7 @@ final readonly class CommentMentionWriter
     /**
      * Return bounded unique removal facts from the current normalized rows.
      *
-     * @return list<CommentMentionChangeData>
+     * @return list<array{resourceAlias: string, resourceId: string, tokenId: string}>
      */
     public function removals(Comment $comment): array
     {
@@ -89,11 +89,11 @@ final readonly class CommentMentionWriter
                 'sha256',
                 "comment-mention-event\0{$mention->resource_alias}\0{$mention->resource_id}",
             );
-            $identities[$key] ??= new CommentMentionChangeData(
-                resourceAlias: $mention->resource_alias,
-                resourceId: $mention->resource_id,
-                tokenId: $mention->token_id,
-            );
+            $identities[$key] ??= [
+                'resourceAlias' => $mention->resource_alias,
+                'resourceId' => $mention->resource_id,
+                'tokenId' => $mention->token_id,
+            ];
         }
 
         ksort($identities);

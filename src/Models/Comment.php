@@ -425,52 +425,6 @@ class Comment extends Model implements Ownable
     }
 
     /**
-     * Return the privileged moderation filter and aggregate sort schema.
-     */
-    public static function managementFilterSchema(): FilterSchema
-    {
-        $common = self::filterSchema();
-
-        return new FilterSchema(
-            filters: [
-                ...$common->filters,
-                new FilterDefinition(
-                    alias: 'reports',
-                    column: 'report_count',
-                    type: FilterValueType::Integer,
-                    operators: [
-                        FilterOperator::Equals,
-                        FilterOperator::Gt,
-                        FilterOperator::Gte,
-                    ],
-                ),
-                new FilterDefinition(
-                    alias: 'open_reports',
-                    column: 'open_report_count',
-                    type: FilterValueType::Integer,
-                    operators: [
-                        FilterOperator::Equals,
-                        FilterOperator::Gt,
-                        FilterOperator::Gte,
-                    ],
-                ),
-            ],
-            sorts: [
-                ...$common->sorts,
-                new SortDefinition('reports', 'report_count'),
-                new SortDefinition('open_reports', 'open_report_count'),
-                new SortDefinition('last_reported', 'last_reported_at'),
-            ],
-            defaultSorts: ['-open_reports', '-last_reported', '-created'],
-            maximumFilters: $common->maximumFilters,
-            maximumSorts: $common->maximumSorts,
-            maximumValuesPerFilter: $common->maximumValuesPerFilter,
-            maximumStringLength: $common->maximumStringLength,
-            tieBreakerSort: $common->tieBreakerSort,
-        );
-    }
-
-    /**
      * Publicly visible approved comments only.
      *
      * @param  Builder<static>  $query

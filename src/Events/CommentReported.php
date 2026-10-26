@@ -17,6 +17,9 @@ use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
  */
 final class CommentReported implements DomainEvent, OwnershipQueuedJob
 {
+    /** @var array{type: ?string, id: ?string, system: bool} */
+    public readonly array $actor;
+
     private readonly OwnershipJobEnvelope $ownershipEnvelope;
 
     /** Return the scalar authority captured when this fact occurred. */
@@ -28,9 +31,10 @@ final class CommentReported implements DomainEvent, OwnershipQueuedJob
     public function __construct(
         public readonly string $commentId,
         public readonly string $reportId,
-        public readonly CommentActor $actor,
+        CommentActor $actor,
         public readonly int $schemaVersion = 1,
     ) {
+        $this->actor = ['type' => $actor->type, 'id' => $actor->id, 'system' => $actor->system];
         $this->ownershipEnvelope = CommentsOwnership::envelope();
     }
 

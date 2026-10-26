@@ -15,7 +15,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^13.0",
-        "nvl/core": "^6.0.1",
+        "nvl/core": "^7.0",
         "php": "^8.4",
         "symfony/polyfill-intl-normalizer": "^1.33"
     },
@@ -24,9 +24,9 @@
         "larastan/larastan": "^3.10",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
-        "nvl/media": "^6.0",
-        "nvl/ownership": "^6.0.1",
-        "nvl/translatable": "^6.0",
+        "nvl/media": "^7.0",
+        "nvl/ownership": "^7.0",
+        "nvl/translatable": "^7.0",
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0"
@@ -55,7 +55,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "6.x-dev"
+            "dev-main": "7.x-dev"
         },
         "laravel": {
             "providers": [
@@ -85,7 +85,8 @@
             "/**/.gitattributes",
             "/.gitignore",
             "/**/.gitignore",
-            "/**/.gitkeep"
+            "/**/.gitkeep",
+            ".DS_Store"
         ]
     },
     "minimum-stability": "stable",
@@ -95,8 +96,8 @@
         "nvl/ownership": "Adds optional model-declared ownership, isolation, adoption and captured worker contexts."
     },
     "conflict": {
-        "nvl/media": "<6.0 || >=7.0",
-        "nvl/ownership": "<6.0.1 || >=7.0"
+        "nvl/media": "<7.0 || >=8.0",
+        "nvl/ownership": "<7.0 || >=8.0"
     },
     "homepage": "https://github.com/nvl-laravel-suite/comments",
     "authors": [
