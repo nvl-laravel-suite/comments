@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Nvl\Comments\Enums\CommentFormat;
+use Nvl\Comments\Enums\CommentVisibility;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Support\CommentsConfiguration;
 
@@ -21,6 +22,7 @@ final class CommentContentGuard
     /**
      * Validate create content and return normalized metadata for persistence.
      *
+     * @param  array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}  $data
      * @return array<string, mixed>
      */
     public function create(array $data): array
@@ -37,6 +39,7 @@ final class CommentContentGuard
      * Validate update content and return presence-aware normalized metadata.
      *
      * @param  array<string, mixed>|null  $existingMetadata
+     * @param  array{body: string, expectedRevision: int, format?: CommentFormat, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}  $data
      * @return array<string, mixed>
      */
     public function update(array $data, ?array $existingMetadata = null): array
@@ -65,6 +68,7 @@ final class CommentContentGuard
     /**
      * Validate rich create fields and return normalized metadata for persistence.
      *
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      * @return array<string, mixed>
      */
     public function createRich(array $data, string $body): array
@@ -80,6 +84,7 @@ final class CommentContentGuard
      * Validate rich update fields and return presence-aware normalized metadata.
      *
      * @param  array<string, mixed>|null  $existingMetadata
+     * @param  array{document: array{version: int, blocks: array<array-key, mixed>}, expectedRevision: int, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}  $data
      * @return array<string, mixed>
      */
     public function updateRich(

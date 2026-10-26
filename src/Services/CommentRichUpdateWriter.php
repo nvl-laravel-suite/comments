@@ -44,6 +44,8 @@ final readonly class CommentRichUpdateWriter
 
     /**
      * Replace authorized rich content with optimistic concurrency protection.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function update(
         Comment|string $comment,
@@ -194,7 +196,10 @@ final readonly class CommentRichUpdateWriter
         );
     }
 
-    /** @param array<string, mixed> $attributes @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{document: array{version: int, blocks: array<array-key, mixed>}, expectedRevision: int, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}
+     */
     private function normalizeUpdate(array $attributes): array
     {
         $document = $attributes['document'] ?? null;
@@ -215,6 +220,24 @@ final readonly class CommentRichUpdateWriter
             throw new InvalidCommentMutationException('Rich comment update attributes are invalid.');
         }
 
-        return $attributes;
+        $normalized = ['document' => ['version' => $document['version'], 'blocks' => $document['blocks']], 'expectedRevision' => $attributes['expectedRevision']];
+        if (array_key_exists('locale', $attributes)) {
+            $normalized['locale'] = $attributes['locale'];
+        }
+        if (array_key_exists('tags', $attributes)) {
+            $normalized['tags'] = $attributes['tags'];
+        }
+        if (array_key_exists('metadata', $attributes)) {
+            $metadataMap = [];
+            foreach ($attributes['metadata'] as $key => $value) {
+                if (! is_string($key)) {
+                    throw new InvalidCommentMutationException('Comment metadata keys must be strings.');
+                }
+                $metadataMap[$key] = $value;
+            }
+            $normalized['metadata'] = $metadataMap;
+        }
+
+        return $normalized;
     }
 }

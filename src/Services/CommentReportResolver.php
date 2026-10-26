@@ -37,6 +37,8 @@ final readonly class CommentReportResolver
 
     /**
      * Resolve or dismiss one report after moderator authorization.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function resolveReport(
         CommentReport|string $report,

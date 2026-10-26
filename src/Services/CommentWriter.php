@@ -62,6 +62,8 @@ final readonly class CommentWriter
 
     /**
      * Create one plain or Markdown comment through the shared lifecycle.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function create(
         Model $target,
@@ -82,6 +84,8 @@ final readonly class CommentWriter
 
     /**
      * Create one rich comment through the shared lifecycle.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function createRich(
         Model $target,
@@ -184,6 +188,9 @@ final readonly class CommentWriter
 
     /**
      * Execute the common target, hierarchy, access, idempotency, and persistence lifecycle.
+     *
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
+     * @param  array{version: int, blocks: array<array-key, mixed>}|null  $inputDocument
      */
     private function execute(
         Model $target,
@@ -500,6 +507,8 @@ final readonly class CommentWriter
 
     /**
      * Authorize one root or reply creation before rich resource resolution.
+     *
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      */
     private function authorizeCreation(
         Model $target,
@@ -545,6 +554,8 @@ final readonly class CommentWriter
 
     /**
      * Build the plain or rich canonical idempotency digest.
+     *
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      */
     private function idempotencyHash(
         string $targetType,
@@ -584,6 +595,8 @@ final readonly class CommentWriter
 
     /**
      * Verify an exact keyed request against current target and participation access.
+     *
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      */
     private function authorizedReplay(
         Comment $comment,
@@ -645,7 +658,7 @@ final readonly class CommentWriter
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return array<string, mixed>
+     * @return ($rich is true ? array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}} : array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string})
      */
     private function normalizeCreate(array $attributes, bool $rich = false): array
     {
@@ -680,6 +693,14 @@ final readonly class CommentWriter
             throw new InvalidCommentMutationException('Comment creation contains invalid attributes.');
         }
 
+        $metadataMap = [];
+        foreach ($metadata as $key => $value) {
+            if (! is_string($key)) {
+                throw new InvalidCommentMutationException('Comment metadata keys must be strings.');
+            }
+            $metadataMap[$key] = $value;
+        }
+
         $normalized = [
             'format' => $format,
             'visibility' => $visibility,
@@ -687,7 +708,7 @@ final readonly class CommentWriter
             'parentId' => $parentId,
             'idempotencyKey' => $idempotencyKey,
             'tags' => $tags,
-            'metadata' => $metadata,
+            'metadata' => $metadataMap,
         ];
 
         if ($rich) {
@@ -698,7 +719,7 @@ final readonly class CommentWriter
                 throw new InvalidCommentMutationException('Rich comment creation requires a document.');
             }
 
-            $normalized['document'] = $document;
+            $normalized['document'] = ['version' => $document['version'], 'blocks' => $document['blocks']];
         } else {
             if (! is_string($attributes['body'] ?? null)) {
                 throw new InvalidCommentMutationException('Comment creation requires a body.');

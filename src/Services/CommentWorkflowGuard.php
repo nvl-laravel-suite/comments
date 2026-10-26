@@ -13,6 +13,8 @@ final class CommentWorkflowGuard
 {
     /**
      * Validate a report reason and optional details.
+     *
+     * @param  array{reason: string, details: ?string}  $data
      */
     public function report(array $data): void
     {
@@ -25,6 +27,8 @@ final class CommentWorkflowGuard
 
     /**
      * Validate an optional moderation reason.
+     *
+     * @param  array{reason: ?string}  $data
      */
     public function moderation(array $data): void
     {
@@ -35,6 +39,8 @@ final class CommentWorkflowGuard
 
     /**
      * Validate the required report resolution.
+     *
+     * @param  array{resolution: string}  $data
      */
     public function resolution(array $data): void
     {

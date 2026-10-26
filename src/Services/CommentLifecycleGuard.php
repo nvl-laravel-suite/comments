@@ -45,6 +45,8 @@ final class CommentLifecycleGuard
 
     /**
      * Validate the required terminal anonymization audit reason.
+     *
+     * @param  array{expectedRevision: int, reason: string}  $data
      */
     public function anonymization(array $data): void
     {

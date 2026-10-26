@@ -23,6 +23,9 @@ final readonly class CommentDocumentNormalizer
 
     /**
      * Validate client input, resolve every mention, and add server-owned labels.
+     *
+     * @param  array<string, mixed>  $document
+     * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
      */
     public function normalizeInput(
         array $document,
@@ -79,6 +82,9 @@ final readonly class CommentDocumentNormalizer
 
     /**
      * Validate and canonicalize client document structure without resource resolution.
+     *
+     * @param  array<string, mixed>  $document
+     * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
      */
     public function normalizeUnresolved(array $document): array
     {
@@ -89,6 +95,7 @@ final readonly class CommentDocumentNormalizer
      * Validate a stored historical document without live resource resolution.
      *
      * @param  array<string, mixed>  $document
+     * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
      */
     public function normalizeStored(array $document): array
     {
@@ -107,6 +114,8 @@ final readonly class CommentDocumentNormalizer
 
     /**
      * Return a deterministic plain-text compatibility projection.
+     *
+     * @param  array<string, mixed>  $document
      */
     public function body(array $document): string
     {
@@ -135,6 +144,7 @@ final readonly class CommentDocumentNormalizer
     /**
      * Return ordered mention references from one normalized document.
      *
+     * @param  array<string, mixed>  $document
      * @return list<array{tokenId: string, resourceAlias: string, resourceId: string, labelSnapshot: string, position: int}>
      */
     public function references(
@@ -175,6 +185,8 @@ final readonly class CommentDocumentNormalizer
     /**
      * Return the canonical JSON representation used by persistence digests.
      *
+     * @param  array<string, mixed>  $document
+     *
      * @throws JsonException
      */
     public function canonicalJson(array $document): string
@@ -188,6 +200,7 @@ final readonly class CommentDocumentNormalizer
     /**
      * Return the canonical storage array for one normalized document.
      *
+     * @param  array<string, mixed>  $document
      * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
      */
     public function toArray(array $document): array
@@ -204,13 +217,16 @@ final readonly class CommentDocumentNormalizer
     /**
      * Validate one document into canonical block and string-node maps.
      *
+     * @param  array<string, mixed>  $document
      * @return list<array{type: string, children: list<array<string, string>>}>
      */
     private function validate(
         array $document,
         bool $allowSnapshots,
     ): array {
-        if ($document['version'] !== 1 || ! array_is_list($document['blocks'])) {
+        if (($document['version'] ?? null) !== 1
+            || ! is_array($document['blocks'] ?? null)
+            || ! array_is_list($document['blocks'])) {
             throw new InvalidCommentMutationException(
                 'Comment documents must use version one and a block list.',
             );

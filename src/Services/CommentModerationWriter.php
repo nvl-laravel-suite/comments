@@ -37,6 +37,8 @@ final readonly class CommentModerationWriter
 
     /**
      * Apply an authorized moderation transition to a current comment revision.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function moderate(
         Comment|string $comment,
@@ -126,7 +128,10 @@ final readonly class CommentModerationWriter
         );
     }
 
-    /** @param array<string, mixed> $attributes @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{status: CommentStatus, expectedRevision: int, reason: ?string, pinned: ?bool}
+     */
     private function normalizeModeration(array $attributes): array
     {
         if (array_diff(array_keys($attributes), ['status', 'expectedRevision', 'reason', 'pinned']) !== []
@@ -150,7 +155,7 @@ final readonly class CommentModerationWriter
         }
 
         return [
-            ...$attributes,
+            'expectedRevision' => $attributes['expectedRevision'],
             'status' => $status,
             'reason' => $attributes['reason'] ?? null,
             'pinned' => $attributes['pinned'] ?? null,

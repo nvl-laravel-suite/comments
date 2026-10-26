@@ -44,7 +44,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
      * Resolve requested resources while concealing absent and unauthorized identities.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, array>
+     * @return Collection<int, array<string, mixed>>
      */
     public function resolve(CommentMentionContext $context, array $ids): Collection
     {
@@ -74,7 +74,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     /**
      * Suggest authorized resources in deterministic label and identifier order.
      *
-     * @return Collection<int, array>
+     * @return Collection<int, array<string, mixed>>
      */
     public function suggest(
         CommentMentionContext $context,
@@ -135,6 +135,8 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
 
     /**
      * Build one validated live resource DTO from an allowlisted select.
+     *
+     * @return array<string, mixed>
      */
     private function resourceData(
         Model $resource,

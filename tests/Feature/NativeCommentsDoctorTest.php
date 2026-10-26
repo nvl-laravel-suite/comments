@@ -13,3 +13,8 @@ it('inspects the native package without HTTP route or DTO bindings', function ()
     expect($checks)->not->toHaveKey('actor_resolver.ready');
     expect($checks)->not->toHaveKey('routes.public_ready');
 });
+
+it('renders the native doctor report and honors strict readiness', function (): void {
+    $this->artisan('nvl:comments:doctor', ['--strict' => true, '--format' => 'json'])
+        ->assertSuccessful();
+});

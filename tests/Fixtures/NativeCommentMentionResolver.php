@@ -14,17 +14,25 @@ final class NativeCommentMentionResolver implements CommentMentionResourceResolv
     public function resolve(CommentMentionContext $context, array $ids): Collection
     {
         return collect($ids)->filter(static fn (string $id): bool => $id === 'member-1')
-            ->map(static fn (string $id): array => [
-                'id' => $id,
-                'label' => 'Member One',
-                'fields' => [],
-                'url' => null,
-                'state' => CommentMentionState::Resolved,
-            ])->values();
+            ->map($this->resource(...))->values();
     }
 
     public function suggest(CommentMentionContext $context, string $query, int $limit): Collection
     {
         return $this->resolve($context, ['member-1'])->take($limit)->values();
+    }
+
+    /** Map the host's resource into its native resolver contract.
+     * @return array<string, mixed>
+     */
+    private function resource(string $id): array
+    {
+        return [
+            'id' => $id,
+            'label' => 'Member One',
+            'fields' => [],
+            'url' => null,
+            'state' => CommentMentionState::Resolved,
+        ];
     }
 }

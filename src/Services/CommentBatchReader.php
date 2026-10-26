@@ -23,6 +23,7 @@ final readonly class CommentBatchReader
      * Return native owner maps after complete admission, with at most 1,000 latest storage rows.
      *
      * @param  list<Model>  $owners
+     * @return array{values: array<string, array<array-key, array<string, mixed>>>, order: list<array{type: string, id: string}>}
      */
     public function read(array $owners, CommentActor $actor, CommentAudience $audience = CommentAudience::Public, int $latestLimit = 3): array
     {
@@ -79,6 +80,7 @@ final readonly class CommentBatchReader
      * Preserve every admitted identity, including empty owners, in request order.
      *
      * @param  array<string, array<array-key, array<string, mixed>>>  $values
+     * @return array{values: array<string, array<array-key, array<string, mixed>>>, order: list<array{type: string, id: string}>}
      */
     private function result(OwnerBatch $batch, array $values): array
     {

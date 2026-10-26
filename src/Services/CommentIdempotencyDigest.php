@@ -6,6 +6,7 @@ namespace Nvl\Comments\Services;
 
 use JsonException;
 use LogicException;
+use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentVisibility;
 
 /**
@@ -20,6 +21,8 @@ final class CommentIdempotencyDigest
 
     /**
      * Hash the target, actor, hierarchy, and persisted mutation fields.
+     *
+     * @param  array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}  $data
      *
      * @throws JsonException
      * @throws LogicException
@@ -77,6 +80,8 @@ final class CommentIdempotencyDigest
 
     /**
      * Hash one canonical rich creation request without server-owned label snapshots.
+     *
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      *
      * @throws JsonException
      * @throws LogicException

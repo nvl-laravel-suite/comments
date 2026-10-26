@@ -128,7 +128,9 @@ final readonly class CommentMentionProjectionFactory
     /**
      * Build a viewer-shaped document that omits every stored opaque resource identifier.
      *
-     * @param  list<array<string, mixed>>  $mentions
+     * @param  list<array{tokenId: string, resourceAlias: string, state: CommentMentionState, labelSnapshot: string, resourceId: ?string, currentLabel: ?string, fields: array<string, scalar|null>, url: ?string}>  $mentions
+     * @param  array<string, mixed>  $document
+     * @return array<string, mixed>
      */
     private function viewerDocument(
         array $document,
@@ -170,6 +172,8 @@ final readonly class CommentMentionProjectionFactory
 
     /**
      * Resolve a safe state when live resolution was intentionally skipped or unavailable.
+     *
+     * @param  array{tokenId: string, resourceAlias: string, resourceId: string, labelSnapshot: string, position: int}  $reference
      */
     private function unresolvedState(
         array $reference,

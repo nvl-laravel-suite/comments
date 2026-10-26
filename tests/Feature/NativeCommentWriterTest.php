@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentChangeOperation;
 use Nvl\Comments\Enums\CommentVisibility;
+use Nvl\Comments\Events\CommentChanged;
+use Nvl\Comments\Events\CommentReactionChanged;
+use Nvl\Comments\Events\CommentReported;
 use Nvl\Comments\Exceptions\CommentIdempotencyConflictException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Services\CommentActor;
+use Nvl\Comments\Services\CommentAnonymizer;
 use Nvl\Comments\Services\CommentWriter;
 use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
 use Nvl\Comments\Tests\Fixtures\NativeModerationPolicy;
@@ -199,4 +206,76 @@ it('anonymizes an authorized comment without an installed Media provider', funct
 
     expect($anonymized->anonymized_at)->not->toBeNull();
     expect($anonymized->body)->not->toBe('Personal content');
+});
+
+it('serializes comment events with scalar actor facts only', function (): void {
+    $principal = NativeCommentActor::create(['name' => 'Author']);
+    $principal->setAttribute('private_token', 'event-private-token');
+    $actor = CommentActor::inspect($principal);
+    $events = [
+        new CommentChanged('comment', 'target', 'target-id', CommentChangeOperation::Created, 1, $actor),
+        new CommentReactionChanged('comment', 'like', true, $actor),
+        new CommentReported('comment', 'report', $actor),
+    ];
+
+    foreach ($events as $event) {
+        expect($event->actor)->toBe(['type' => $actor->type, 'id' => $actor->id, 'system' => false]);
+        expect(serialize($event))->not->toContain('event-private-token', NativeCommentActor::class, CommentActor::class);
+        expect(unserialize(serialize($event))->actor)->toBe($event->actor);
+    }
+});
+
+it('rejects anonymous principals at the attachment anonymization boundary', function (): void {
+    app(CommentAnonymizer::class)->anonymize(
+        'unknown-comment',
+        ['expectedRevision' => 1, 'reason' => 'Erase personal data'],
+        CommentActor::anonymous(),
+        CommentAudience::Management,
+    );
+})->throws(AuthorizationException::class);
+
+it('preserves omitted update fields and clears an explicitly nullable locale', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $comment = $writer->create($target, ['body' => 'Before', 'locale' => 'en', 'tags' => ['retained']], $actor);
+
+    $updated = $writer->update($comment, ['body' => 'After', 'expectedRevision' => $comment->revision], $actor);
+    expect($updated->locale)->toBe('en');
+    expect($updated->tags)->toBe(['retained']);
+
+    $cleared = $writer->update($updated, ['body' => 'After', 'expectedRevision' => $updated->revision, 'locale' => null], $actor);
+    expect($cleared->locale)->toBeNull();
+    expect($cleared->tags)->toBe(['retained']);
+});
+
+it('rejects protected creation attributes before persisting a comment', function (string $field): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+
+    expect(fn () => app(CommentWriter::class)->create($target, ['body' => 'Denied', $field => 'forged'], $actor))
+        ->toThrow(InvalidCommentMutationException::class);
+    expect(Comment::query()->count())->toBe(0);
+})->with(['actor_id', 'owner_scope_key', 'revision', 'status']);
+
+it('publishes comment facts after the host commit and discards rolled back facts', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    Event::fake([CommentChanged::class]);
+    $connection = (new Comment)->getConnection();
+
+    $connection->beginTransaction();
+    $rolledBack = $writer->create($target, ['body' => 'Rolled back'], $actor);
+    Event::assertNothingDispatched();
+    $connection->rollBack();
+    expect(Comment::query()->find($rolledBack->id))->toBeNull();
+    Event::assertNothingDispatched();
+
+    $connection->beginTransaction();
+    $committed = $writer->create($target, ['body' => 'Committed'], $actor);
+    Event::assertNothingDispatched();
+    $connection->commit();
+    Event::assertDispatched(CommentChanged::class, static fn ($event): bool => $event->commentId === $committed->id);
+    Event::assertDispatchedTimes(CommentChanged::class, 1);
 });

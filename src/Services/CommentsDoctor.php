@@ -772,7 +772,7 @@ final class CommentsDoctor
     /**
      * Inspect package readiness without rendering a command or changing state.
      *
-     * @return array<string, mixed>&array{healthy: bool, 'migrations.ownership': array{severity: string, passed: bool, message: string}}
+     * @return array<string, bool|int|array<array-key, bool|string>>
      */
     public function inspect(): array
     {
@@ -962,6 +962,7 @@ final class CommentsDoctor
         $requiredChecks[] = $queryScopeReady;
 
         $healthy = ! in_array(false, $requiredChecks, true);
+
         $checks['healthy'] = $healthy;
 
         return $checks;

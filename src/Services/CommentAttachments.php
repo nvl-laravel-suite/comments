@@ -22,6 +22,7 @@ use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
 use Nvl\Media\Services\MediaAttachments;
 use Nvl\Media\Services\MediaModelRegistry;
+use Nvl\Media\Support\MediaActors;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Integrations\OptionalIntegration;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
@@ -45,6 +46,7 @@ final readonly class CommentAttachments
         CommentAudience $audience = CommentAudience::Public,
     ): MediaAssociation {
         $this->requireMedia();
+        $actor = MediaActors::assert($actor);
         CommentsOwnership::assertAttachmentSupport();
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
         $mediaId = $media instanceof Media ? $media->id : $media;
@@ -98,6 +100,7 @@ final readonly class CommentAttachments
         CommentAudience $audience = CommentAudience::Public,
     ): bool {
         $this->requireMedia();
+        $actor = MediaActors::assert($actor);
         CommentsOwnership::assertAttachmentSupport();
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
         $identity = CommentActor::from($actor);

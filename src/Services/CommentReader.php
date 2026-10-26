@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentFormat;
+use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
@@ -53,7 +55,10 @@ final readonly class CommentReader
             ->through(fn (Comment $comment): array => $this->summary($comment, $audience));
     }
 
-    /** @param list<Model> $owners @return array<string, mixed> */
+    /**
+     * @param  list<Model>  $owners
+     * @return array<string, mixed>
+     */
     public function forOwners(
         array $owners,
         Authenticatable|SystemActor|PublicActor $actor,
@@ -76,7 +81,7 @@ final readonly class CommentReader
         return $comment instanceof Comment ? $this->summary($comment, $audience) : null;
     }
 
-    /** @return LengthAwarePaginator<int, array<string, mixed>> */
+    /** @return LengthAwarePaginator<int, array{id: string, revision: int, body: string, format: CommentFormat, locale: ?string, tags: list<string>|null, metadata: array<string, mixed>|null}> */
     public function revisions(
         Comment|string $comment,
         Authenticatable|SystemActor|PublicActor $actor,
@@ -109,7 +114,7 @@ final readonly class CommentReader
             ]);
     }
 
-    /** @return LengthAwarePaginator<int, array<string, mixed>> */
+    /** @return LengthAwarePaginator<int, array{id: string, reason: string, details: ?string, status: CommentReportStatus, resolution: ?string}> */
     public function reports(
         Comment|string $comment,
         Authenticatable|SystemActor $actor,

@@ -55,6 +55,8 @@ final readonly class CommentStateReconciler
 
     /**
      * Audit or repair comment state in bounded chunks.
+     *
+     * @return array{dryRun: bool, target: ?string, scanned: int, drifted: int, repaired: int, remaining: int, replyCountMismatches: int, reactionCountMismatches: int, reportCountMismatches: int, openReportCountMismatches: int, threadMismatches: int, unrepairableThreadMismatches: int, identityFingerprintMismatches: int, missingTargetComments: int, invalidAttachmentAssociations: int, healthy: bool, missingMetadataIndexValues: int, staleMetadataIndexValues: int, documentMentionMismatches: int, duplicateMentionIdentities: int, invalidMentionSnapshots: int, orphanMentionRows: int, bodyProjectionMismatches: int}
      */
     public function reconcile(
         ?Model $target,
@@ -119,6 +121,8 @@ final readonly class CommentStateReconciler
 
     /**
      * Scan the selected comments and optionally apply compare-and-set repairs.
+     *
+     * @return array{dryRun: bool, target: ?string, scanned: int, drifted: int, repaired: int, remaining: int, replyCountMismatches: int, reactionCountMismatches: int, reportCountMismatches: int, openReportCountMismatches: int, threadMismatches: int, unrepairableThreadMismatches: int, identityFingerprintMismatches: int, missingTargetComments: int, invalidAttachmentAssociations: int, healthy: bool, missingMetadataIndexValues: int, staleMetadataIndexValues: int, documentMentionMismatches: int, duplicateMentionIdentities: int, invalidMentionSnapshots: int, orphanMentionRows: int, bodyProjectionMismatches: int}
      */
     private function scan(
         ?Model $target,
@@ -569,6 +573,7 @@ final readonly class CommentStateReconciler
     /**
      * Build canonical current mention row facts from a revalidated stored document.
      *
+     * @param  array<string, mixed>  $document
      * @return list<array{
      *     token_id: string,
      *     resource_alias: string,

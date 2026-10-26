@@ -37,6 +37,8 @@ final readonly class CommentUpdateWriter
 
     /**
      * Replace editable content while preserving the previous revision.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function update(
         Comment|string $comment,
@@ -160,7 +162,10 @@ final readonly class CommentUpdateWriter
         );
     }
 
-    /** @param array<string, mixed> $attributes @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{body: string, expectedRevision: int, format?: CommentFormat, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}
+     */
     private function normalizeUpdate(array $attributes): array
     {
         if (array_diff(array_keys($attributes), ['body', 'expectedRevision', 'format', 'locale', 'tags', 'metadata']) !== []
@@ -170,6 +175,7 @@ final readonly class CommentUpdateWriter
             throw new InvalidCommentMutationException('Comment update requires a body and positive expected revision.');
         }
 
+        $format = null;
         if (array_key_exists('format', $attributes)) {
             $format = $attributes['format'];
             if (is_string($format)) {
@@ -198,6 +204,27 @@ final readonly class CommentUpdateWriter
             throw new InvalidCommentMutationException('Comment update metadata must be a map.');
         }
 
-        return $attributes;
+        $normalized = ['body' => $attributes['body'], 'expectedRevision' => $attributes['expectedRevision']];
+        if (array_key_exists('locale', $attributes)) {
+            $normalized['locale'] = $attributes['locale'];
+        }
+        if (array_key_exists('tags', $attributes)) {
+            $normalized['tags'] = $attributes['tags'];
+        }
+        if (array_key_exists('metadata', $attributes)) {
+            $metadataMap = [];
+            foreach ($attributes['metadata'] as $key => $value) {
+                if (! is_string($key)) {
+                    throw new InvalidCommentMutationException('Comment metadata keys must be strings.');
+                }
+                $metadataMap[$key] = $value;
+            }
+            $normalized['metadata'] = $metadataMap;
+        }
+        if (array_key_exists('format', $attributes) && $format instanceof CommentFormat) {
+            $normalized['format'] = $format;
+        }
+
+        return $normalized;
     }
 }

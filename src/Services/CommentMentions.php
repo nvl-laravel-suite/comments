@@ -44,7 +44,7 @@ final readonly class CommentMentions
         return $projected;
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array{id: string, label: ?string, fields: array<string, scalar|null>, url: ?string}> */
     public function suggest(
         Model $target,
         Authenticatable|SystemActor|PublicActor $actor,
@@ -66,7 +66,7 @@ final readonly class CommentMentions
             throw new InvalidCommentMutationException('Rich comment mentions are not enabled.');
         }
 
-        return $this->resources->suggest(
+        $suggestions = $this->resources->suggest(
             $resource,
             new CommentMentionContext($target, $identity, $audience),
             $query,
@@ -77,5 +77,7 @@ final readonly class CommentMentions
             'fields' => $resolved['fields'],
             'url' => $resolved['url'],
         ])->values()->all();
+
+        return array_values($suggestions);
     }
 }

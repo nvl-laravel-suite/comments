@@ -162,6 +162,8 @@ final class CommentsReconcileCommand extends Command
 
     /**
      * Render a reconciliation result in the selected machine or human format.
+     *
+     * @param  array{dryRun: bool, target: ?string, scanned: int, drifted: int, repaired: int, remaining: int, replyCountMismatches: int, reactionCountMismatches: int, reportCountMismatches: int, openReportCountMismatches: int, threadMismatches: int, unrepairableThreadMismatches: int, identityFingerprintMismatches: int, missingTargetComments: int, invalidAttachmentAssociations: int, healthy: bool, missingMetadataIndexValues: int, staleMetadataIndexValues: int, documentMentionMismatches: int, duplicateMentionIdentities: int, invalidMentionSnapshots: int, orphanMentionRows: int, bodyProjectionMismatches: int}  $result
      */
     private function writeResult(
         array $result,

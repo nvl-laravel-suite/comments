@@ -24,6 +24,8 @@ final readonly class CommentMentionWriter
 
     /**
      * Replace current mention rows inside the caller-owned transaction.
+     *
+     * @param  array<string, mixed>|null  $document
      */
     public function synchronize(Comment $comment, ?array $document): void
     {
@@ -104,6 +106,8 @@ final readonly class CommentMentionWriter
     /**
      * Diff two normalized documents by alias and opaque resource identity.
      *
+     * @param  array<string, mixed>|null  $before
+     * @param  array<string, mixed>|null  $after
      * @return array{added: list<array{resourceAlias: string, resourceId: string, tokenId: string}>, removed: list<array{resourceAlias: string, resourceId: string, tokenId: string}>}
      */
     public function changes(
@@ -122,6 +126,7 @@ final readonly class CommentMentionWriter
     /**
      * Index the first token for each unique mention resource identity.
      *
+     * @param  array<string, mixed>|null  $document
      * @return array<string, array{resourceAlias: string, resourceId: string, tokenId: string}>
      */
     private function identities(?array $document): array

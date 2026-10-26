@@ -264,7 +264,7 @@ final class CommentMentionResourceRegistry
      * Resolve one strict bounded batch for mutation-time mention compilation.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, array>
+     * @return Collection<int, array{id: string, label: ?string, fields: array<string, scalar|null>, url: ?string, state: CommentMentionState}>
      */
     public function resolve(
         string $alias,
@@ -293,7 +293,7 @@ final class CommentMentionResourceRegistry
      * Resolve one projection batch while retaining safe unavailable states.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, array>
+     * @return Collection<int, array{id: string, label: ?string, fields: array<string, scalar|null>, url: ?string, state: CommentMentionState}>
      */
     public function resolveForProjection(
         string $alias,
@@ -313,7 +313,7 @@ final class CommentMentionResourceRegistry
     /**
      * Suggest one bounded deterministic batch from a registered resource.
      *
-     * @return Collection<int, array>
+     * @return Collection<int, array{id: string, label: ?string, fields: array<string, scalar|null>, url: ?string, state: CommentMentionState}>
      */
     public function suggest(
         string $alias,
@@ -488,7 +488,7 @@ final class CommentMentionResourceRegistry
      * Resolve one alias-local batch through its registered implementation.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, array>
+     * @return Collection<int, array<string, mixed>>
      */
     private function resolvedBatch(
         string $alias,
@@ -556,7 +556,7 @@ final class CommentMentionResourceRegistry
      *
      * @param  iterable<mixed>  $resolved
      * @param  list<string>|null  $requestedIds
-     * @return array<string, array>
+     * @return array<string, array{id: string, label: ?string, fields: array<string, scalar|null>, url: ?string, state: CommentMentionState}>
      */
     private function validateResolved(
         iterable $resolved,
@@ -619,6 +619,10 @@ final class CommentMentionResourceRegistry
                 || ! (is_string($value) || is_int($value) || is_float($value) || is_bool($value) || $value === null)) {
                 throw new InvalidCommentMutationException('Mention fields must be bounded scalar values.');
             }
+        }
+
+        if ($url !== null && ! is_string($url)) {
+            throw new InvalidCommentMutationException('Mention URLs must be strings.');
         }
 
         if ($url !== null

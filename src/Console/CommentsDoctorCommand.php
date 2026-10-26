@@ -24,8 +24,9 @@ final class CommentsDoctorCommand extends Command
     {
 
         $checks = $doctor->inspect();
-        $healthy = $checks['healthy'];
-        $migrationOwnershipReady = $checks['migrations.ownership']['passed'];
+        $healthy = $checks['healthy'] === true;
+        $migrationOwnership = $checks['migrations.ownership'];
+        $migrationOwnershipReady = is_array($migrationOwnership) && ($migrationOwnership['passed'] ?? false) === true;
 
         if ($this->option('format') === 'json') {
             $this->line((string) json_encode($checks, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));

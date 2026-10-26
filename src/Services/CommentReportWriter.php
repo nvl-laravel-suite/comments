@@ -37,6 +37,8 @@ final readonly class CommentReportWriter
 
     /**
      * Create or refresh one identified actor's report for a comment.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function report(
         Comment|string $comment,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Nvl\Comments\Contracts\CommentAttachmentLifecycle;
@@ -20,6 +22,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
@@ -48,6 +51,8 @@ final readonly class CommentAnonymizer
 
     /**
      * Clear identifying content and associations exactly once.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function anonymize(
         Comment|string $comment,
@@ -55,6 +60,10 @@ final readonly class CommentAnonymizer
         CommentActor $actor,
         CommentAudience $audience = CommentAudience::Public,
     ): Comment {
+        if (! $actor->principal instanceof Authenticatable && ! $actor->principal instanceof SystemActor) {
+            throw new AuthorizationException('Comment anonymization requires an identified actor.');
+        }
+
         if (array_diff(array_keys($data), ['expectedRevision', 'reason']) !== []
             || ! is_int($data['expectedRevision'] ?? null)
             || $data['expectedRevision'] < 1
