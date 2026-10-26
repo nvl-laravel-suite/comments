@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use LogicException;
-use Nvl\Comments\Data\CommentReconciliationResultData;
-use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Enums\CommentStatus;
@@ -63,7 +61,7 @@ final readonly class CommentStateReconciler
         int $chunkSize,
         bool $repair = false,
         ?string $targetLabel = null,
-    ): CommentReconciliationResultData {
+    ): array {
         if ($chunkSize < 1 || $chunkSize > 10_000) {
             throw new InvalidArgumentException(
                 'Comments reconciliation chunk size must be between 1 and 10000.',
@@ -92,31 +90,31 @@ final readonly class CommentStateReconciler
             $auditAttachments,
         );
 
-        return new CommentReconciliationResultData(
-            dryRun: false,
-            target: $targetLabel,
-            scanned: $initial->scanned,
-            drifted: $initial->drifted,
-            repaired: $initial->repaired,
-            remaining: $verification->drifted,
-            replyCountMismatches: $initial->replyCountMismatches,
-            reactionCountMismatches: $initial->reactionCountMismatches,
-            reportCountMismatches: $initial->reportCountMismatches,
-            openReportCountMismatches: $initial->openReportCountMismatches,
-            threadMismatches: $initial->threadMismatches,
-            unrepairableThreadMismatches: $verification->unrepairableThreadMismatches,
-            identityFingerprintMismatches: $verification->identityFingerprintMismatches,
-            missingTargetComments: $verification->missingTargetComments,
-            invalidAttachmentAssociations: $verification->invalidAttachmentAssociations,
-            healthy: $verification->drifted === 0,
-            missingMetadataIndexValues: $initial->missingMetadataIndexValues,
-            staleMetadataIndexValues: $initial->staleMetadataIndexValues,
-            documentMentionMismatches: $initial->documentMentionMismatches,
-            duplicateMentionIdentities: $initial->duplicateMentionIdentities,
-            invalidMentionSnapshots: $verification->invalidMentionSnapshots,
-            orphanMentionRows: $verification->orphanMentionRows,
-            bodyProjectionMismatches: $initial->bodyProjectionMismatches,
-        );
+        return [
+            'dryRun' => false,
+            'target' => $targetLabel,
+            'scanned' => $initial['scanned'],
+            'drifted' => $initial['drifted'],
+            'repaired' => $initial['repaired'],
+            'remaining' => $verification['drifted'],
+            'replyCountMismatches' => $initial['replyCountMismatches'],
+            'reactionCountMismatches' => $initial['reactionCountMismatches'],
+            'reportCountMismatches' => $initial['reportCountMismatches'],
+            'openReportCountMismatches' => $initial['openReportCountMismatches'],
+            'threadMismatches' => $initial['threadMismatches'],
+            'unrepairableThreadMismatches' => $verification['unrepairableThreadMismatches'],
+            'identityFingerprintMismatches' => $verification['identityFingerprintMismatches'],
+            'missingTargetComments' => $verification['missingTargetComments'],
+            'invalidAttachmentAssociations' => $verification['invalidAttachmentAssociations'],
+            'healthy' => $verification['drifted'] === 0,
+            'missingMetadataIndexValues' => $initial['missingMetadataIndexValues'],
+            'staleMetadataIndexValues' => $initial['staleMetadataIndexValues'],
+            'documentMentionMismatches' => $initial['documentMentionMismatches'],
+            'duplicateMentionIdentities' => $initial['duplicateMentionIdentities'],
+            'invalidMentionSnapshots' => $verification['invalidMentionSnapshots'],
+            'orphanMentionRows' => $verification['orphanMentionRows'],
+            'bodyProjectionMismatches' => $initial['bodyProjectionMismatches'],
+        ];
     }
 
     /**
@@ -128,7 +126,7 @@ final readonly class CommentStateReconciler
         int $chunkSize,
         bool $repair,
         bool $auditAttachments,
-    ): CommentReconciliationResultData {
+    ): array {
         $scanned = 0;
         [$danglingAttachmentOwners, $danglingAttachments] = $auditAttachments
             && $target === null
@@ -314,31 +312,31 @@ final readonly class CommentStateReconciler
             column: 'id',
         );
 
-        return new CommentReconciliationResultData(
-            dryRun: ! $repair,
-            target: $targetLabel,
-            scanned: $scanned,
-            drifted: $drifted,
-            repaired: $repaired,
-            remaining: max(0, $drifted - $repaired),
-            replyCountMismatches: $replyCountMismatches,
-            reactionCountMismatches: $reactionCountMismatches,
-            reportCountMismatches: $reportCountMismatches,
-            openReportCountMismatches: $openReportCountMismatches,
-            threadMismatches: $threadMismatches,
-            unrepairableThreadMismatches: $unrepairableThreadMismatches,
-            identityFingerprintMismatches: $identityFingerprintMismatches,
-            missingTargetComments: $missingTargetComments,
-            invalidAttachmentAssociations: $invalidAttachmentAssociations,
-            healthy: $drifted === 0,
-            missingMetadataIndexValues: $missingMetadataIndexValues,
-            staleMetadataIndexValues: $staleMetadataIndexValues,
-            documentMentionMismatches: $documentMentionMismatches,
-            duplicateMentionIdentities: $duplicateMentionIdentities,
-            invalidMentionSnapshots: $invalidMentionSnapshots,
-            orphanMentionRows: $orphanMentionRows,
-            bodyProjectionMismatches: $bodyProjectionMismatches,
-        );
+        return [
+            'dryRun' => ! $repair,
+            'target' => $targetLabel,
+            'scanned' => $scanned,
+            'drifted' => $drifted,
+            'repaired' => $repaired,
+            'remaining' => max(0, $drifted - $repaired),
+            'replyCountMismatches' => $replyCountMismatches,
+            'reactionCountMismatches' => $reactionCountMismatches,
+            'reportCountMismatches' => $reportCountMismatches,
+            'openReportCountMismatches' => $openReportCountMismatches,
+            'threadMismatches' => $threadMismatches,
+            'unrepairableThreadMismatches' => $unrepairableThreadMismatches,
+            'identityFingerprintMismatches' => $identityFingerprintMismatches,
+            'missingTargetComments' => $missingTargetComments,
+            'invalidAttachmentAssociations' => $invalidAttachmentAssociations,
+            'healthy' => $drifted === 0,
+            'missingMetadataIndexValues' => $missingMetadataIndexValues,
+            'staleMetadataIndexValues' => $staleMetadataIndexValues,
+            'documentMentionMismatches' => $documentMentionMismatches,
+            'duplicateMentionIdentities' => $duplicateMentionIdentities,
+            'invalidMentionSnapshots' => $invalidMentionSnapshots,
+            'orphanMentionRows' => $orphanMentionRows,
+            'bodyProjectionMismatches' => $bodyProjectionMismatches,
+        ];
     }
 
     /**
@@ -580,21 +578,21 @@ final readonly class CommentStateReconciler
      *     position: int
      * }>
      */
-    private function expectedMentionRows(CommentDocumentData $document): array
+    private function expectedMentionRows(array $document): array
     {
         $rows = [];
 
         foreach ($this->documents->references($document) as $reference) {
             $rows[] = [
-                'token_id' => $reference->tokenId,
-                'resource_alias' => $reference->resourceAlias,
-                'resource_id' => $reference->resourceId,
+                'token_id' => $reference['tokenId'],
+                'resource_alias' => $reference['resourceAlias'],
+                'resource_id' => $reference['resourceId'],
                 'resource_identity_hash' => hash(
                     'sha256',
-                    "comment-mention-resource\0{$reference->resourceAlias}\0{$reference->resourceId}",
+                    "comment-mention-resource\0{$reference['resourceAlias']}\0{$reference['resourceId']}",
                 ),
-                'label_snapshot' => $reference->labelSnapshot,
-                'position' => $reference->position,
+                'label_snapshot' => $reference['labelSnapshot'],
+                'position' => $reference['position'],
             ];
         }
 

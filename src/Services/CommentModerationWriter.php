@@ -1,0 +1,159 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Nvl\Comments\Services;
+
+use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Enums\CommentAbility;
+use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentChangeOperation;
+use Nvl\Comments\Enums\CommentStatus;
+use Nvl\Comments\Events\CommentChanged;
+use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
+use Nvl\Comments\Exceptions\InvalidCommentMutationException;
+use Nvl\Comments\Exceptions\StaleCommentException;
+use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Support\Events\DomainEventDispatcher;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
+
+/**
+ * Applies an explicit moderation state and pin transition.
+ *
+ * @api
+ */
+final readonly class CommentModerationWriter
+{
+    public function __construct(
+        private CommentAccessService $access,
+        private CommentWorkflowGuard $guard,
+        private CommentMutationLock $mutationLock,
+        private CommentReadService $reads,
+        private CommentTargetLocator $targets,
+        private OwnershipBoundary $boundary,
+        private DomainEventDispatcher $domainEvents,
+    ) {}
+
+    /**
+     * Apply an authorized moderation transition to a current comment revision.
+     */
+    public function moderate(
+        Comment|string $comment,
+        array $data,
+        CommentActor $actor,
+    ): Comment {
+        $data = $this->normalizeModeration($data);
+        $commentId = $comment instanceof Comment ? $comment->id : $comment;
+        $this->guard->moderation($data);
+
+        return $this->mutationLock->execute(
+            $commentId,
+            fn (): Comment => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
+                ->transaction(function () use ($actor, $commentId, $data): Comment {
+                    $comment = $this->reads->resolveById(
+                        $commentId,
+                        $actor,
+                        CommentAudience::Management,
+                        CommentAbility::Moderate,
+                        withTrashed: true,
+                        lockForUpdate: true,
+                    );
+                    $target = $this->targets->locate($comment);
+                    $this->access->authorize(
+                        CommentAbility::Moderate,
+                        $actor,
+                        $comment,
+                        $target,
+                        CommentAudience::Management,
+                    );
+
+                    if ($comment->anonymized_at !== null) {
+                        throw new InvalidCommentLifecycleException(
+                            'An anonymized comment cannot be moderated.',
+                        );
+                    }
+
+                    if ($comment->revision !== $data['expectedRevision']) {
+                        throw StaleCommentException::forComment($comment->id);
+                    }
+
+                    $isPinned = $data['pinned'] ?? $comment->is_pinned;
+
+                    if ($comment->status === $data['status']
+                        && $comment->is_pinned === $isPinned
+                        && $comment->moderated_by_type === $actor->type
+                        && $comment->moderated_by === $actor->id
+                        && $comment->moderation_reason === $data['reason']
+                        && $comment->moderated_at !== null) {
+                        return $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
+                            ->withTrashed()
+                            ->findOrFail($comment->id);
+                    }
+
+                    $attributes = [
+                        'status' => $data['status'],
+                        'is_pinned' => $isPinned,
+                        'revision' => $comment->revision + 1,
+                        'moderated_by_type' => $actor->type,
+                        'moderated_by' => $actor->id,
+                        'moderation_reason' => $data['reason'],
+                        'moderated_at' => now(),
+                    ];
+
+                    if (! $comment->fill($attributes)->save()) {
+                        throw new InvalidCommentMutationException(
+                            'The comment moderation could not be saved.',
+                        );
+                    }
+
+                    $this->domainEvents->dispatch(new CommentChanged(
+                        $comment->id,
+                        $comment->commentable_type,
+                        $comment->commentable_id,
+                        CommentChangeOperation::Moderated,
+                        $comment->revision,
+                        $actor,
+                    ), $comment->getConnection());
+
+                    return $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
+                        ->withTrashed()
+                        ->findOrFail($comment->id);
+                }, attempts: CommentsConfiguration::positiveInteger(
+                    'nvl-comments.transactions.attempts',
+                    3,
+                )),
+        );
+    }
+
+    /** @param array<string, mixed> $attributes @return array<string, mixed> */
+    private function normalizeModeration(array $attributes): array
+    {
+        if (array_diff(array_keys($attributes), ['status', 'expectedRevision', 'reason', 'pinned']) !== []
+            || ! is_int($attributes['expectedRevision'] ?? null)
+            || $attributes['expectedRevision'] < 1
+            || (array_key_exists('reason', $attributes)
+                && $attributes['reason'] !== null
+                && ! is_string($attributes['reason']))
+            || (array_key_exists('pinned', $attributes)
+                && $attributes['pinned'] !== null
+                && ! is_bool($attributes['pinned']))) {
+            throw new InvalidCommentMutationException('Comment moderation attributes are invalid.');
+        }
+
+        $status = $attributes['status'] ?? null;
+        if (is_string($status)) {
+            $status = CommentStatus::tryFrom($status);
+        }
+        if (! $status instanceof CommentStatus) {
+            throw new InvalidCommentMutationException('Comment moderation status is invalid.');
+        }
+
+        return [
+            ...$attributes,
+            'status' => $status,
+            'reason' => $attributes['reason'] ?? null,
+            'pinned' => $attributes['pinned'] ?? null,
+        ];
+    }
+}

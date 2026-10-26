@@ -24,7 +24,7 @@ final class CommentTargetRegistry
     /** @var array<string, class-string<Model>> */
     private array $ownerModels = [];
 
-    /** Create the package resolver registry with its identity and tenancy boundaries. */
+    /** Create the package resolver registry with canonical target identity. */
     public function __construct(
         private readonly Container $container,
         private readonly OwnershipBoundary $boundary,

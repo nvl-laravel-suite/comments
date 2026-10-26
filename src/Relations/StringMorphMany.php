@@ -80,7 +80,7 @@ final class StringMorphMany extends MorphMany
 
         if ($commentsConnection !== $targetConnection) {
             throw new LogicException(
-                'Comment relationship existence queries require targets and Comments to share one database connection; use the Comments read Actions for cross-connection targets.',
+                'Comment relationship existence queries require targets and Comments to share one database connection; use the Comments reader for cross-connection targets.',
             );
         }
 

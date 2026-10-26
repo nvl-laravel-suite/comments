@@ -14,12 +14,9 @@
         "ext-filter": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "laravel/framework": "^12.0 || ^13.0",
+        "laravel/framework": "^13.0",
         "nvl/core": "^6.0.1",
-        "nvl/filterable": "^6.0",
         "php": "^8.4",
-        "spatie/laravel-data": "^4.23",
-        "symfony/http-foundation": "^7.2 || ^8.0",
         "symfony/polyfill-intl-normalizer": "^1.33"
     },
     "require-dev": {
@@ -29,12 +26,10 @@
         "mockery/mockery": "^1.6",
         "nvl/media": "^6.0",
         "nvl/ownership": "^6.0.1",
-        "nvl/tenancy": "^6.0",
         "nvl/translatable": "^6.0",
-        "orchestra/testbench": "^10.0 || ^11.0",
+        "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-laravel": "^4.0",
-        "spatie/typescript-transformer": "^3.3"
+        "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {
         "psr-4": {
@@ -97,14 +92,11 @@
     "prefer-stable": true,
     "suggest": {
         "nvl/media": "Enables private authorized comment attachments, signed asset delivery, and historical attachment cleanup.",
-        "nvl/ownership": "Adds optional model-declared ownership, isolation, adoption and captured worker contexts.",
-        "nvl/tenancy": "Temporary legacy tenancy bridge for existing tenant installations; native ownership does not require it.",
-        "spatie/typescript-transformer": "Consume the declared TypeScript attributes and metadata (^3.3); Core retains the runtime transformation engine."
+        "nvl/ownership": "Adds optional model-declared ownership, isolation, adoption and captured worker contexts."
     },
     "conflict": {
         "nvl/media": "<6.0 || >=7.0",
-        "nvl/ownership": "<6.0.1 || >=7.0",
-        "nvl/tenancy": "<6.0 || >=7.0"
+        "nvl/ownership": "<6.0.1 || >=7.0"
     },
     "homepage": "https://github.com/nvl-laravel-suite/comments",
     "authors": [

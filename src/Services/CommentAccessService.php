@@ -7,7 +7,6 @@ namespace Nvl\Comments\Services;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Contracts\CommentAuthorization;
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
@@ -28,7 +27,7 @@ final readonly class CommentAccessService
      */
     public function allows(
         CommentAbility $ability,
-        CommentActorData $actor,
+        CommentActor $actor,
         ?Comment $comment = null,
         ?Model $target = null,
         CommentAudience $audience = CommentAudience::Public,
@@ -36,7 +35,7 @@ final readonly class CommentAccessService
     ): bool {
         return $this->authorization->allows(
             $ability,
-            $actor,
+            $actor->principal,
             $comment,
             $target,
             $audience,
@@ -53,7 +52,7 @@ final readonly class CommentAccessService
      */
     public function authorize(
         CommentAbility $ability,
-        CommentActorData $actor,
+        CommentActor $actor,
         ?Comment $comment = null,
         ?Model $target = null,
         CommentAudience $audience = CommentAudience::Public,

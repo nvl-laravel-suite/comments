@@ -8,11 +8,8 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Schema\Builder as SchemaBuilder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use Nvl\Comments\Contracts\CommentActorResolver;
 use Nvl\Comments\Contracts\CommentAuthorization;
-use Nvl\Comments\Contracts\CommentAuthorPresenter;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
@@ -22,7 +19,6 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentMutationLockConfiguration;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Comments\Support\CommentsRouteConfiguration;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
@@ -761,64 +757,6 @@ final class CommentsDoctor
         ],
     ];
 
-    /** @var list<string> */
-    private const array PUBLIC_ROUTE_NAMES = [
-        'index',
-        'store',
-        'show',
-        'update',
-        'destroy',
-        'reaction',
-        'reports.store',
-        'attachments.index',
-        'attachments.store',
-        'attachments.destroy',
-    ];
-
-    /** @var list<string> */
-    private const array MEMBER_ROUTE_NAMES = [
-        'index',
-        'store',
-        'rich.store',
-        'mentions.suggestions',
-        'show',
-        'update',
-        'rich.update',
-        'destroy',
-        'restore',
-        'reaction',
-        'reports.store',
-        'attachments.index',
-        'attachments.store',
-        'attachments.destroy',
-        'revisions.index',
-        'revisions.restore',
-    ];
-
-    /** @var list<string> */
-    private const array MANAGEMENT_ROUTE_NAMES = [
-        'index',
-        'rich.store',
-        'mentions.suggestions',
-        'rich.update',
-        'target_reports.index',
-        'moderate',
-        'restore',
-        'anonymize',
-        'attachments.index',
-        'attachments.destroy',
-        'revisions.index',
-        'revisions.restore',
-        'reports.index',
-        'reports.resolve',
-    ];
-
-    /** @var list<string> */
-    private const array ATTACHMENT_ROUTE_NAMES = [
-        'asset',
-        'thumbnail',
-    ];
-
     /** Initialize the package-owned inspection dependencies. */
     public function __construct(
         private CommentTargetRegistry $targets,
@@ -989,12 +927,6 @@ final class CommentsDoctor
         $targetResolversReady = $this->targetResolversReady($targets, $container);
         $checks['targets.ready'] = $targetResolversReady;
         $requiredChecks[] = $targetResolversReady;
-        $publicRoutesEnabled = config('nvl-comments.routes.public.enabled', false) === true;
-        $memberRoutesEnabled = config('nvl-comments.routes.member.enabled', false) === true;
-        $managementRoutesEnabled = config('nvl-comments.routes.management.enabled', false) === true;
-        $checks['public_routes'] = $publicRoutesEnabled;
-        $checks['member_routes'] = $memberRoutesEnabled;
-        $checks['management_routes'] = $managementRoutesEnabled;
         $checks['anonymous'] = config('nvl-comments.anonymous.enabled', false) === true;
         $integration = $this->integrations->check('comments.attachments.enabled', MediaServiceProvider::class);
         $checks['attachments.integration'] = $integration;
@@ -1005,13 +937,10 @@ final class CommentsDoctor
 
         if ($attachmentsEnabled) {
             [$connectionReady, $tablesReady] = $this->attachmentReadiness();
-            $attachmentRoutesReady = $this->attachmentRoutesReady();
             $checks['attachments.connection_ready'] = $connectionReady;
             $checks['attachments.tables_ready'] = $tablesReady;
-            $checks['routes.attachments_ready'] = $attachmentRoutesReady;
             $requiredChecks[] = $connectionReady;
             $requiredChecks[] = $tablesReady;
-            $requiredChecks[] = $attachmentRoutesReady;
         } else {
             $disabledStateReady = $this->disabledAttachmentStateReady();
             $checks['attachments.disabled_state_ready'] = $disabledStateReady;
@@ -1028,77 +957,9 @@ final class CommentsDoctor
 
         $authorization = $this->authorization($container);
         $queryScope = $this->queryScope($container);
-        $actorResolverReady = $this->contractReady($container, CommentActorResolver::class);
-        $authorPresenterReady = $this->contractReady(
-            $container,
-            CommentAuthorPresenter::class,
-        );
         $queryScopeReady = $this->contractReady($container, CommentQueryScope::class);
-        $checks['actor_resolver.ready'] = $actorResolverReady;
-        $checks['author_presenter.ready'] = $authorPresenterReady;
         $checks['query_scope.ready'] = $queryScopeReady;
-        $requiredChecks[] = $actorResolverReady;
-        $requiredChecks[] = $authorPresenterReady;
         $requiredChecks[] = $queryScopeReady;
-
-        if ($publicRoutesEnabled) {
-            $routesReady = $this->routesReady(
-                'public',
-                $this->audienceRouteNames(self::PUBLIC_ROUTE_NAMES, $attachmentsEnabled),
-                $targets,
-            );
-            $throttleReady = $this->throttledMiddlewareReady('public');
-            $policyReady = $authorization instanceof CommentAuthorization;
-            $checks['routes.public_ready'] = $routesReady;
-            $checks['routes.public_throttled'] = $throttleReady;
-            $checks['policy.public_ready'] = $policyReady;
-            $requiredChecks[] = $routesReady;
-            $requiredChecks[] = $throttleReady;
-            $requiredChecks[] = $policyReady;
-        }
-
-        if ($memberRoutesEnabled) {
-            $routesReady = $this->routesReady(
-                'member',
-                $this->audienceRouteNames(self::MEMBER_ROUTE_NAMES, $attachmentsEnabled),
-                $targets,
-            );
-            $authenticatedReady = $this->authenticatedMiddlewareReady('member');
-            $throttleReady = $this->throttledMiddlewareReady('member');
-            $policyReady = $authorization instanceof CommentAuthorization;
-            $checks['routes.member_ready'] = $routesReady;
-            $checks['routes.member_authenticated'] = $authenticatedReady;
-            $checks['routes.member_throttled'] = $throttleReady;
-            $checks['policy.member_ready'] = $policyReady;
-            $requiredChecks[] = $routesReady;
-            $requiredChecks[] = $authenticatedReady;
-            $requiredChecks[] = $throttleReady;
-            $requiredChecks[] = $policyReady;
-        }
-
-        if ($managementRoutesEnabled) {
-            $routesReady = $this->routesReady(
-                'management',
-                $this->audienceRouteNames(self::MANAGEMENT_ROUTE_NAMES, $attachmentsEnabled),
-                $targets,
-            );
-            $authenticatedReady = $this->authenticatedMiddlewareReady('management');
-            $throttleReady = $this->throttledMiddlewareReady('management');
-            $policyReady = $authorization instanceof CommentAuthorization
-                && ! $authorization instanceof ConfiguredCommentAuthorization;
-            $managementScopeReady = $queryScope instanceof CommentQueryScope
-                && ! $queryScope instanceof ConfiguredCommentAuthorization;
-            $checks['routes.management_ready'] = $routesReady;
-            $checks['routes.management_authenticated'] = $authenticatedReady;
-            $checks['routes.management_throttled'] = $throttleReady;
-            $checks['policy.management_ready'] = $policyReady;
-            $checks['query_scope.management_ready'] = $managementScopeReady;
-            $requiredChecks[] = $routesReady;
-            $requiredChecks[] = $authenticatedReady;
-            $requiredChecks[] = $throttleReady;
-            $requiredChecks[] = $policyReady;
-            $requiredChecks[] = $managementScopeReady;
-        }
 
         $healthy = ! in_array(false, $requiredChecks, true);
         $checks['healthy'] = $healthy;
@@ -1293,11 +1154,7 @@ final class CommentsDoctor
 
         $booleanKeys = [
             'nvl-comments.migrations.enabled',
-            'nvl-comments.routes.public.enabled',
-            'nvl-comments.routes.member.enabled',
-            'nvl-comments.routes.management.enabled',
             'nvl-comments.mentions.enabled',
-            'nvl-comments.routes.attachments.enabled',
             'nvl-comments.moderation.allow_author_delete',
             'nvl-comments.moderation.allow_author_restore',
             'nvl-comments.anonymous.enabled',
@@ -1338,16 +1195,13 @@ final class CommentsDoctor
             }
         }
 
-        $publicMaxAge = config('nvl-comments.cache.public_max_age');
         $connection = config('nvl-comments.connection');
         $metadataStrict = config('nvl-comments.metadata.strict');
         $metadataSchemas = config('nvl-comments.metadata.schemas');
         $metadataMaximumBytes = config('nvl-comments.metadata.maximum_bytes');
         $metadataMaximumFields = config('nvl-comments.metadata.maximum_registered_fields');
 
-        if (! is_int($publicMaxAge)
-            || $publicMaxAge < 0
-            || ! is_bool($metadataStrict)
+        if (! is_bool($metadataStrict)
             || ! is_array($metadataSchemas)
             || ! array_is_list($metadataSchemas)
             || ! is_int($metadataMaximumBytes)
@@ -1360,12 +1214,6 @@ final class CommentsDoctor
         }
 
         try {
-            foreach (['public', 'member', 'management', 'attachments'] as $group) {
-                CommentsRouteConfiguration::path($group);
-                CommentsRouteConfiguration::name($group);
-                CommentsRouteConfiguration::middleware($group);
-            }
-
             foreach (array_keys(self::REQUIRED_COLUMNS) as $table) {
                 CommentsConfiguration::table($table);
             }
@@ -1508,24 +1356,6 @@ final class CommentsDoctor
     }
 
     /**
-     * Remove HTTP attachment routes from an audience contract when the feature is disabled.
-     *
-     * @param  list<string>  $routes
-     * @return list<string>
-     */
-    private function audienceRouteNames(array $routes, bool $attachmentsEnabled): array
-    {
-        if ($attachmentsEnabled) {
-            return $routes;
-        }
-
-        return array_values(array_filter(
-            $routes,
-            static fn (string $route): bool => ! str_starts_with($route, 'attachments.'),
-        ));
-    }
-
-    /**
      * @param  list<string>  $allowed
      */
     private function enumListReady(mixed $values, array $allowed): bool
@@ -1607,139 +1437,6 @@ final class CommentsDoctor
         } catch (Throwable) {
             return false;
         }
-    }
-
-    /**
-     * Confirm a viewer-aware route group is guarded by authentication middleware.
-     */
-    private function authenticatedMiddlewareReady(string $group): bool
-    {
-        return $this->routeGroupMiddlewareReady($group, 'auth');
-    }
-
-    /**
-     * Confirm an externally reachable route group is guarded by rate limiting.
-     */
-    private function throttledMiddlewareReady(string $group): bool
-    {
-        return $this->routeGroupMiddlewareReady($group, 'throttle');
-    }
-
-    /**
-     * Confirm configured and registered routes consistently carry one middleware family.
-     */
-    private function routeGroupMiddlewareReady(string $group, string $middlewareName): bool
-    {
-        try {
-            $configured = CommentsRouteConfiguration::middleware($group);
-            $namePrefix = CommentsRouteConfiguration::name($group);
-
-            if (! $this->containsMiddleware($configured, $middlewareName)) {
-                return false;
-            }
-
-            $found = false;
-
-            foreach (Route::getRoutes()->getRoutes() as $route) {
-                $routeName = $route->getName();
-
-                if (! is_string($routeName) || ! str_starts_with($routeName, $namePrefix)) {
-                    continue;
-                }
-
-                $found = true;
-
-                if (! $this->containsMiddleware(
-                    $route->gatherMiddleware(),
-                    $middlewareName,
-                )) {
-                    return false;
-                }
-            }
-
-            return $found;
-        } catch (Throwable) {
-            return false;
-        }
-    }
-
-    /**
-     * Determine whether a middleware list contains one middleware family.
-     *
-     * @param  array<array-key, mixed>  $middleware
-     */
-    private function containsMiddleware(array $middleware, string $name): bool
-    {
-        foreach ($middleware as $value) {
-            if (is_string($value)
-                && ($value === $name || str_starts_with($value, "{$name}:"))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Confirm opaque signed attachment delivery is enabled and fully registered.
-     */
-    private function attachmentRoutesReady(): bool
-    {
-        if (config('nvl-comments.routes.attachments.enabled', true) !== true) {
-            return false;
-        }
-
-        try {
-            $namePrefix = CommentsRouteConfiguration::name('attachments');
-            $middleware = CommentsRouteConfiguration::middleware('attachments');
-        } catch (Throwable) {
-            return false;
-        }
-
-        if ($middleware === [] || ! $this->throttledMiddlewareReady('attachments')) {
-            return false;
-        }
-
-        foreach (self::ATTACHMENT_ROUTE_NAMES as $routeName) {
-            $route = Route::getRoutes()->getByName($namePrefix.$routeName);
-
-            if ($route === null
-                || ! in_array('signed', $route->gatherMiddleware(), true)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Confirm every enabled route exists behind middleware and has a usable target alias.
-     *
-     * @param  list<string>  $routeNames
-     */
-    private function routesReady(
-        string $group,
-        array $routeNames,
-        CommentTargetRegistry $targets,
-    ): bool {
-        try {
-            $namePrefix = CommentsRouteConfiguration::name($group);
-            $middleware = CommentsRouteConfiguration::middleware($group);
-        } catch (Throwable) {
-            return false;
-        }
-
-        if ($middleware === [] || $targets->aliases() === []) {
-            return false;
-        }
-
-        foreach ($routeNames as $routeName) {
-            if (! Route::has($namePrefix.$routeName)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

@@ -4,44 +4,41 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Nvl\Comments\Data\Mutations\ModerateCommentData;
-use Nvl\Comments\Data\Mutations\ReportCommentData;
-use Nvl\Comments\Data\Mutations\ResolveCommentReportData;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 
 /**
- * Enforces workflow text invariants for direct and HTTP action callers.
+ * Enforces workflow text invariants for native service callers.
  */
 final class CommentWorkflowGuard
 {
     /**
      * Validate a report reason and optional details.
      */
-    public function report(ReportCommentData $data): void
+    public function report(array $data): void
     {
-        $this->assertText($data->reason, 'Report reason', 100, required: true);
+        $this->assertText($data['reason'], 'Report reason', 100, required: true);
 
-        if ($data->details !== null) {
-            $this->assertText($data->details, 'Report details', 4_000);
+        if ($data['details'] !== null) {
+            $this->assertText($data['details'], 'Report details', 4_000);
         }
     }
 
     /**
      * Validate an optional moderation reason.
      */
-    public function moderation(ModerateCommentData $data): void
+    public function moderation(array $data): void
     {
-        if ($data->reason !== null) {
-            $this->assertText($data->reason, 'Moderation reason', 2_000);
+        if ($data['reason'] !== null) {
+            $this->assertText($data['reason'], 'Moderation reason', 2_000);
         }
     }
 
     /**
      * Validate the required report resolution.
      */
-    public function resolution(ResolveCommentReportData $data): void
+    public function resolution(array $data): void
     {
-        $this->assertText($data->resolution, 'Report resolution', 4_000, required: true);
+        $this->assertText($data['resolution'], 'Report resolution', 4_000, required: true);
     }
 
     private function assertText(

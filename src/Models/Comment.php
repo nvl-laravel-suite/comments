@@ -29,11 +29,6 @@ use Nvl\Comments\Relations\CommentTargetMorphTo;
 use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Filterable\Definitions\FilterDefinition;
-use Nvl\Filterable\Definitions\FilterSchema;
-use Nvl\Filterable\Definitions\SortDefinition;
-use Nvl\Filterable\Enums\FilterOperator;
-use Nvl\Filterable\Enums\FilterValueType;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Support\Config\PackageStorage;
 use Nvl\Support\Ownership\Contracts\Ownable;
@@ -427,94 +422,6 @@ class Comment extends Model implements Ownable
     public function mentions(): HasMany
     {
         return $this->hasMany(CommentMention::class, 'comment_id')->orderBy('position');
-    }
-
-    /**
-     * Return the package's allowlisted filter and sort schema.
-     */
-    public static function filterSchema(): FilterSchema
-    {
-        return new FilterSchema(
-            filters: [
-                new FilterDefinition(
-                    alias: 'status',
-                    column: 'status',
-                    type: FilterValueType::Enum,
-                    operators: [FilterOperator::Equals, FilterOperator::In],
-                    enumValues: array_column(CommentStatus::cases(), 'value'),
-                ),
-                new FilterDefinition(
-                    alias: 'visibility',
-                    column: 'visibility',
-                    type: FilterValueType::Enum,
-                    operators: [FilterOperator::Equals, FilterOperator::In],
-                    enumValues: array_column(CommentVisibility::cases(), 'value'),
-                ),
-                new FilterDefinition(
-                    alias: 'locale',
-                    column: 'locale',
-                    operators: [FilterOperator::Equals],
-                    nullable: true,
-                ),
-                new FilterDefinition(
-                    alias: 'root',
-                    column: 'root_id',
-                    operators: [FilterOperator::Equals, FilterOperator::IsNull],
-                    nullable: true,
-                ),
-                new FilterDefinition(
-                    alias: 'deleted',
-                    column: 'deleted_at',
-                    type: FilterValueType::DateTime,
-                    operators: [
-                        FilterOperator::IsNull,
-                        FilterOperator::IsNotNull,
-                    ],
-                    nullable: true,
-                ),
-                new FilterDefinition(
-                    alias: 'anonymized',
-                    column: 'anonymized_at',
-                    type: FilterValueType::DateTime,
-                    operators: [
-                        FilterOperator::IsNull,
-                        FilterOperator::IsNotNull,
-                    ],
-                    nullable: true,
-                ),
-                new FilterDefinition(
-                    alias: 'created',
-                    column: 'created_at',
-                    type: FilterValueType::DateTime,
-                    operators: [
-                        FilterOperator::Equals,
-                        FilterOperator::Before,
-                        FilterOperator::After,
-                        FilterOperator::Between,
-                    ],
-                ),
-                new FilterDefinition(
-                    alias: 'updated',
-                    column: 'updated_at',
-                    type: FilterValueType::DateTime,
-                    operators: [
-                        FilterOperator::Equals,
-                        FilterOperator::Before,
-                        FilterOperator::After,
-                        FilterOperator::Between,
-                    ],
-                ),
-            ],
-            sorts: [
-                new SortDefinition('created', 'created_at'),
-                new SortDefinition('updated', 'updated_at'),
-                new SortDefinition('reactions', 'reaction_count'),
-                new SortDefinition('pinned', 'is_pinned'),
-                new SortDefinition('id', 'id'),
-            ],
-            defaultSorts: ['-pinned', '-created'],
-            tieBreakerSort: 'id',
-        );
     }
 
     /**

@@ -4,17 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Nvl\Comments\Data\Mutations\CreateCommentData;
-use Nvl\Comments\Data\Mutations\CreateRichCommentData;
-use Nvl\Comments\Data\Mutations\UpdateCommentData;
-use Nvl\Comments\Data\Mutations\UpdateRichCommentData;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Spatie\LaravelData\Optional;
 
 /**
- * Enforces content, tag, format, and metadata limits beyond HTTP validation.
+ * Enforces content, tag, format, and metadata limits at the domain boundary.
  */
 final class CommentContentGuard
 {
@@ -28,14 +23,14 @@ final class CommentContentGuard
      *
      * @return array<string, mixed>
      */
-    public function create(CreateCommentData $data): array
+    public function create(array $data): array
     {
-        $this->assertBody($data->body);
-        $this->assertFormat($data->format->value);
-        $this->assertLocale($data->locale);
-        $this->assertTags($data->tags);
+        $this->assertBody($data['body']);
+        $this->assertFormat($data['format']->value);
+        $this->assertLocale($data['locale']);
+        $this->assertTags($data['tags']);
 
-        return $this->metadata->normalize($data->metadata);
+        return $this->metadata->normalize($data['metadata']);
     }
 
     /**
@@ -44,24 +39,24 @@ final class CommentContentGuard
      * @param  array<string, mixed>|null  $existingMetadata
      * @return array<string, mixed>
      */
-    public function update(UpdateCommentData $data, ?array $existingMetadata = null): array
+    public function update(array $data, ?array $existingMetadata = null): array
     {
-        $this->assertBody($data->body);
+        $this->assertBody($data['body']);
 
-        if (! $data->format instanceof Optional) {
-            $this->assertFormat($data->format->value);
+        if (array_key_exists('format', $data)) {
+            $this->assertFormat($data['format']->value);
         }
 
-        if (! $data->locale instanceof Optional) {
-            $this->assertLocale($data->locale);
+        if (array_key_exists('locale', $data)) {
+            $this->assertLocale($data['locale']);
         }
 
-        if (! $data->tags instanceof Optional) {
-            $this->assertTags($data->tags);
+        if (array_key_exists('tags', $data)) {
+            $this->assertTags($data['tags']);
         }
 
-        if (! $data->metadata instanceof Optional) {
-            return $this->metadata->normalize($data->metadata, $existingMetadata);
+        if (array_key_exists('metadata', $data)) {
+            return $this->metadata->normalize($data['metadata'], $existingMetadata);
         }
 
         return $existingMetadata ?? [];
@@ -72,13 +67,13 @@ final class CommentContentGuard
      *
      * @return array<string, mixed>
      */
-    public function createRich(CreateRichCommentData $data, string $body): array
+    public function createRich(array $data, string $body): array
     {
         $this->assertDerivedBody($body);
-        $this->assertLocale($data->locale);
-        $this->assertTags($data->tags);
+        $this->assertLocale($data['locale']);
+        $this->assertTags($data['tags']);
 
-        return $this->metadata->normalize($data->metadata);
+        return $this->metadata->normalize($data['metadata']);
     }
 
     /**
@@ -88,22 +83,22 @@ final class CommentContentGuard
      * @return array<string, mixed>
      */
     public function updateRich(
-        UpdateRichCommentData $data,
+        array $data,
         string $body,
         ?array $existingMetadata = null,
     ): array {
         $this->assertDerivedBody($body);
 
-        if (! $data->locale instanceof Optional) {
-            $this->assertLocale($data->locale);
+        if (array_key_exists('locale', $data)) {
+            $this->assertLocale($data['locale']);
         }
 
-        if (! $data->tags instanceof Optional) {
-            $this->assertTags($data->tags);
+        if (array_key_exists('tags', $data)) {
+            $this->assertTags($data['tags']);
         }
 
-        if (! $data->metadata instanceof Optional) {
-            return $this->metadata->normalize($data->metadata, $existingMetadata);
+        if (array_key_exists('metadata', $data)) {
+            return $this->metadata->normalize($data['metadata'], $existingMetadata);
         }
 
         return $existingMetadata ?? [];

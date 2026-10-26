@@ -7,16 +7,11 @@ namespace Nvl\Comments\Services;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
-use Nvl\Comments\Data\CommentActorData;
-use Nvl\Comments\Data\LatestCommentSummaryData;
-use Nvl\Comments\Data\OwnerCommentSummaries;
-use Nvl\Comments\Data\OwnerCommentSummaryData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentBatchReadException;
 use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Support\Owners\OwnerBatch;
-use Nvl\Support\Owners\OwnerResultMap;
 
 /** Canonical owner admission plus fixed-query counts and latest rows bounded in SQL. */
 final readonly class CommentBatchReader
@@ -25,11 +20,11 @@ final readonly class CommentBatchReader
     public function __construct(private CommentBatchOwnerAdmission $owners, private CommentBatchQueryBuilder $queries, private CommentBatchQueryScope $policy) {}
 
     /**
-     * Return DTO maps after complete admission, with at most 1,000 latest storage rows.
+     * Return native owner maps after complete admission, with at most 1,000 latest storage rows.
      *
      * @param  list<Model>  $owners
      */
-    public function read(array $owners, CommentActorData $actor, CommentAudience $audience = CommentAudience::Public, int $latestLimit = 3): OwnerCommentSummaries
+    public function read(array $owners, CommentActor $actor, CommentAudience $audience = CommentAudience::Public, int $latestLimit = 3): array
     {
         if ($latestLimit < 1 || $latestLimit > 10) {
             throw new InvalidArgumentException('Comment latest limits must be between one and ten.');
@@ -39,7 +34,7 @@ final readonly class CommentBatchReader
             return $this->result($input, []);
         }
         $batch = $this->owners->admit($input);
-        $this->policy->authorizeOwners($batch, $actor, $audience);
+        $this->policy->authorizeOwners($batch, $actor->principal, $audience);
         $visible = $this->queries->batch($batch, $actor, $audience, $this->policy)->toBase();
         $counts = (clone $visible)->select('commentable_identity_hash')->selectRaw('COUNT(*) AS visible_count')->groupBy('commentable_identity_hash')->pluck('visible_count', 'commentable_identity_hash');
         $rows = $this->queries->latest($visible, $latestLimit)->get();
@@ -53,7 +48,16 @@ final readonly class CommentBatchReader
                 $attributes[$column] = $value;
             }
             $comment = (CommentModelRegistry::newInstance())->newFromBuilder($attributes);
-            $latest[$comment->commentable_identity_hash][] = LatestCommentSummaryData::fromModel($comment);
+            $summary = [
+                'id' => $comment->id,
+                'createdAt' => $comment->created_at->format(DATE_ATOM),
+                'updatedAt' => $comment->updated_at->format(DATE_ATOM),
+            ];
+            if ($comment->anonymized_at === null) {
+                $summary['body'] = $comment->body;
+                $summary['format'] = $comment->format;
+            }
+            $latest[$comment->commentable_identity_hash][] = $summary;
         }
         $values = [];
         foreach ($batch->identities() as $identity) {
@@ -62,19 +66,27 @@ final readonly class CommentBatchReader
             if ((! is_int($count) && ! is_string($count)) || ! is_numeric($count)) {
                 throw new CommentBatchReadException('The visible comment aggregate is not an integer.');
             }
-            $values[$identity->type][$identity->id] = new OwnerCommentSummaryData((int) $count, $latest[$hash] ?? []);
+            $values[$identity->type][$identity->id] = [
+                'visibleCount' => (int) $count,
+                'latest' => $latest[$hash] ?? [],
+            ];
         }
 
         return $this->result($batch, $values);
     }
 
     /**
-     * Require a DTO for each admitted native identity before serializing maps.
+     * Preserve every admitted identity, including empty owners, in request order.
      *
-     * @param  array<string, array<array-key, OwnerCommentSummaryData>>  $values
+     * @param  array<string, array<array-key, array<string, mixed>>>  $values
      */
-    private function result(OwnerBatch $batch, array $values): OwnerCommentSummaries
+    private function result(OwnerBatch $batch, array $values): array
     {
-        return OwnerCommentSummaries::fromMap(new OwnerResultMap($batch, $values));
+        $order = [];
+        foreach ($batch->identities() as $identity) {
+            $order[] = ['type' => $identity->type, 'id' => $identity->id];
+        }
+
+        return ['order' => $order, 'values' => $values];
     }
 }

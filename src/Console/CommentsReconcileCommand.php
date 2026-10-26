@@ -8,7 +8,6 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
 use InvalidArgumentException;
-use Nvl\Comments\Data\CommentReconciliationResultData;
 use Nvl\Comments\Exceptions\CommentsException;
 use Nvl\Comments\Services\CommentStateReconciler;
 use Nvl\Comments\Services\CommentTargetRegistry;
@@ -78,7 +77,7 @@ final class CommentsReconcileCommand extends Command
 
         $this->writeResult($result, $format);
 
-        return (bool) $this->option('strict') && ! $result->healthy
+        return (bool) $this->option('strict') && ! $result['healthy']
             ? self::FAILURE
             : self::SUCCESS;
     }
@@ -165,12 +164,12 @@ final class CommentsReconcileCommand extends Command
      * Render a reconciliation result in the selected machine or human format.
      */
     private function writeResult(
-        CommentReconciliationResultData $result,
+        array $result,
         string $format,
     ): void {
         if ($format === 'json') {
             $this->line((string) json_encode(
-                $result->toArray(),
+                $result,
                 JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR,
             ));
 
@@ -180,38 +179,38 @@ final class CommentsReconcileCommand extends Command
         $this->table(
             ['Metric', 'Value'],
             [
-                ['Mode', $result->dryRun ? 'dry-run' : 'repair'],
-                ['Target', $result->target ?? 'all'],
-                ['Comments scanned', $result->scanned],
-                ['Comments with drift', $result->drifted],
-                ['Comments repaired', $result->repaired],
-                ['Comments remaining', $result->remaining],
-                ['Reply counter mismatches', $result->replyCountMismatches],
-                ['Reaction counter mismatches', $result->reactionCountMismatches],
-                ['Report counter mismatches', $result->reportCountMismatches],
-                ['Open report counter mismatches', $result->openReportCountMismatches],
-                ['Thread lineage mismatches', $result->threadMismatches],
+                ['Mode', $result['dryRun'] ? 'dry-run' : 'repair'],
+                ['Target', $result['target'] ?? 'all'],
+                ['Comments scanned', $result['scanned']],
+                ['Comments with drift', $result['drifted']],
+                ['Comments repaired', $result['repaired']],
+                ['Comments remaining', $result['remaining']],
+                ['Reply counter mismatches', $result['replyCountMismatches']],
+                ['Reaction counter mismatches', $result['reactionCountMismatches']],
+                ['Report counter mismatches', $result['reportCountMismatches']],
+                ['Open report counter mismatches', $result['openReportCountMismatches']],
+                ['Thread lineage mismatches', $result['threadMismatches']],
                 [
                     'Unrepairable thread mismatches',
-                    $result->unrepairableThreadMismatches,
+                    $result['unrepairableThreadMismatches'],
                 ],
                 [
                     'Identity fingerprint mismatches',
-                    $result->identityFingerprintMismatches,
+                    $result['identityFingerprintMismatches'],
                 ],
-                ['Comments with missing targets', $result->missingTargetComments],
+                ['Comments with missing targets', $result['missingTargetComments']],
                 [
                     'Invalid attachment associations',
-                    $result->invalidAttachmentAssociations,
+                    $result['invalidAttachmentAssociations'],
                 ],
-                ['Missing metadata index values', $result->missingMetadataIndexValues],
-                ['Stale metadata index values', $result->staleMetadataIndexValues],
-                ['Document/mention row mismatches', $result->documentMentionMismatches],
-                ['Duplicate mention identities', $result->duplicateMentionIdentities],
-                ['Invalid mention snapshots', $result->invalidMentionSnapshots],
-                ['Orphan mention rows', $result->orphanMentionRows],
-                ['Body projection mismatches', $result->bodyProjectionMismatches],
-                ['Healthy', $result->healthy ? 'yes' : 'no'],
+                ['Missing metadata index values', $result['missingMetadataIndexValues']],
+                ['Stale metadata index values', $result['staleMetadataIndexValues']],
+                ['Document/mention row mismatches', $result['documentMentionMismatches']],
+                ['Duplicate mention identities', $result['duplicateMentionIdentities']],
+                ['Invalid mention snapshots', $result['invalidMentionSnapshots']],
+                ['Orphan mention rows', $result['orphanMentionRows']],
+                ['Body projection mismatches', $result['bodyProjectionMismatches']],
+                ['Healthy', $result['healthy'] ? 'yes' : 'no'],
             ],
         );
     }

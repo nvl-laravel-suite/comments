@@ -28,6 +28,7 @@ final readonly class CommentTargetLocator
      */
     public function reload(Model $target): Model
     {
+        $this->assertCanonical($target);
         $prototype = new ($target::class);
         $lookupKey = CommentTargetIdentifier::lookupKey($prototype, $target->getKey());
 
@@ -41,6 +42,22 @@ final readonly class CommentTargetLocator
                 $prototype->getMorphClass(),
                 (string) $lookupKey,
             );
+    }
+
+    public function assertCanonical(Model $target): void
+    {
+        $prototype = new ($target::class);
+        $keyName = $prototype->getKeyName();
+        $declaredConnection = $target->getConnectionName();
+        if (! $target->exists
+            || $target->getTable() !== $prototype->getTable()
+            || ($declaredConnection !== null && $declaredConnection !== $prototype->getConnection()->getName())
+            || $target->getConnection() !== $prototype->getConnection()
+            || $target->getKeyName() !== $keyName
+            || $target->isDirty($keyName)
+            || $target->getRawOriginal($keyName) !== $target->getKey()) {
+            throw new InvalidCommentMutationException('Comment targets require a canonical persisted identity.');
+        }
     }
 
     /**

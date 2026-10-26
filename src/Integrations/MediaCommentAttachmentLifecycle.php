@@ -5,24 +5,26 @@ declare(strict_types=1);
 namespace Nvl\Comments\Integrations;
 
 use Closure;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentAttachmentLifecycle;
 use Nvl\Comments\Models\Comment;
-use Nvl\Media\Contracts\DeleteMediaContract;
-use Nvl\Media\Contracts\DetachMediaContract;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
+use Nvl\Media\Services\MediaAttachments;
+use Nvl\Media\Services\MediaLibrary;
 use Nvl\Media\Services\MediaModelRegistry;
 use Nvl\Media\Services\MediaMutationLock;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Integrations\OptionalIntegration;
 
 /** Retains asset mutation locking and historical cleanup behind an optional Media adapter. */
 final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmentLifecycle
 {
     /** Retain the public detach contract and asset mutation lock domain. */
-    public function __construct(private DetachMediaContract $detachMedia, private MediaMutationLock $locks, private OptionalIntegration $integrations, private DeleteMediaContract $deleteMedia) {}
+    public function __construct(private MediaAttachments $attachments, private MediaMutationLock $locks, private OptionalIntegration $integrations, private MediaLibrary $library) {}
 
     /**
      * Require Media only when attachments are enabled or historical state needs scrubbing.
@@ -98,9 +100,9 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
     }
 
     /** Detach one historical attachment through Media's public mutation contract. */
-    public function detach(string $id, Comment $comment): int
+    public function detach(Authenticatable|SystemActor $actor, string $id, Comment $comment): int
     {
-        return $this->detachMedia->execute($id, $comment, 'attachments');
+        return $this->attachments->detach($actor, $id, $comment, 'attachments');
     }
 
     /** Preserve force deletion cleanup while retaining assets shared with other owners. */
@@ -127,9 +129,9 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
                             ->orWhere('associable_id', '!=', $comment->id);
                     })->exists();
                 if ($shared) {
-                    $this->detachMedia->execute($id, $comment);
+                    $this->attachments->detach(SystemActor::Background, $id, $comment);
                 } else {
-                    $this->deleteMedia->execute($id);
+                    $this->library->delete(SystemActor::Background, $id, owner: $comment);
                 }
             }
         });

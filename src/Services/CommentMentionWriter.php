@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Illuminate\Support\Str;
-use Nvl\Comments\Data\CommentMentionChangeData;
-use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
@@ -27,7 +25,7 @@ final readonly class CommentMentionWriter
     /**
      * Replace current mention rows inside the caller-owned transaction.
      */
-    public function synchronize(Comment $comment, ?CommentDocumentData $document): void
+    public function synchronize(Comment $comment, ?array $document): void
     {
         $this->boundary->query(CommentMention::query(), 'comments.mentions')
             ->where('comment_id', $comment->id)->delete();
@@ -44,15 +42,15 @@ final readonly class CommentMentionWriter
                 'id' => (string) Str::uuid(),
                 ...$this->boundary->attributes('comments.mentions'),
                 'comment_id' => $comment->id,
-                'token_id' => $reference->tokenId,
-                'resource_alias' => $reference->resourceAlias,
-                'resource_id' => $reference->resourceId,
+                'token_id' => $reference['tokenId'],
+                'resource_alias' => $reference['resourceAlias'],
+                'resource_id' => $reference['resourceId'],
                 'resource_identity_hash' => hash(
                     'sha256',
-                    "comment-mention-resource\0{$reference->resourceAlias}\0{$reference->resourceId}",
+                    "comment-mention-resource\0{$reference['resourceAlias']}\0{$reference['resourceId']}",
                 ),
-                'label_snapshot' => $reference->labelSnapshot,
-                'position' => $reference->position,
+                'label_snapshot' => $reference['labelSnapshot'],
+                'position' => $reference['position'],
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -106,11 +104,11 @@ final readonly class CommentMentionWriter
     /**
      * Diff two normalized documents by alias and opaque resource identity.
      *
-     * @return array{added: list<CommentMentionChangeData>, removed: list<CommentMentionChangeData>}
+     * @return array{added: list<array{resourceAlias: string, resourceId: string, tokenId: string}>, removed: list<array{resourceAlias: string, resourceId: string, tokenId: string}>}
      */
     public function changes(
-        ?CommentDocumentData $before,
-        ?CommentDocumentData $after,
+        ?array $before,
+        ?array $after,
     ): array {
         $previous = $this->identities($before);
         $current = $this->identities($after);
@@ -124,9 +122,9 @@ final readonly class CommentMentionWriter
     /**
      * Index the first token for each unique mention resource identity.
      *
-     * @return array<string, CommentMentionChangeData>
+     * @return array<string, array{resourceAlias: string, resourceId: string, tokenId: string}>
      */
-    private function identities(?CommentDocumentData $document): array
+    private function identities(?array $document): array
     {
         if ($document === null) {
             return [];
@@ -137,13 +135,13 @@ final readonly class CommentMentionWriter
         foreach ($this->documents->references($document) as $reference) {
             $key = hash(
                 'sha256',
-                "comment-mention-event\0{$reference->resourceAlias}\0{$reference->resourceId}",
+                "comment-mention-event\0{$reference['resourceAlias']}\0{$reference['resourceId']}",
             );
-            $identities[$key] ??= new CommentMentionChangeData(
-                resourceAlias: $reference->resourceAlias,
-                resourceId: $reference->resourceId,
-                tokenId: $reference->tokenId,
-            );
+            $identities[$key] ??= [
+                'resourceAlias' => $reference['resourceAlias'],
+                'resourceId' => $reference['resourceId'],
+                'tokenId' => $reference['tokenId'],
+            ];
         }
 
         ksort($identities);

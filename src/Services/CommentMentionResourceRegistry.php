@@ -4,31 +4,26 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
-use Nvl\Comments\Contracts\CommentMentionTenantProjection;
 use Nvl\Comments\Contracts\CommentMentionUrlResolver;
 use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
-use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Contracts\TenantContext;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Throwable;
 
 /**
  * Routes bounded mention work to explicitly registered custom or Eloquent resources.
  *
- * @phpstan-type EloquentResolverDefinition array{model: class-string<Model>, searchable: list<string>, exposed: list<string>, label: string, authorization: class-string<CommentMentionResourceAuthorization>, url_resolver: class-string<CommentMentionUrlResolver>|null, tenant_projection: class-string<CommentMentionTenantProjection>|null}
+ * @phpstan-type EloquentResolverDefinition array{model: class-string<Model>, searchable: list<string>, exposed: list<string>, label: string, authorization: class-string<CommentMentionResourceAuthorization>, url_resolver: class-string<CommentMentionUrlResolver>|null}
  */
 final class CommentMentionResourceRegistry
 {
@@ -105,7 +100,6 @@ final class CommentMentionResourceRegistry
                 'label_field',
                 'authorization',
                 'url_resolver',
-                'tenant_projection',
                 'public',
             ]) !== []) {
                 throw new InvalidArgumentException(
@@ -184,7 +178,6 @@ final class CommentMentionResourceRegistry
         $labelField = $definition['label_field'] ?? null;
         $authorizationClass = $definition['authorization'] ?? null;
         $urlResolverClass = $definition['url_resolver'] ?? null;
-        $tenantProjectionClass = $definition['tenant_projection'] ?? null;
         $public = $definition['public'] ?? null;
 
         if (! is_string($modelClass) || ! is_a($modelClass, Model::class, true)) {
@@ -253,14 +246,6 @@ final class CommentMentionResourceRegistry
             }
         }
 
-        if ($tenantProjectionClass !== null
-            && (! is_string($tenantProjectionClass)
-                || ! is_a($tenantProjectionClass, CommentMentionTenantProjection::class, true))) {
-            throw new InvalidArgumentException(
-                'The configured comment mention tenant projection is invalid.',
-            );
-        }
-
         $this->resources[$alias] = [
             'resolver' => [
                 'model' => $modelClass,
@@ -269,7 +254,6 @@ final class CommentMentionResourceRegistry
                 'label' => $labelField,
                 'authorization' => $authorizationClass,
                 'url_resolver' => $urlResolverClass,
-                'tenant_projection' => $tenantProjectionClass,
             ],
             'public' => $public,
         ];
@@ -280,7 +264,7 @@ final class CommentMentionResourceRegistry
      * Resolve one strict bounded batch for mutation-time mention compilation.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, CommentMentionResourceData>
+     * @return Collection<int, array>
      */
     public function resolve(
         string $alias,
@@ -293,7 +277,7 @@ final class CommentMentionResourceRegistry
 
         foreach ($ids as $id) {
             if (! isset($byId[$id])
-                || $byId[$id]->state !== CommentMentionState::Resolved) {
+                || $byId[$id]['state'] !== CommentMentionState::Resolved) {
                 throw new InvalidCommentMutationException(
                     'Comment document contains an unavailable or unauthorized mention resource.',
                 );
@@ -301,7 +285,7 @@ final class CommentMentionResourceRegistry
         }
 
         return collect($ids)->map(
-            static fn (string $id): CommentMentionResourceData => $byId[$id],
+            static fn (string $id): array => $byId[$id],
         );
     }
 
@@ -309,7 +293,7 @@ final class CommentMentionResourceRegistry
      * Resolve one projection batch while retaining safe unavailable states.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, CommentMentionResourceData>
+     * @return Collection<int, array>
      */
     public function resolveForProjection(
         string $alias,
@@ -321,19 +305,15 @@ final class CommentMentionResourceRegistry
         $byId = $this->validateResolved($resolved, $ids, 'resource');
 
         return collect($ids)->map(
-            static fn (string $id): CommentMentionResourceData => $byId[$id]
-                ?? new CommentMentionResourceData(
-                    id: $id,
-                    label: null,
-                    state: CommentMentionState::Missing,
-                ),
+            static fn (string $id): array => $byId[$id]
+                ?? ['id' => $id, 'label' => null, 'fields' => [], 'url' => null, 'state' => CommentMentionState::Missing],
         );
     }
 
     /**
      * Suggest one bounded deterministic batch from a registered resource.
      *
-     * @return Collection<int, CommentMentionResourceData>
+     * @return Collection<int, array>
      */
     public function suggest(
         string $alias,
@@ -379,7 +359,7 @@ final class CommentMentionResourceRegistry
         }
 
         foreach ($byId as $resource) {
-            if ($resource->state !== CommentMentionState::Resolved) {
+            if ($resource['state'] !== CommentMentionState::Resolved) {
                 throw new InvalidCommentMutationException(
                     'Comment mention resolution returned an invalid suggestion batch.',
                 );
@@ -486,13 +466,10 @@ final class CommentMentionResourceRegistry
         $urlResolver = is_string($definition['url_resolver'])
             ? $this->container->make($definition['url_resolver'])
             : null;
-        $tenantProjection = is_string($definition['tenant_projection'])
-            ? $this->container->make($definition['tenant_projection'])
-            : null;
 
         if (! $authorization instanceof CommentMentionResourceAuthorization
             || ($urlResolver !== null && ! $urlResolver instanceof CommentMentionUrlResolver)
-            || ($tenantProjection !== null && ! $tenantProjection instanceof CommentMentionTenantProjection)) {
+        ) {
             throw new InvalidArgumentException('The configured comment mention dependencies are invalid.');
         }
 
@@ -503,11 +480,7 @@ final class CommentMentionResourceRegistry
             labelField: $definition['label'],
             authorization: $authorization,
             urlResolver: $urlResolver,
-            tenantProjection: $tenantProjection,
-            tenantContext: $this->container->make(TenantContext::class),
             boundary: $this->container->make(OwnershipBoundary::class),
-            resources: $this->container->make(TenantResourceRegistry::class),
-            config: $this->container->make(Repository::class),
         );
     }
 
@@ -515,7 +488,7 @@ final class CommentMentionResourceRegistry
      * Resolve one alias-local batch through its registered implementation.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, CommentMentionResourceData>
+     * @return Collection<int, array>
      */
     private function resolvedBatch(
         string $alias,
@@ -583,7 +556,7 @@ final class CommentMentionResourceRegistry
      *
      * @param  iterable<mixed>  $resolved
      * @param  list<string>|null  $requestedIds
-     * @return array<string, CommentMentionResourceData>
+     * @return array<string, array>
      */
     private function validateResolved(
         iterable $resolved,
@@ -593,18 +566,79 @@ final class CommentMentionResourceRegistry
         $byId = [];
 
         foreach ($resolved as $resource) {
-            if (! $resource instanceof CommentMentionResourceData
-                || ($requestedIds !== null && ! in_array($resource->id, $requestedIds, true))
-                || isset($byId[$resource->id])) {
+            $resource = $this->validatedResource($resource);
+            if (($requestedIds !== null && ! in_array($resource['id'], $requestedIds, true))
+                || isset($byId[$resource['id']])) {
                 throw new InvalidCommentMutationException(
                     "Comment mention resolution returned an invalid {$kind} batch.",
                 );
             }
 
-            $byId[$resource->id] = $resource;
+            $byId[$resource['id']] = $resource;
         }
 
         return $byId;
+    }
+
+    /** @return array{id: string, label: ?string, fields: array<string, string|int|float|bool|null>, url: ?string, state: CommentMentionState} */
+    private function validatedResource(mixed $resource): array
+    {
+        if (! is_array($resource)
+            || array_diff(array_keys($resource), ['id', 'label', 'fields', 'url', 'state']) !== []
+            || ! is_string($resource['id'] ?? null)
+            || ! mb_check_encoding($resource['id'], 'UTF-8')
+            || preg_match('/\S/u', $resource['id']) !== 1
+            || mb_strlen($resource['id']) > 255
+            || ! ($resource['state'] ?? null) instanceof CommentMentionState
+            || ! is_array($resource['fields'] ?? null)
+            || count($resource['fields']) > 25
+            || ($resource['url'] ?? null) !== null && ! is_string($resource['url'])) {
+            throw new InvalidCommentMutationException('Comment mention resolution returned an invalid resource batch.');
+        }
+
+        $state = $resource['state'];
+        $label = $resource['label'] ?? null;
+        $url = $resource['url'] ?? null;
+        if ($state === CommentMentionState::Resolved) {
+            if (! is_string($label)
+                || ! mb_check_encoding($label, 'UTF-8')
+                || preg_match('/\S/u', $label) !== 1
+                || mb_strlen($label) > 255) {
+                throw new InvalidCommentMutationException('Resolved mention labels are invalid.');
+            }
+        } elseif ($label !== null || $resource['fields'] !== [] || $url !== null) {
+            throw new InvalidCommentMutationException('Unavailable mention resources may not expose live data.');
+        }
+
+        foreach ($resource['fields'] as $field => $value) {
+            if (! is_string($field)
+                || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field) !== 1
+                || strlen($field) > 64
+                || (is_string($value) && (! mb_check_encoding($value, 'UTF-8') || strlen($value) > 2048))
+                || (is_float($value) && ! is_finite($value))
+                || ! (is_string($value) || is_int($value) || is_float($value) || is_bool($value) || $value === null)) {
+                throw new InvalidCommentMutationException('Mention fields must be bounded scalar values.');
+            }
+        }
+
+        if ($url !== null
+            && (! mb_check_encoding($url, 'UTF-8')
+                || $url === '' || strlen($url) > 2048 || str_contains($url, '\\')
+                || preg_match('/[\x00-\x20\x7F]/u', $url) === 1
+                || (str_starts_with($url, '/')
+                    ? str_starts_with($url, '//')
+                    : (filter_var($url, FILTER_VALIDATE_URL) === false
+                        || ! in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true))))) {
+            throw new InvalidCommentMutationException('Mention URLs must be safe HTTP or relative URLs.');
+        }
+
+        return [
+            'id' => $resource['id'],
+            'label' => $label,
+            'fields' => $resource['fields'],
+            'url' => $url,
+            'state' => $state,
+        ];
     }
 
     /**

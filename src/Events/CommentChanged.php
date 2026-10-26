@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Events;
 
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentChangeOperation;
 use Nvl\Comments\Ownership\CommentsOwnership;
+use Nvl\Comments\Services\CommentActor;
 use Nvl\Support\Contracts\DomainEvent;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
@@ -35,7 +35,7 @@ final class CommentChanged implements DomainEvent, OwnershipQueuedJob
         public readonly string $targetId,
         public readonly CommentChangeOperation $operation,
         public readonly int $revision,
-        public readonly CommentActorData $actor,
+        public readonly CommentActor $actor,
         public readonly int $schemaVersion = 1,
     ) {
         $this->ownershipEnvelope = CommentsOwnership::envelope();

@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
 use Nvl\Comments\Contracts\CommentQueryScope;
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentIdentity;
+use Nvl\Support\Enums\PublicActor;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 
 /**
@@ -30,7 +32,7 @@ use Nvl\Support\Owners\OwnerBatch;
 final class ConfiguredCommentAuthorization implements CommentAuthorization, CommentBatchQueryScope, CommentQueryScope
 {
     /** Admit the baseline audience without per-owner storage or policy callbacks. */
-    public function authorizeOwners(OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void
+    public function authorizeOwners(OwnerBatch $owners, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience): void
     {
         if (! $this->allows(CommentAbility::List, $actor, audience: $audience)) {
             throw new AuthorizationException('This actor cannot list comments for the requested audience.');
@@ -42,7 +44,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
      *
      * @param  Builder<Comment>  $query
      */
-    public function scopeBatchComments(Builder $query, OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void
+    public function scopeBatchComments(Builder $query, OwnerBatch $owners, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience): void
     {
         $this->scopeComments($query, $actor, $query->getModel(), $audience, CommentAbility::List);
     }
@@ -52,7 +54,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
      *
      * @param  Builder<Comment>  $query
      */
-    public function scopeHostComments(Builder $query, Model $ownerPrototype, CommentActorData $actor, CommentAudience $audience): void
+    public function scopeHostComments(Builder $query, Model $ownerPrototype, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience): void
     {
         if (! $this->allows(CommentAbility::List, $actor, audience: $audience)) {
             throw new AuthorizationException('This actor cannot list comments for the requested audience.');
@@ -67,14 +69,16 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
      */
     public function allows(
         CommentAbility $ability,
-        CommentActorData $actor,
+        Authenticatable|SystemActor|PublicActor $actor,
         ?Comment $comment = null,
         ?Model $target = null,
         CommentAudience $audience = CommentAudience::Public,
         array $context = [],
     ): bool {
+        $actor = CommentActor::inspect($actor);
+
         if ($actor->system) {
-            return true;
+            return false;
         }
 
         return match ($ability) {
@@ -120,12 +124,16 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
      */
     public function scopeComments(
         Builder $query,
-        CommentActorData $actor,
+        Authenticatable|SystemActor|PublicActor $actor,
         Model $target,
         CommentAudience $audience,
         CommentAbility $ability,
     ): void {
+        $actor = CommentActor::inspect($actor);
+
         if ($actor->system) {
+            $query->whereRaw('1 = 0');
+
             return;
         }
 
@@ -177,7 +185,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
      * Let identified public-route mutations resolve the actor's own review/private rows.
      */
     private function usesViewerMutationScope(
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAbility $ability,
     ): bool {
         return $actor->type !== null
@@ -197,7 +205,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
      * @param  array<string, mixed>  $context
      */
     private function canCreate(
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         array $context,
     ): bool {
@@ -222,7 +230,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
     }
 
     private function canParticipate(
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
     ): bool {
         if ($audience === CommentAudience::Management) {
@@ -237,7 +245,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
             && config('nvl-comments.anonymous.enabled', false) === true;
     }
 
-    private function isAuthor(CommentActorData $actor, ?Comment $comment): bool
+    private function isAuthor(CommentActor $actor, ?Comment $comment): bool
     {
         return $comment !== null
             && $actor->type !== null
@@ -246,7 +254,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
             && hash_equals((string) $comment->actor_id, $actor->id);
     }
 
-    private function isMutableAuthor(CommentActorData $actor, ?Comment $comment): bool
+    private function isMutableAuthor(CommentActor $actor, ?Comment $comment): bool
     {
         return $this->isAuthor($actor, $comment)
             && ! $this->isDeleted($comment)
@@ -254,7 +262,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
     }
 
     private function isVisibleToActor(
-        CommentActorData $actor,
+        CommentActor $actor,
         ?Comment $comment,
         CommentAudience $audience,
     ): bool {

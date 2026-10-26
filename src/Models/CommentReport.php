@@ -15,11 +15,6 @@ use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Services\CommentModelRegistry;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
-use Nvl\Filterable\Definitions\FilterDefinition;
-use Nvl\Filterable\Definitions\FilterSchema;
-use Nvl\Filterable\Definitions\SortDefinition;
-use Nvl\Filterable\Enums\FilterOperator;
-use Nvl\Filterable\Enums\FilterValueType;
 use Nvl\Support\Config\PackageStorage;
 use Nvl\Support\Ownership\Contracts\Ownable;
 use Nvl\Support\Ownership\Traits\HasOwnership;
@@ -118,69 +113,6 @@ final class CommentReport extends Model implements Ownable
     public function comment(): BelongsTo
     {
         return $this->belongsTo(CommentModelRegistry::modelClass(), 'comment_id')->withTrashed();
-    }
-
-    /**
-     * Return the management allowlist for report filters and deterministic sorts.
-     */
-    public static function filterSchema(): FilterSchema
-    {
-        $equalsOrSet = [FilterOperator::Equals, FilterOperator::In];
-        $dateOperators = [
-            FilterOperator::Equals,
-            FilterOperator::Before,
-            FilterOperator::After,
-            FilterOperator::Between,
-        ];
-
-        return new FilterSchema(
-            filters: [
-                new FilterDefinition(
-                    alias: 'status',
-                    column: 'status',
-                    type: FilterValueType::Enum,
-                    operators: $equalsOrSet,
-                    enumValues: array_column(CommentReportStatus::cases(), 'value'),
-                ),
-                new FilterDefinition(
-                    alias: 'reason',
-                    column: 'reason',
-                    operators: [
-                        FilterOperator::Equals,
-                        FilterOperator::Contains,
-                    ],
-                ),
-                new FilterDefinition(
-                    alias: 'created',
-                    column: 'created_at',
-                    type: FilterValueType::DateTime,
-                    operators: $dateOperators,
-                ),
-                new FilterDefinition(
-                    alias: 'reviewed',
-                    column: 'reviewed_at',
-                    type: FilterValueType::DateTime,
-                    operators: [
-                        ...$dateOperators,
-                        FilterOperator::IsNull,
-                        FilterOperator::IsNotNull,
-                    ],
-                    nullable: true,
-                ),
-            ],
-            sorts: [
-                new SortDefinition('created', 'created_at'),
-                new SortDefinition('updated', 'updated_at'),
-                new SortDefinition('reviewed', 'reviewed_at'),
-                new SortDefinition('id', 'id'),
-            ],
-            defaultSorts: ['-created', '-id'],
-            maximumFilters: 6,
-            maximumSorts: 3,
-            maximumValuesPerFilter: 50,
-            maximumStringLength: 255,
-            tieBreakerSort: 'id',
-        );
     }
 
     /**

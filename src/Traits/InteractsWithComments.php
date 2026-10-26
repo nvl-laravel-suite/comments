@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Relations\StringMorphMany;
+use Nvl\Comments\Services\CommentActor;
 use Nvl\Comments\Services\CommentBatchQueryBuilder;
 use Nvl\Comments\Services\CommentModelRegistry;
 
@@ -32,7 +32,7 @@ trait InteractsWithComments
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
-    public function scopeWithNvlVisibleCommentCount(Builder $query, CommentActorData $actor, CommentAudience $audience = CommentAudience::Public, ?CommentBatchQueryScope $policy = null): Builder
+    public function scopeWithNvlVisibleCommentCount(Builder $query, CommentActor $actor, CommentAudience $audience = CommentAudience::Public, ?CommentBatchQueryScope $policy = null): Builder
     {
         return app(CommentBatchQueryBuilder::class)->withVisibleCount($query, $actor, $audience, $policy ?? app(CommentBatchQueryScope::class));
     }

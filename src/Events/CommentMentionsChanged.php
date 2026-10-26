@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Events;
 
+use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Nvl\Comments\Data\CommentMentionChangeData;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Support\Contracts\DomainEvent;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
@@ -29,8 +29,8 @@ final class CommentMentionsChanged implements DomainEvent, OwnershipQueuedJob
     /**
      * Create one after-commit mention change fact.
      *
-     * @param  list<CommentMentionChangeData>  $added
-     * @param  list<CommentMentionChangeData>  $removed
+     * @param  list<array{resourceAlias: string, resourceId: string, tokenId: string}>  $added
+     * @param  list<array{resourceAlias: string, resourceId: string, tokenId: string}>  $removed
      */
     public function __construct(
         public readonly string $commentId,
@@ -56,7 +56,17 @@ final class CommentMentionsChanged implements DomainEvent, OwnershipQueuedJob
      */
     private static function validateChange(mixed $change): void
     {
-        if (! $change instanceof CommentMentionChangeData) {
+        if (! is_array($change)
+            || array_diff(array_keys($change), ['resourceAlias', 'resourceId', 'tokenId']) !== []
+            || count($change) !== 3
+            || ! is_string($change['resourceAlias'] ?? null)
+            || preg_match('/^[a-z][a-z0-9_.-]{0,99}$/', $change['resourceAlias']) !== 1
+            || ! is_string($change['resourceId'] ?? null)
+            || ! mb_check_encoding($change['resourceId'], 'UTF-8')
+            || preg_match('/\S/u', $change['resourceId']) !== 1
+            || mb_strlen($change['resourceId']) > 255
+            || ! is_string($change['tokenId'] ?? null)
+            || ! Str::isUuid($change['tokenId'])) {
             throw new InvalidArgumentException('Comment mention change facts are invalid.');
         }
     }

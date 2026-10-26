@@ -6,23 +6,21 @@ namespace Nvl\Comments\Support;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Nvl\Comments\Exceptions\CommentBatchReadException;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Relations\TextColumnComparison;
 use Nvl\Comments\Services\CommentModelRegistry;
-use Nvl\Comments\Tenancy\CommentTenantParentResolver;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Owners\OwnerIdentity;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /** Reloads finite owners through canonical host and tenant scopes before package SQL. */
 final readonly class CommentBatchOwnerAdmission
 {
     /** Retain the active ownership runtime and explicit host target allowlist. */
-    public function __construct(private OwnershipBoundary $boundary, private TenantResourceRegistry $resources, private CommentTenantParentResolver $targets, private OwnershipResourceRegistry $ownershipResources) {}
+    public function __construct(private OwnershipBoundary $boundary, private OwnershipResourceRegistry $ownershipResources) {}
 
     /** Canonically admit complete input with one scoped reload per concrete class. */
     public function admit(OwnerBatch $input): OwnerBatch
@@ -57,7 +55,7 @@ final readonly class CommentBatchOwnerAdmission
         $canonical = [];
         foreach ($input->identities() as $identity) {
             $canonical[] = $loaded[$identity->type][$identity->id]
-                ?? throw new TenantBoundaryViolation('A Comment batch owner is absent, deleted or outside the active host/tenant scope.');
+                ?? throw new CommentBatchReadException('A Comment batch owner is absent, deleted or outside the active host scope.');
         }
 
         return OwnerBatch::fromModels($canonical);
@@ -72,18 +70,16 @@ final readonly class CommentBatchOwnerAdmission
             || ($owner->getConnectionName() !== null && $owner->getConnectionName() !== $prototype->getConnection()->getName())
             || $prototype->getTable() !== $owner->getTable()
             || $prototype->getConnection() !== $comments->getConnection()
-            || $owner->getConnection() !== $comments->getConnection()) {
-            throw new TenantBoundaryViolation('Comment owners must retain their canonical table and package connection.');
+            || $owner->getConnection() !== $comments->getConnection()
+            || $owner->getKeyName() !== $prototype->getKeyName()
+            || $owner->isDirty($owner->getKeyName())
+            || $owner->getRawOriginal($owner->getKeyName()) !== $owner->getKey()) {
+            throw new CommentBatchReadException('Comment owners must retain their canonical table, connection and key.');
         }
         if (CommentsOwnership::declared()) {
             $key = CommentsOwnership::resource($prototype);
             if (! in_array($key, $this->ownershipResources->get('comments.comments')->parents(), true)) {
                 throw new OwnershipViolation('Comment targets require their explicit parent resource.');
-            }
-        } elseif (CommentsOwnership::active()) {
-            $this->resources->forModel($prototype);
-            if (($this->targets->types()[$prototype->getMorphClass()] ?? null) !== $prototype::class) {
-                throw new TenantBoundaryViolation('Comment batch owners require an exact nvl-comments.tenancy.target_types registration.');
             }
         }
     }

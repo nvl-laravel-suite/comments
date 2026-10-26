@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Nvl\Comments\Contracts;
 
 use Closure;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Nvl\Comments\Models\Comment;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Preserves optional attachment cleanup and locking during comment anonymization.
@@ -33,5 +35,5 @@ interface CommentAttachmentLifecycle
     public function synchronize(array $ids, Closure $callback): Comment;
 
     /** Detach one asset through the selected integration's public mutation contract. */
-    public function detach(string $id, Comment $comment): int;
+    public function detach(Authenticatable|SystemActor $actor, string $id, Comment $comment): int;
 }

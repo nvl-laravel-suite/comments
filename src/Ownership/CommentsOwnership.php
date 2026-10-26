@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Nvl\Comments\Ownership;
 
 use Illuminate\Database\Eloquent\Model;
-use Nvl\Support\Ownership\Compatibility\LegacyOwnershipSupport;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Services\OwnershipQueueCapture;
@@ -26,12 +25,12 @@ final class CommentsOwnership
 
     public static function active(): bool
     {
-        return self::declared() || app(LegacyOwnershipSupport::class)->enabled();
+        return self::declared();
     }
 
     public static function resource(Model $model): string
     {
-        return self::declared() ? app(OwnershipResourceRegistry::class)->forModel($model)->key : app(LegacyOwnershipSupport::class)->resource($model);
+        return app(OwnershipResourceRegistry::class)->forModel($model)->key;
     }
 
     /** Capture scalar admission; untouched graphs preserve disabled installation behavior. */
@@ -43,11 +42,9 @@ final class CommentsOwnership
     /** Bind signed capabilities to the complete owner and generation. */
     public static function capability(): ?string
     {
-        if (self::declared()) {
-            return app(OwnershipBoundary::class)->key('comments.comments', 'attachment-url');
-        }
-
-        return app(LegacyOwnershipSupport::class)->capability();
+        return self::declared()
+            ? app(OwnershipBoundary::class)->key('comments.comments', 'attachment-url')
+            : null;
     }
 
     /** Owned discussions cannot attach or project a globally accessible asset graph. */

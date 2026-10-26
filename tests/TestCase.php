@@ -10,9 +10,6 @@ use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Comments\Tests\Fixtures\TestCommentTargetResolver;
-use Nvl\Data\Providers\DataServiceProvider;
-use Nvl\Filterable\Providers\FilterableServiceProvider;
-use Nvl\Media\Providers\MediaServiceProvider;
 use Nvl\Support\Providers\LocaleServiceProvider;
 use Nvl\Translatable\Providers\TranslatableServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -46,10 +43,7 @@ abstract class TestCase extends Orchestra
     {
         return [
             LocaleServiceProvider::class,
-            DataServiceProvider::class,
-            FilterableServiceProvider::class,
             ...(class_exists(TranslatableServiceProvider::class) ? [TranslatableServiceProvider::class] : []),
-            ...(class_exists(MediaServiceProvider::class) ? [MediaServiceProvider::class] : []),
             CommentsServiceProvider::class,
         ];
     }
@@ -72,6 +66,12 @@ abstract class TestCase extends Orchestra
 
     protected function defineDatabaseMigrationsAfterDatabaseRefreshed(): void
     {
+        Schema::create('native_comment_actors', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
         Schema::create('comment_test_targets', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('name');

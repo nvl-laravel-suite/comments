@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Contracts;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Models\Comment;
+use Nvl\Support\Enums\PublicActor;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 
 /**
@@ -22,19 +24,19 @@ use Nvl\Support\Owners\OwnerBatch;
 interface CommentBatchQueryScope
 {
     /** Admit every canonical owner without issuing storage queries. */
-    public function authorizeOwners(OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void;
+    public function authorizeOwners(OwnerBatch $owners, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience): void;
 
     /**
      * Constrain the visible comment set before counts and window ranks.
      *
      * @param  Builder<Comment>  $query
      */
-    public function scopeBatchComments(Builder $query, OwnerBatch $owners, CommentActorData $actor, CommentAudience $audience): void;
+    public function scopeBatchComments(Builder $query, OwnerBatch $owners, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience): void;
 
     /**
      * Authorize and constrain correlated host reads without per-owner callbacks.
      *
      * @param  Builder<Comment>  $query
      */
-    public function scopeHostComments(Builder $query, Model $ownerPrototype, CommentActorData $actor, CommentAudience $audience): void;
+    public function scopeHostComments(Builder $query, Model $ownerPrototype, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience): void;
 }

@@ -6,8 +6,6 @@ namespace Nvl\Comments\Services;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
-use Nvl\Comments\Data\CommentActorData;
-use Nvl\Comments\Data\Mutations\DeleteCommentData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentChangeOperation;
@@ -20,7 +18,7 @@ use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
- * Owns the atomic deletion lifecycle shared by direct and latest-match Actions.
+ * Owns the atomic deletion lifecycle for native writes.
  *
  * This stable internal write boundary coordinates the same mutation locks, transaction,
  * revision, counters, and after-commit event for every package deletion entrypoint.
@@ -46,12 +44,12 @@ final readonly class CommentDeletionWriter
      */
     public function delete(
         Comment|string $comment,
-        DeleteCommentData $data,
-        CommentActorData $actor,
+        int $expectedRevision,
+        CommentActor $actor,
         CommentAudience $audience = CommentAudience::Public,
     ): bool {
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
-        $this->guard->expectedRevision($data->expectedRevision);
+        $this->guard->expectedRevision($expectedRevision);
         $resolved = $this->reads->resolveById(
             $commentId,
             $actor,
@@ -62,13 +60,13 @@ final readonly class CommentDeletionWriter
 
         return $this->mutationLock->executeMany(
             $lockIds,
-            function () use ($actor, $audience, $commentId, $data, $lockIds): bool {
+            function () use ($actor, $audience, $commentId, $expectedRevision, $lockIds): bool {
                 return DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
                     ->transaction(function () use (
                         $actor,
                         $audience,
                         $commentId,
-                        $data,
+                        $expectedRevision,
                         $lockIds,
                     ): bool {
                         sort($lockIds, SORT_STRING);
@@ -110,7 +108,7 @@ final readonly class CommentDeletionWriter
                             );
                         }
 
-                        if ($comment->revision !== $data->expectedRevision) {
+                        if ($comment->revision !== $expectedRevision) {
                             throw StaleCommentException::forComment($comment->id);
                         }
 

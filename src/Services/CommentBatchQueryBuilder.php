@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentBatchReadException;
 use Nvl\Comments\Models\Comment;
@@ -18,7 +17,6 @@ use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
 /** Composes mandatory ownership/deletion predicates around nested SQL authorization. */
 final readonly class CommentBatchQueryBuilder
@@ -31,7 +29,7 @@ final readonly class CommentBatchQueryBuilder
      *
      * @return Builder<Comment>
      */
-    public function batch(OwnerBatch $batch, CommentActorData $actor, CommentAudience $audience, CommentBatchQueryScope $policy): Builder
+    public function batch(OwnerBatch $batch, CommentActor $actor, CommentAudience $audience, CommentBatchQueryScope $policy): Builder
     {
         $query = $this->base();
         $query->where(function (Builder $pairs) use ($batch): void {
@@ -43,7 +41,7 @@ final readonly class CommentBatchQueryBuilder
                 });
             }
         });
-        $query->where(fn (Builder $nested) => $policy->scopeBatchComments($nested, $batch, $actor, $audience));
+        $query->where(fn (Builder $nested) => $policy->scopeBatchComments($nested, $batch, $actor->principal, $audience));
 
         return $query;
     }
@@ -68,21 +66,21 @@ final readonly class CommentBatchQueryBuilder
      * @param  Builder<T>  $query
      * @return Builder<T>
      */
-    public function withVisibleCount(Builder $query, CommentActorData $actor, CommentAudience $audience, CommentBatchQueryScope $policy): Builder
+    public function withVisibleCount(Builder $query, CommentActor $actor, CommentAudience $audience, CommentBatchQueryScope $policy): Builder
     {
         $owner = $query->getModel();
         $this->owners->assertPrototype($owner);
         if ($query->getConnection() !== $owner->getConnection()
             || $query->getQuery()->from !== $owner->getTable()
             || $query->getQuery()->unions !== null) {
-            throw new TenantBoundaryViolation('The Comment host count query must retain its canonical owner table and connection.');
+            throw new CommentBatchReadException('The Comment host count query must retain its canonical owner table and connection.');
         }
         $this->groupCallerPredicates($query);
         $prototype = new ($owner::class);
         if (in_array(SoftDeletes::class, class_uses_recursive($prototype), true) && method_exists($prototype, 'getQualifiedDeletedAtColumn')) {
             $column = $prototype->getQualifiedDeletedAtColumn();
             if (! is_string($column) || $column === '') {
-                throw new TenantBoundaryViolation('A canonical Comment owner requires a valid soft-delete column.');
+                throw new CommentBatchReadException('A canonical Comment owner requires a valid soft-delete column.');
             }
             $query->whereNull($column);
         }
@@ -95,7 +93,7 @@ final readonly class CommentBatchQueryBuilder
         $right = TextColumnComparison::text($grammar->wrap($owner->getQualifiedKeyName()), $connection->getDriverName());
         $comparison = new TextColumnComparison($left, $right, $connection->getDriverName());
         $comments->whereRaw($comparison);
-        $comments->where(fn (Builder $nested) => $policy->scopeHostComments($nested, $owner, $actor, $audience));
+        $comments->where(fn (Builder $nested) => $policy->scopeHostComments($nested, $owner, $actor->principal, $audience));
         if ($query->getQuery()->columns === null) {
             $query->select($owner->qualifyColumn('*'));
         }

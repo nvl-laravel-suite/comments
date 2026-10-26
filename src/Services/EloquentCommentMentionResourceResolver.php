@@ -4,24 +4,19 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
-use Nvl\Comments\Contracts\CommentMentionTenantProjection;
 use Nvl\Comments\Contracts\CommentMentionUrlResolver;
 use Nvl\Comments\Contracts\ViewerIndependentCommentMentionResource;
-use Nvl\Comments\Data\CommentMentionResourceData;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Contracts\TenantContext;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Resolves one declaratively registered Eloquent mention resource.
@@ -42,24 +37,20 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         private string $labelField,
         private CommentMentionResourceAuthorization $authorization,
         private ?CommentMentionUrlResolver $urlResolver = null,
-        private ?CommentMentionTenantProjection $tenantProjection = null,
-        private ?TenantContext $tenantContext = null,
         private ?OwnershipBoundary $boundary = null,
-        private ?TenantResourceRegistry $resources = null,
-        private ?Repository $config = null,
     ) {}
 
     /**
      * Resolve requested resources while concealing absent and unauthorized identities.
      *
      * @param  list<string>  $ids
-     * @return Collection<int, CommentMentionResourceData>
+     * @return Collection<int, array>
      */
     public function resolve(CommentMentionContext $context, array $ids): Collection
     {
         $model = new $this->modelClass;
         $key = $model->getKeyName();
-        $query = $this->tenantQuery($model, $context)->whereKey($ids);
+        $query = $this->resourceQuery($model, $context)->whereKey($ids);
         $this->authorization->scope($query, $context);
         $authorized = $query
             ->select($this->selectedFields($key))
@@ -69,15 +60,11 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         return collect($ids)->map(function (string $id) use (
             $authorized,
             $context,
-        ): CommentMentionResourceData {
+        ): array {
             $resource = $authorized->get($id);
 
             if (! $resource instanceof Model) {
-                return new CommentMentionResourceData(
-                    id: $id,
-                    label: null,
-                    state: CommentMentionState::Missing,
-                );
+                return ['id' => $id, 'label' => null, 'fields' => [], 'url' => null, 'state' => CommentMentionState::Missing];
             }
 
             return $this->resourceData($resource, $context);
@@ -87,7 +74,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     /**
      * Suggest authorized resources in deterministic label and identifier order.
      *
-     * @return Collection<int, CommentMentionResourceData>
+     * @return Collection<int, array>
      */
     public function suggest(
         CommentMentionContext $context,
@@ -96,7 +83,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     ): Collection {
         $model = new $this->modelClass;
         $key = $model->getKeyName();
-        $builder = $this->tenantQuery($model, $context);
+        $builder = $this->resourceQuery($model, $context);
         $this->authorization->scope($builder, $context);
         $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $query);
 
@@ -116,7 +103,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
             ->orderBy($key)
             ->limit($limit)
             ->get()
-            ->map(fn (Model $resource): CommentMentionResourceData => $this->resourceData(
+            ->map(fn (Model $resource): array => $this->resourceData(
                 $resource,
                 $context,
             ))
@@ -124,27 +111,16 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     }
 
     /** @return Builder<Model> */
-    private function tenantQuery(Model $model, CommentMentionContext $context): Builder
+    private function resourceQuery(Model $model, CommentMentionContext $context): Builder
     {
         $query = $model->newQuery();
-        if (CommentsOwnership::declared()) {
-            return ($this->boundary ?? throw new InvalidCommentMutationException('Ownership boundary is required for owned mention resources.'))->query($query, CommentsOwnership::resource($model));
-        }
-        if ($this->config?->get('nvl-tenancy.enabled') !== true) {
+        if (! CommentsOwnership::declared()) {
             return $query;
         }
-        $tenant = $this->tenantContext?->requireTenant()
-            ?? throw new InvalidCommentMutationException('Comment mention tenancy is unavailable.');
-        if ($this->tenantProjection instanceof CommentMentionTenantProjection) {
-            $this->tenantProjection->scope($query, $context, $tenant);
 
-            return $query;
-        }
-        if (! $this->boundary instanceof OwnershipBoundary || ! $this->resources instanceof TenantResourceRegistry) {
-            throw new InvalidCommentMutationException('Comment mention tenancy is unavailable.');
-        }
-
-        return $this->boundary->query($query, CommentsOwnership::resource($model));
+        return ($this->boundary ?? throw new InvalidCommentMutationException(
+            'Ownership boundary is required for owned mention resources.',
+        ))->query($query, CommentsOwnership::resource($model));
     }
 
     /**
@@ -163,7 +139,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     private function resourceData(
         Model $resource,
         CommentMentionContext $context,
-    ): CommentMentionResourceData {
+    ): array {
         $label = $resource->getAttribute($this->labelField);
 
         if (! is_string($label) && ! is_int($label) && ! is_float($label)) {
@@ -186,12 +162,13 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
             $fields[$field] = $value;
         }
 
-        return new CommentMentionResourceData(
-            id: $this->identifier($resource->getKey()),
-            label: (string) $label,
-            fields: $fields,
-            url: $this->urlResolver?->resolve($resource, $context),
-        );
+        return [
+            'id' => $this->identifier($resource->getKey()),
+            'label' => (string) $label,
+            'fields' => $fields,
+            'url' => $this->urlResolver?->resolve($resource, $context),
+            'state' => CommentMentionState::Resolved,
+        ];
     }
 
     /**

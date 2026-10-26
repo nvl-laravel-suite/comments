@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Tests;
 
+use Nvl\Media\Providers\MediaServiceProvider;
+
 /** Exercises attachment registration when Comments is discovered before Media. */
 abstract class ReverseMediaCommentsTestCase extends TestCase
 {
@@ -14,6 +16,6 @@ abstract class ReverseMediaCommentsTestCase extends TestCase
      */
     protected function getPackageProviders($app): array
     {
-        return array_reverse(parent::getPackageProviders($app));
+        return [...parent::getPackageProviders($app), MediaServiceProvider::class];
     }
 }

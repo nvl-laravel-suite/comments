@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Nvl\Comments\Contracts\CommentQueryScope;
-use Nvl\Comments\Data\CommentActorData;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
@@ -36,7 +35,7 @@ final readonly class CommentReadService
      */
     public function query(
         Model $target,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         bool $withTrashed = true,
     ): Builder {
@@ -56,7 +55,7 @@ final readonly class CommentReadService
      */
     public function queryFor(
         Model $target,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         CommentAbility $ability,
         bool $withTrashed = true,
@@ -85,7 +84,7 @@ final readonly class CommentReadService
     public function find(
         Model $target,
         Comment|string $comment,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         bool $withTrashed = true,
     ): Comment {
@@ -116,7 +115,7 @@ final readonly class CommentReadService
      */
     public function findById(
         Comment|string $comment,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         bool $withTrashed = true,
     ): Comment {
@@ -146,7 +145,7 @@ final readonly class CommentReadService
     public function resolve(
         Model $target,
         Comment|string $comment,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         CommentAbility $ability,
         bool $withTrashed = true,
@@ -173,7 +172,7 @@ final readonly class CommentReadService
      */
     public function resolveById(
         Comment|string $comment,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         CommentAbility $ability,
         bool $withTrashed = true,
@@ -212,7 +211,7 @@ final readonly class CommentReadService
      */
     private function scopedQuery(
         Model $target,
-        CommentActorData $actor,
+        CommentActor $actor,
         CommentAudience $audience,
         CommentAbility $ability,
         bool $withTrashed,
@@ -228,7 +227,7 @@ final readonly class CommentReadService
 
         $this->queryScope->scopeComments(
             $query,
-            $actor,
+            $actor->principal,
             $target,
             $audience,
             $ability,

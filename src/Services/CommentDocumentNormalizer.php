@@ -6,8 +6,6 @@ namespace Nvl\Comments\Services;
 
 use Illuminate\Support\Str;
 use JsonException;
-use Nvl\Comments\Data\CommentMentionReferenceData;
-use Nvl\Comments\Data\Mutations\CommentDocumentData;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
@@ -27,9 +25,9 @@ final readonly class CommentDocumentNormalizer
      * Validate client input, resolve every mention, and add server-owned labels.
      */
     public function normalizeInput(
-        CommentDocumentData $document,
+        array $document,
         CommentMentionContext $context,
-    ): CommentDocumentData {
+    ): array {
         if (config('nvl-comments.mentions.enabled', false) !== true) {
             throw new InvalidCommentMutationException(
                 'Rich comment mentions are not enabled.',
@@ -37,14 +35,11 @@ final readonly class CommentDocumentNormalizer
         }
 
         $inputBlocks = $this->validate($document, allowSnapshots: false);
-        $normalized = new CommentDocumentData(
-            version: 1,
-            blocks: $inputBlocks,
-        );
+        $normalized = ['version' => 1, 'blocks' => $inputBlocks];
         $mentionsByAlias = [];
 
         foreach ($this->references($normalized, requireSnapshots: false) as $reference) {
-            $mentionsByAlias[$reference->resourceAlias][] = $reference->resourceId;
+            $mentionsByAlias[$reference['resourceAlias']][] = $reference['resourceId'];
         }
 
         $labels = [];
@@ -53,13 +48,13 @@ final readonly class CommentDocumentNormalizer
             $resolved = $this->resources->resolve($alias, $context, array_values(array_unique($ids)));
 
             foreach ($resolved as $resource) {
-                if (! is_string($resource->label)) {
+                if (! is_string($resource['label'])) {
                     throw new InvalidCommentMutationException(
                         'Comment mention resolution returned an invalid resource label.',
                     );
                 }
 
-                $labels[$alias][$resource->id] = $this->normalizeText($resource->label);
+                $labels[$alias][$resource['id']] = $this->normalizeText($resource['label']);
             }
         }
 
@@ -79,24 +74,15 @@ final readonly class CommentDocumentNormalizer
             $blocks[] = ['type' => 'paragraph', 'children' => $children];
         }
 
-        return new CommentDocumentData(
-            version: 1,
-            blocks: $this->validate(
-                new CommentDocumentData(version: 1, blocks: $blocks),
-                allowSnapshots: true,
-            ),
-        );
+        return ['version' => 1, 'blocks' => $this->validate(['version' => 1, 'blocks' => $blocks], allowSnapshots: true)];
     }
 
     /**
      * Validate and canonicalize client document structure without resource resolution.
      */
-    public function normalizeUnresolved(CommentDocumentData $document): CommentDocumentData
+    public function normalizeUnresolved(array $document): array
     {
-        return new CommentDocumentData(
-            version: 1,
-            blocks: $this->validate($document, allowSnapshots: false),
-        );
+        return ['version' => 1, 'blocks' => $this->validate($document, allowSnapshots: false)];
     }
 
     /**
@@ -104,7 +90,7 @@ final readonly class CommentDocumentNormalizer
      *
      * @param  array<string, mixed>  $document
      */
-    public function normalizeStored(array $document): CommentDocumentData
+    public function normalizeStored(array $document): array
     {
         if (! $this->hasExactKeys($document, ['version', 'blocks'])
             || ! is_int($document['version'] ?? null)
@@ -116,19 +102,13 @@ final readonly class CommentDocumentNormalizer
 
         $blocks = $document['blocks'];
 
-        return new CommentDocumentData(
-            version: 1,
-            blocks: $this->validate(
-                new CommentDocumentData($document['version'], $blocks),
-                allowSnapshots: true,
-            ),
-        );
+        return ['version' => 1, 'blocks' => $this->validate(['version' => $document['version'], 'blocks' => $blocks], allowSnapshots: true)];
     }
 
     /**
      * Return a deterministic plain-text compatibility projection.
      */
-    public function body(CommentDocumentData $document): string
+    public function body(array $document): string
     {
         $paragraphs = [];
 
@@ -155,10 +135,10 @@ final readonly class CommentDocumentNormalizer
     /**
      * Return ordered mention references from one normalized document.
      *
-     * @return list<CommentMentionReferenceData>
+     * @return list<array{tokenId: string, resourceAlias: string, resourceId: string, labelSnapshot: string, position: int}>
      */
     public function references(
-        CommentDocumentData $document,
+        array $document,
         bool $requireSnapshots = true,
     ): array {
         $references = [];
@@ -178,13 +158,13 @@ final readonly class CommentDocumentNormalizer
                     );
                 }
 
-                $references[] = new CommentMentionReferenceData(
-                    tokenId: $node['tokenId'],
-                    resourceAlias: $node['resource'],
-                    resourceId: $node['id'],
-                    labelSnapshot: $label,
-                    position: $position,
-                );
+                $references[] = [
+                    'tokenId' => $node['tokenId'],
+                    'resourceAlias' => $node['resource'],
+                    'resourceId' => $node['id'],
+                    'labelSnapshot' => $label,
+                    'position' => $position,
+                ];
                 $position++;
             }
         }
@@ -197,10 +177,10 @@ final readonly class CommentDocumentNormalizer
      *
      * @throws JsonException
      */
-    public function canonicalJson(CommentDocumentData $document): string
+    public function canonicalJson(array $document): string
     {
         return json_encode(
-            ['version' => $document->version, 'blocks' => $document->blocks],
+            ['version' => $document['version'], 'blocks' => $document['blocks']],
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
         );
     }
@@ -210,7 +190,7 @@ final readonly class CommentDocumentNormalizer
      *
      * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
      */
-    public function toArray(CommentDocumentData $document): array
+    public function toArray(array $document): array
     {
         return [
             'version' => 1,
@@ -227,10 +207,10 @@ final readonly class CommentDocumentNormalizer
      * @return list<array{type: string, children: list<array<string, string>>}>
      */
     private function validate(
-        CommentDocumentData $document,
+        array $document,
         bool $allowSnapshots,
     ): array {
-        if ($document->version !== 1 || ! array_is_list($document->blocks)) {
+        if ($document['version'] !== 1 || ! array_is_list($document['blocks'])) {
             throw new InvalidCommentMutationException(
                 'Comment documents must use version one and a block list.',
             );
@@ -245,7 +225,7 @@ final readonly class CommentDocumentNormalizer
             500,
         ));
 
-        if ($document->blocks === [] || count($document->blocks) > $maximumBlocks) {
+        if ($document['blocks'] === [] || count($document['blocks']) > $maximumBlocks) {
             throw new InvalidCommentMutationException(
                 'Comment document block count is outside the configured bounds.',
             );
@@ -257,7 +237,7 @@ final readonly class CommentDocumentNormalizer
         $resourceAliases = [];
         $tokenIds = [];
 
-        foreach ($document->blocks as $block) {
+        foreach ($document['blocks'] as $block) {
             if (! is_array($block)
                 || ! $this->hasExactKeys($block, ['type', 'children'])
                 || ($block['type'] ?? null) !== 'paragraph'
@@ -393,7 +373,7 @@ final readonly class CommentDocumentNormalizer
             );
         }
 
-        $normalized = new CommentDocumentData(version: 1, blocks: $blocks);
+        $normalized = ['version' => 1, 'blocks' => $blocks];
         $maximumBytes = min(131_072, CommentsConfiguration::positiveInteger(
             'nvl-comments.rich_text.maximum_bytes',
             32_768,

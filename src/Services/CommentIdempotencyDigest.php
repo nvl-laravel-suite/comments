@@ -6,9 +6,6 @@ namespace Nvl\Comments\Services;
 
 use JsonException;
 use LogicException;
-use Nvl\Comments\Data\CommentActorData;
-use Nvl\Comments\Data\Mutations\CreateCommentData;
-use Nvl\Comments\Data\Mutations\CreateRichCommentData;
 use Nvl\Comments\Enums\CommentVisibility;
 
 /**
@@ -32,8 +29,8 @@ final class CommentIdempotencyDigest
         string $targetId,
         ?string $parentId,
         CommentVisibility $visibility,
-        CreateCommentData $data,
-        CommentActorData $actor,
+        array $data,
+        CommentActor $actor,
     ): string {
         $payload = [
             'version' => 1,
@@ -47,13 +44,13 @@ final class CommentIdempotencyDigest
                 'id' => $actor->id,
                 'system' => $actor->system,
             ],
-            'body' => $data->body,
-            'format' => $data->format->value,
-            'requestedVisibility' => $data->visibility->value,
+            'body' => $data['body'],
+            'format' => $data['format']->value,
+            'requestedVisibility' => $data['visibility']->value,
             'effectiveVisibility' => $visibility->value,
-            'locale' => $data->locale,
-            'tags' => $data->tags,
-            'metadata' => $this->metadata->normalize($data->metadata),
+            'locale' => $data['locale'],
+            'tags' => $data['tags'],
+            'metadata' => $this->metadata->normalize($data['metadata']),
         ];
         $jsonValue = json_decode(
             json_encode(
@@ -89,8 +86,8 @@ final class CommentIdempotencyDigest
         string $targetId,
         ?string $parentId,
         CommentVisibility $visibility,
-        CreateRichCommentData $data,
-        CommentActorData $actor,
+        array $data,
+        CommentActor $actor,
         string $canonicalDocument,
     ): string {
         $payload = [
@@ -103,11 +100,11 @@ final class CommentIdempotencyDigest
                 'system' => $actor->system,
             ],
             'document' => json_decode($canonicalDocument, true, 512, JSON_THROW_ON_ERROR),
-            'requestedVisibility' => $data->visibility->value,
+            'requestedVisibility' => $data['visibility']->value,
             'effectiveVisibility' => $visibility->value,
-            'locale' => $data->locale,
-            'tags' => $data->tags,
-            'metadata' => $this->metadata->normalize($data->metadata),
+            'locale' => $data['locale'],
+            'tags' => $data['tags'],
+            'metadata' => $this->metadata->normalize($data['metadata']),
         ];
         $encoded = json_encode(
             $this->canonicalValue($payload),

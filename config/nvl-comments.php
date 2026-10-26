@@ -5,8 +5,6 @@ declare(strict_types=1);
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
-use Nvl\Comments\Services\SafeCommentAuthorPresenter;
-use Nvl\Comments\Support\CommentActorFactory;
 use Nvl\Support\Config\PackageEnvironment;
 
 /** Complete runtime defaults; publication sections are declared in ../resources/config/sections.json. */
@@ -14,9 +12,6 @@ return [
     'models' => ['comment' => Comment::class],
     'ownership' => ['target_resources' => []],
 
-    'tenancy' => [
-        'target_types' => [],
-    ],
     'connection' => null,
 
     'tables' => [
@@ -38,42 +33,7 @@ return [
         'class' => ConfiguredCommentAuthorization::class,
     ],
 
-    'actor_resolver' => [
-        'class' => CommentActorFactory::class,
-    ],
-
-    'author_presenter' => [
-        'class' => SafeCommentAuthorPresenter::class,
-    ],
-
     'targets' => [],
-
-    'routes' => [
-        'management' => [
-            'enabled' => false,
-            'prefix' => 'nvl/api/v1/comments',
-            'name' => 'nvl.comments.management.',
-            'middleware' => ['api', 'auth', 'throttle:60,1'],
-        ],
-        'member' => [
-            'enabled' => false,
-            'prefix' => 'nvl/api/v1/comments/member',
-            'name' => 'nvl.comments.member.',
-            'middleware' => ['api', 'auth', 'throttle:60,1'],
-        ],
-        'public' => [
-            'enabled' => false,
-            'prefix' => 'nvl/api/v1/comments/public',
-            'name' => 'nvl.comments.public.',
-            'middleware' => ['api', 'throttle:60,1'],
-        ],
-        'attachments' => [
-            'enabled' => true,
-            'prefix' => 'nvl/api/v1/comments/attachments',
-            'name' => 'nvl.comments.attachments.',
-            'middleware' => ['api', 'throttle:120,1'],
-        ],
-    ],
 
     'moderation' => [
         'new_status' => 'pending',
@@ -161,7 +121,4 @@ return [
         'maximum' => 100,
     ],
 
-    'cache' => [
-        'public_max_age' => 60,
-    ],
 ];

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Illuminate\Support\Str;
-use Nvl\Comments\Data\Mutations\AnonymizeCommentData;
 use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 
@@ -47,18 +46,18 @@ final class CommentLifecycleGuard
     /**
      * Validate the required terminal anonymization audit reason.
      */
-    public function anonymization(AnonymizeCommentData $data): void
+    public function anonymization(array $data): void
     {
-        $this->expectedRevision($data->expectedRevision);
+        $this->expectedRevision($data['expectedRevision']);
 
-        if (! mb_check_encoding($data->reason, 'UTF-8')
-            || preg_match('/\S/u', $data->reason) !== 1) {
+        if (! mb_check_encoding($data['reason'], 'UTF-8')
+            || preg_match('/\S/u', $data['reason']) !== 1) {
             throw new InvalidCommentLifecycleException(
                 'An anonymization reason must contain valid, non-blank UTF-8 text.',
             );
         }
 
-        if (mb_strlen($data->reason) > 2_000) {
+        if (mb_strlen($data['reason']) > 2_000) {
             throw new InvalidCommentLifecycleException(
                 'An anonymization reason may contain at most 2000 characters.',
             );

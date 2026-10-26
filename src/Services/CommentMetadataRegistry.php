@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use LogicException;
 use Nvl\Comments\Contracts\CommentMetadataSchema;
-use Nvl\Comments\Data\CommentMetadataProjectionData;
 use Nvl\Comments\Definitions\CommentMetadataField;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentMetadataValueType;
@@ -146,7 +145,7 @@ final class CommentMetadataRegistry
      * Project registered values explicitly visible to one audience.
      *
      * @param  array<string, mixed>|null  $metadata
-     * @return list<CommentMetadataProjectionData>
+     * @return list<array{namespace: string, values: array<string, mixed>}>
      */
     public function project(?array $metadata, CommentAudience $audience): array
     {
@@ -176,7 +175,7 @@ final class CommentMetadataRegistry
             }
 
             if ($values !== []) {
-                $projections[] = new CommentMetadataProjectionData($namespace, $values);
+                $projections[] = ['namespace' => $namespace, 'values' => $values];
             }
         }
 
