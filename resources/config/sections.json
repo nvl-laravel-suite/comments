@@ -22,6 +22,7 @@
                 "attachments.allow_public_media",
                 "attachments.maximum_file_bytes",
                 "attachments.maximum_per_comment",
+                "attachments.signed_url_lifetime",
                 "content.allowed_formats",
                 "content.maximum_bytes",
                 "content.maximum_tags",
