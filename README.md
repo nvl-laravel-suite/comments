@@ -5,7 +5,7 @@
 ## Install
 
 ```sh
-composer require nvl/comments:^6.0
+composer require nvl/comments:^7.0
 php artisan migrate
 ```
 

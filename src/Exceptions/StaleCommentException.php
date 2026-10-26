@@ -8,7 +8,7 @@ use Illuminate\Contracts\Debug\ShouldntReport;
 
 /**
  * @api
-
+ *
  * Raised when a comment changed after the caller read it.
  */
 final class StaleCommentException extends CommentsException implements ShouldntReport

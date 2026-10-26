@@ -64,7 +64,7 @@ it('replays an identical keyed creation and rejects changed content', function (
     config()->set('nvl-comments.idempotency.digest_key', 'native-comments-test-key');
     $writer = app(CommentWriter::class);
     $key = (string) Str::uuid();
-    $input = ['body' => 'Original', 'idempotencyKey' => $key];
+    $input = ['body' => 'Original', 'idempotency_key' => $key];
 
     $created = $writer->create($target, $input, PublicActor::Anonymous, CommentAudience::Public);
     $replayed = $writer->create($target, $input, PublicActor::Anonymous, CommentAudience::Public);
@@ -72,7 +72,7 @@ it('replays an identical keyed creation and rejects changed content', function (
     expect($replayed->id)->toBe($created->id);
     expect($replayed->wasRecentlyCreated)->toBeFalse();
 
-    $writer->create($target, ['body' => 'Changed', 'idempotencyKey' => $key], PublicActor::Anonymous, CommentAudience::Public);
+    $writer->create($target, ['body' => 'Changed', 'idempotency_key' => $key], PublicActor::Anonymous, CommentAudience::Public);
 })->throws(CommentIdempotencyConflictException::class);
 
 it('does not let another actor claim an existing idempotency key', function (): void {
@@ -81,9 +81,9 @@ it('does not let another actor claim an existing idempotency key', function (): 
     $second = NativeCommentActor::create(['name' => 'Second']);
     $key = (string) Str::uuid();
     $writer = app(CommentWriter::class);
-    $writer->create($target, ['body' => 'Same content', 'idempotencyKey' => $key], $first);
+    $writer->create($target, ['body' => 'Same content', 'idempotency_key' => $key], $first);
 
-    $writer->create($target, ['body' => 'Same content', 'idempotencyKey' => $key], $second);
+    $writer->create($target, ['body' => 'Same content', 'idempotency_key' => $key], $second);
 })->throws(CommentIdempotencyConflictException::class);
 
 it('inherits a private parent and conceals it from another member', function (): void {
@@ -131,7 +131,7 @@ it('preserves a previous revision when the author updates content', function ():
 
     $updated = $writer->update($comment, [
         'body' => 'After',
-        'expectedRevision' => $comment->revision,
+        'expected_revision' => $comment->revision,
     ], $actor, CommentAudience::Public);
 
     expect($updated->body)->toBe('After');
@@ -144,9 +144,9 @@ it('rejects stale content writes without changing the persisted comment', functi
     $actor = NativeCommentActor::create(['name' => 'Author']);
     $writer = app(CommentWriter::class);
     $comment = $writer->create($target, ['body' => 'Before'], $actor);
-    $writer->update($comment, ['body' => 'After', 'expectedRevision' => $comment->revision], $actor);
+    $writer->update($comment, ['body' => 'After', 'expected_revision' => $comment->revision], $actor);
 
-    expect(fn () => $writer->update($comment, ['body' => 'Stale', 'expectedRevision' => $comment->revision], $actor))
+    expect(fn () => $writer->update($comment, ['body' => 'Stale', 'expected_revision' => $comment->revision], $actor))
         ->toThrow(StaleCommentException::class);
     expect($comment->fresh()?->body)->toBe('After');
 });
@@ -166,7 +166,7 @@ it('compiles rich documents and preserves a revision on rich update', function (
     $comment = $writer->createRich($target, ['document' => $before], $actor, CommentAudience::Public);
     $updated = $writer->updateRich($comment, [
         'document' => $after,
-        'expectedRevision' => $comment->revision,
+        'expected_revision' => $comment->revision,
     ], $actor, CommentAudience::Public);
 
     expect($comment->body)->toBe('Before');
@@ -181,7 +181,7 @@ it('restores a historical content snapshot as a new revision', function (): void
     $comment = $writer->create($target, ['body' => 'Before'], $actor, CommentAudience::Public);
     $updated = $writer->update($comment, [
         'body' => 'After',
-        'expectedRevision' => $comment->revision,
+        'expected_revision' => $comment->revision,
     ], $actor);
     $history = $updated->revisions()->firstOrFail();
 
@@ -200,7 +200,7 @@ it('anonymizes an authorized comment without an installed Media provider', funct
     app()->instance(CommentQueryScope::class, $policy);
 
     $anonymized = app(CommentWriter::class)->anonymize($comment, [
-        'expectedRevision' => $comment->revision,
+        'expected_revision' => $comment->revision,
         'reason' => 'Requested removal',
     ], SystemActor::Background);
 
@@ -228,7 +228,7 @@ it('serializes comment events with scalar actor facts only', function (): void {
 it('rejects anonymous principals at the attachment anonymization boundary', function (): void {
     app(CommentAnonymizer::class)->anonymize(
         'unknown-comment',
-        ['expectedRevision' => 1, 'reason' => 'Erase personal data'],
+        ['expected_revision' => 1, 'reason' => 'Erase personal data'],
         CommentActor::anonymous(),
         CommentAudience::Management,
     );
@@ -240,11 +240,11 @@ it('preserves omitted update fields and clears an explicitly nullable locale', f
     $writer = app(CommentWriter::class);
     $comment = $writer->create($target, ['body' => 'Before', 'locale' => 'en', 'tags' => ['retained']], $actor);
 
-    $updated = $writer->update($comment, ['body' => 'After', 'expectedRevision' => $comment->revision], $actor);
+    $updated = $writer->update($comment, ['body' => 'After', 'expected_revision' => $comment->revision], $actor);
     expect($updated->locale)->toBe('en');
     expect($updated->tags)->toBe(['retained']);
 
-    $cleared = $writer->update($updated, ['body' => 'After', 'expectedRevision' => $updated->revision, 'locale' => null], $actor);
+    $cleared = $writer->update($updated, ['body' => 'After', 'expected_revision' => $updated->revision, 'locale' => null], $actor);
     expect($cleared->locale)->toBeNull();
     expect($cleared->tags)->toBe(['retained']);
 });

@@ -15,6 +15,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Allowlist for API-visible comment target aliases.
+ *
+ * @internal
  */
 final class CommentTargetRegistry
 {

@@ -8,7 +8,7 @@ use Illuminate\Contracts\Debug\ShouldntReport;
 
 /**
  * @api
-
+ *
  * Raised when an API-safe comment target alias or identifier cannot be resolved.
  */
 final class CommentTargetNotFoundException extends CommentsException implements ShouldntReport

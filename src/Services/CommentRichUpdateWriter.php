@@ -23,7 +23,7 @@ use Nvl\Support\Events\DomainEventDispatcher;
 /**
  * Replaces rich comment content and mention rows while retaining history.
  *
- * @api
+ * @internal
  */
 final readonly class CommentRichUpdateWriter
 {
@@ -85,7 +85,7 @@ final readonly class CommentRichUpdateWriter
                         asNotFound: $audience !== CommentAudience::Management,
                     );
 
-                    if ($comment->revision !== $data['expectedRevision']) {
+                    if ($comment->revision !== $data['expected_revision']) {
                         throw StaleCommentException::forComment($comment->id);
                     }
 
@@ -198,17 +198,17 @@ final readonly class CommentRichUpdateWriter
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return array{document: array{version: int, blocks: array<array-key, mixed>}, expectedRevision: int, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}
+     * @return array{document: array{version: int, blocks: array<array-key, mixed>}, expected_revision: int, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}
      */
     private function normalizeUpdate(array $attributes): array
     {
         $document = $attributes['document'] ?? null;
-        if (array_diff(array_keys($attributes), ['document', 'expectedRevision', 'locale', 'tags', 'metadata']) !== []
+        if (array_diff(array_keys($attributes), ['document', 'expected_revision', 'locale', 'tags', 'metadata']) !== []
             || ! is_array($document)
             || ! is_int($document['version'] ?? null)
             || ! is_array($document['blocks'] ?? null)
-            || ! is_int($attributes['expectedRevision'] ?? null)
-            || $attributes['expectedRevision'] < 1
+            || ! is_int($attributes['expected_revision'] ?? null)
+            || $attributes['expected_revision'] < 1
             || (array_key_exists('locale', $attributes)
                 && $attributes['locale'] !== null
                 && ! is_string($attributes['locale']))
@@ -220,7 +220,7 @@ final readonly class CommentRichUpdateWriter
             throw new InvalidCommentMutationException('Rich comment update attributes are invalid.');
         }
 
-        $normalized = ['document' => ['version' => $document['version'], 'blocks' => $document['blocks']], 'expectedRevision' => $attributes['expectedRevision']];
+        $normalized = ['document' => ['version' => $document['version'], 'blocks' => $document['blocks']], 'expected_revision' => $attributes['expected_revision']];
         if (array_key_exists('locale', $attributes)) {
             $normalized['locale'] = $attributes['locale'];
         }

@@ -21,7 +21,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Restores one soft-deleted comment without reviving an invalid reply branch.
  *
- * @api
+ * @internal
  */
 final readonly class CommentRestorationWriter
 {

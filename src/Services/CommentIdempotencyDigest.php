@@ -11,6 +11,8 @@ use Nvl\Comments\Enums\CommentVisibility;
 
 /**
  * Produces a keyed digest for one canonical comment creation request.
+ *
+ * @internal
  */
 final class CommentIdempotencyDigest
 {
@@ -22,7 +24,7 @@ final class CommentIdempotencyDigest
     /**
      * Hash the target, actor, hierarchy, and persisted mutation fields.
      *
-     * @param  array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}  $data
+     * @param  array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}  $data
      *
      * @throws JsonException
      * @throws LogicException
@@ -81,7 +83,7 @@ final class CommentIdempotencyDigest
     /**
      * Hash one canonical rich creation request without server-owned label snapshots.
      *
-     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      *
      * @throws JsonException
      * @throws LogicException

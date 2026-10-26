@@ -20,7 +20,11 @@ use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
-/** Audience-scoped native comment reads and bounded owner summaries. */
+/**
+ * Audience-scoped native comment reads and bounded owner summaries.
+ *
+ * @api
+ */
 final readonly class CommentReader
 {
     public function __construct(

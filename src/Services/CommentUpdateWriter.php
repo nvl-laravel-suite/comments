@@ -21,7 +21,7 @@ use Nvl\Support\Events\DomainEventDispatcher;
 /**
  * Replaces editable comment content while retaining immutable history.
  *
- * @api
+ * @internal
  */
 final readonly class CommentUpdateWriter
 {
@@ -78,7 +78,7 @@ final readonly class CommentUpdateWriter
                         );
                     }
 
-                    if ($comment->revision !== $data['expectedRevision']) {
+                    if ($comment->revision !== $data['expected_revision']) {
                         throw StaleCommentException::forComment($comment->id);
                     }
 
@@ -164,14 +164,14 @@ final readonly class CommentUpdateWriter
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return array{body: string, expectedRevision: int, format?: CommentFormat, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}
+     * @return array{body: string, expected_revision: int, format?: CommentFormat, locale?: ?string, tags?: list<mixed>, metadata?: array<string, mixed>}
      */
     private function normalizeUpdate(array $attributes): array
     {
-        if (array_diff(array_keys($attributes), ['body', 'expectedRevision', 'format', 'locale', 'tags', 'metadata']) !== []
+        if (array_diff(array_keys($attributes), ['body', 'expected_revision', 'format', 'locale', 'tags', 'metadata']) !== []
             || ! is_string($attributes['body'] ?? null)
-            || ! is_int($attributes['expectedRevision'] ?? null)
-            || $attributes['expectedRevision'] < 1) {
+            || ! is_int($attributes['expected_revision'] ?? null)
+            || $attributes['expected_revision'] < 1) {
             throw new InvalidCommentMutationException('Comment update requires a body and positive expected revision.');
         }
 
@@ -204,7 +204,7 @@ final readonly class CommentUpdateWriter
             throw new InvalidCommentMutationException('Comment update metadata must be a map.');
         }
 
-        $normalized = ['body' => $attributes['body'], 'expectedRevision' => $attributes['expectedRevision']];
+        $normalized = ['body' => $attributes['body'], 'expected_revision' => $attributes['expected_revision']];
         if (array_key_exists('locale', $attributes)) {
             $normalized['locale'] = $attributes['locale'];
         }

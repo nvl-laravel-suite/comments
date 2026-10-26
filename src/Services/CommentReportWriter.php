@@ -21,7 +21,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Creates or refreshes one actor's report without count inflation.
  *
- * @api
+ * @internal
  */
 final readonly class CommentReportWriter
 {

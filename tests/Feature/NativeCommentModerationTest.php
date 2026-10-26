@@ -23,7 +23,7 @@ it('denies system moderation without an explicit host policy grant', function ()
 
     app(CommentModeration::class)->moderate($comment, [
         'status' => CommentStatus::Rejected,
-        'expectedRevision' => $comment->revision,
+        'expected_revision' => $comment->revision,
     ], SystemActor::Background);
 })->throws(ModelNotFoundException::class);
 
@@ -37,7 +37,7 @@ it('accepts a background moderator only through an explicit host policy', functi
 
     $updated = app(CommentModeration::class)->moderate($comment, [
         'status' => CommentStatus::Rejected,
-        'expectedRevision' => $comment->revision,
+        'expected_revision' => $comment->revision,
     ], SystemActor::Background);
 
     expect($updated->status)->toBe(CommentStatus::Rejected);
@@ -61,7 +61,7 @@ it('reports idempotently and resolves through explicit moderation authority', fu
     app()->instance(CommentQueryScope::class, $policy);
     $resolved = app(CommentModeration::class)->resolveReport($first, [
         'status' => CommentReportStatus::Resolved,
-        'expectedRevision' => $comment->fresh()?->revision,
+        'expected_revision' => $comment->fresh()?->revision,
         'resolution' => 'Reviewed',
     ], SystemActor::Background);
 

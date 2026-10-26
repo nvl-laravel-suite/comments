@@ -95,7 +95,7 @@ it('keeps revision history with the author and omits editor identity from its ro
     $stranger = NativeCommentActor::create(['name' => 'Stranger']);
     $writer = app(CommentWriter::class);
     $comment = $writer->create($target, ['body' => 'Before'], $author);
-    $writer->update($comment, ['body' => 'After', 'expectedRevision' => $comment->revision], $author);
+    $writer->update($comment, ['body' => 'After', 'expected_revision' => $comment->revision], $author);
     $reader = app(CommentReader::class);
 
     $history = $reader->revisions($comment, $author);

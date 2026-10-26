@@ -20,7 +20,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Resolves or dismisses one report through moderator authorization.
  *
- * @api
+ * @internal
  */
 final readonly class CommentReportResolver
 {
@@ -45,9 +45,9 @@ final readonly class CommentReportResolver
         array $data,
         CommentActor $actor,
     ): CommentReport {
-        if (array_diff(array_keys($data), ['status', 'expectedRevision', 'resolution']) !== []
-            || ! is_int($data['expectedRevision'] ?? null)
-            || $data['expectedRevision'] < 1
+        if (array_diff(array_keys($data), ['status', 'expected_revision', 'resolution']) !== []
+            || ! is_int($data['expected_revision'] ?? null)
+            || $data['expected_revision'] < 1
             || ! is_string($data['resolution'] ?? null)) {
             throw new InvalidCommentMutationException('Comment report resolution attributes are invalid.');
         }
@@ -66,7 +66,7 @@ final readonly class CommentReportResolver
         }
 
         $this->guard->resolution($data);
-        $this->lifecycle->expectedRevision($data['expectedRevision']);
+        $this->lifecycle->expectedRevision($data['expected_revision']);
         $commentId = $this->boundary->query(CommentReport::query(), 'comments.reports')
             ->findOrFail($reportId)->comment_id;
 
@@ -97,7 +97,7 @@ final readonly class CommentReportResolver
                         context: ['operation' => 'resolve_report', 'report_id' => $reportId],
                     );
 
-                    if ($comment->revision !== $data['expectedRevision']) {
+                    if ($comment->revision !== $data['expected_revision']) {
                         throw StaleCommentException::forComment($comment->id);
                     }
 

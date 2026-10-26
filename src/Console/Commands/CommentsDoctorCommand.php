@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Nvl\Comments\Console;
+namespace Nvl\Comments\Console\Commands;
 
 use Illuminate\Console\Command;
 use Nvl\Comments\Services\CommentsDoctor;

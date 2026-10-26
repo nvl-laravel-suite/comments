@@ -24,6 +24,8 @@ use Throwable;
  * Routes bounded mention work to explicitly registered custom or Eloquent resources.
  *
  * @phpstan-type EloquentResolverDefinition array{model: class-string<Model>, searchable: list<string>, exposed: list<string>, label: string, authorization: class-string<CommentMentionResourceAuthorization>, url_resolver: class-string<CommentMentionUrlResolver>|null}
+ *
+ * @internal
  */
 final class CommentMentionResourceRegistry
 {

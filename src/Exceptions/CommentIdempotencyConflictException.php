@@ -8,7 +8,7 @@ use Illuminate\Contracts\Debug\ShouldntReport;
 
 /**
  * @api
-
+ *
  * Rejects reuse of a comment idempotency key for a different canonical request.
  */
 final class CommentIdempotencyConflictException extends CommentsException implements ShouldntReport

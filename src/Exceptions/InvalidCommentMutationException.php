@@ -13,7 +13,7 @@ use Nvl\Support\Traits\InteractsWithPackageFailure;
 
 /**
  * @api
-
+ *
  * Raised when validated transport data violates a comment-domain invariant.
  */
 final class InvalidCommentMutationException extends InvalidArgumentException implements RespondableException, ShouldntReport

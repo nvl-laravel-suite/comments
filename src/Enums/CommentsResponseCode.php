@@ -6,7 +6,9 @@ namespace Nvl\Comments\Enums;
 
 use Nvl\Support\Contracts\ResponseCode;
 
-/** Stable public response discriminators for Comments.
+/**
+ * Stable public response discriminators for Comments.
+ *
  * @api
  */
 enum CommentsResponseCode: string implements ResponseCode

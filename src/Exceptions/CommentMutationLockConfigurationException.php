@@ -6,7 +6,7 @@ namespace Nvl\Comments\Exceptions;
 
 /**
  * @api
-
+ *
  * Reports an unsafe or malformed comment mutation-lock configuration.
  */
 final class CommentMutationLockConfigurationException extends CommentsException {}

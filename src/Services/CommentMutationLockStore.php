@@ -11,6 +11,8 @@ use Throwable;
 
 /**
  * Resolves one canonical production-capable cache lock domain for comment mutations.
+ *
+ * @internal
  */
 final class CommentMutationLockStore
 {

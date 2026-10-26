@@ -10,7 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
 
-/** Canonical identity and original principal for one comment operation. */
+/**
+ * Canonical identity and original principal for one comment operation.
+ *
+ * @internal
+ */
 final readonly class CommentActor
 {
     private function __construct(

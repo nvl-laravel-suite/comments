@@ -29,6 +29,8 @@ use Throwable;
 
 /**
  * Performs non-mutating Comments installation diagnostics.
+ *
+ * @internal
  */
 final class CommentsDoctor
 {

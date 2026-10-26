@@ -46,7 +46,9 @@ final class CommentModelRegistry
         );
     }
 
-    /** Resolve and freeze the concrete Comment class before resource compilation.
+    /**
+     * Resolve and freeze the concrete Comment class before resource compilation.
+     *
      * @internal
      *
      * @return class-string<Comment>
@@ -64,7 +66,9 @@ final class CommentModelRegistry
         return $this->registration->modelClass();
     }
 
-    /** Resolve the immutable model from native framework entry points.
+    /**
+     * Resolve the immutable model from native framework entry points.
+     *
      * @internal
      *
      * @return class-string<Comment>
@@ -86,7 +90,9 @@ final class CommentModelRegistry
         return new $class;
     }
 
-    /** Persist a package-authored attribute map under the exact source assignment.
+    /**
+     * Persist a package-authored attribute map under the exact source assignment.
+     *
      * @internal
      *
      * @param  array<string, mixed>  $attributes
@@ -103,7 +109,9 @@ final class CommentModelRegistry
         });
     }
 
-    /** Create the canonical configured query.
+    /**
+     * Create the canonical configured query.
+     *
      * @internal
      *
      * @return Builder<Comment>

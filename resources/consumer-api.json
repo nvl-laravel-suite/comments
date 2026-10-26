@@ -632,7 +632,6 @@
             "file": "src/Models/Comment.php",
             "methods": [
                 "attachmentAssociations",
-                "bootHasOwnership",
                 "commentable",
                 "delete",
                 "fresh",
@@ -720,7 +719,6 @@
             "kind": "class",
             "file": "src/Models/CommentMention.php",
             "methods": [
-                "bootHasOwnership",
                 "comment",
                 "delete",
                 "fresh",
@@ -751,7 +749,6 @@
             "kind": "class",
             "file": "src/Models/CommentMetadataValue.php",
             "methods": [
-                "bootHasOwnership",
                 "comment",
                 "delete",
                 "fresh",
@@ -780,7 +777,6 @@
             "kind": "class",
             "file": "src/Models/CommentReaction.php",
             "methods": [
-                "bootHasOwnership",
                 "comment",
                 "delete",
                 "fresh",
@@ -811,7 +807,6 @@
             "kind": "class",
             "file": "src/Models/CommentReport.php",
             "methods": [
-                "bootHasOwnership",
                 "comment",
                 "delete",
                 "fresh",
@@ -847,7 +842,6 @@
             "kind": "class",
             "file": "src/Models/CommentRevision.php",
             "methods": [
-                "bootHasOwnership",
                 "comment",
                 "delete",
                 "fresh",
@@ -879,12 +873,24 @@
                 "UPDATED_AT"
             ]
         },
-        "Nvl\\Comments\\Services\\CommentAnonymizer": {
+        "Nvl\\Comments\\Services\\CommentAttachments": {
             "kind": "class",
-            "file": "src/Services/CommentAnonymizer.php",
+            "file": "src/Services/CommentAttachments.php",
             "methods": [
                 "__construct",
-                "anonymize"
+                "attach",
+                "detach"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Services\\CommentMentions": {
+            "kind": "class",
+            "file": "src/Services/CommentMentions.php",
+            "methods": [
+                "__construct",
+                "resolve",
+                "suggest"
             ],
             "properties": [],
             "constants": []
@@ -899,12 +905,14 @@
             "properties": [],
             "constants": []
         },
-        "Nvl\\Comments\\Services\\CommentModerationWriter": {
+        "Nvl\\Comments\\Services\\CommentModeration": {
             "kind": "class",
-            "file": "src/Services/CommentModerationWriter.php",
+            "file": "src/Services/CommentModeration.php",
             "methods": [
                 "__construct",
-                "moderate"
+                "moderate",
+                "report",
+                "resolveReport"
             ],
             "properties": [],
             "constants": []
@@ -920,62 +928,33 @@
             "properties": [],
             "constants": []
         },
-        "Nvl\\Comments\\Services\\CommentReportResolver": {
+        "Nvl\\Comments\\Services\\CommentReader": {
             "kind": "class",
-            "file": "src/Services/CommentReportResolver.php",
+            "file": "src/Services/CommentReader.php",
             "methods": [
                 "__construct",
-                "resolveReport"
+                "forOwners",
+                "latest",
+                "paginate",
+                "reports",
+                "revisions"
             ],
             "properties": [],
             "constants": []
         },
-        "Nvl\\Comments\\Services\\CommentReportWriter": {
+        "Nvl\\Comments\\Services\\CommentWriter": {
             "kind": "class",
-            "file": "src/Services/CommentReportWriter.php",
+            "file": "src/Services/CommentWriter.php",
             "methods": [
                 "__construct",
-                "report"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Comments\\Services\\CommentRestorationWriter": {
-            "kind": "class",
-            "file": "src/Services/CommentRestorationWriter.php",
-            "methods": [
-                "__construct",
-                "restore"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Comments\\Services\\CommentRevisionRestorer": {
-            "kind": "class",
-            "file": "src/Services/CommentRevisionRestorer.php",
-            "methods": [
-                "__construct",
-                "restore"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Comments\\Services\\CommentRichUpdateWriter": {
-            "kind": "class",
-            "file": "src/Services/CommentRichUpdateWriter.php",
-            "methods": [
-                "__construct",
-                "update"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Comments\\Services\\CommentUpdateWriter": {
-            "kind": "class",
-            "file": "src/Services/CommentUpdateWriter.php",
-            "methods": [
-                "__construct",
-                "update"
+                "anonymize",
+                "create",
+                "createRich",
+                "delete",
+                "restore",
+                "restoreRevision",
+                "update",
+                "updateRich"
             ],
             "properties": [],
             "constants": []

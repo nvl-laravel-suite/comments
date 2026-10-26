@@ -36,6 +36,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Audits denormalized counters and thread lineage with race-safe optional repairs.
+ *
+ * @internal
  */
 final readonly class CommentStateReconciler
 {

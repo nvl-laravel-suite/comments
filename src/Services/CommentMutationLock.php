@@ -21,6 +21,8 @@ use Throwable;
 
 /**
  * Serializes comment lifecycle mutations through sorted, reentrant atomic identities.
+ *
+ * @internal
  */
 final class CommentMutationLock
 {

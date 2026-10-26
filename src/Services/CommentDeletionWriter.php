@@ -22,6 +22,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
  *
  * This stable internal write boundary coordinates the same mutation locks, transaction,
  * revision, counters, and after-commit event for every package deletion entrypoint.
+ *
+ * @internal
  */
 final readonly class CommentDeletionWriter
 {

@@ -21,7 +21,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Applies an explicit moderation state and pin transition.
  *
- * @api
+ * @internal
  */
 final readonly class CommentModerationWriter
 {
@@ -76,7 +76,7 @@ final readonly class CommentModerationWriter
                         );
                     }
 
-                    if ($comment->revision !== $data['expectedRevision']) {
+                    if ($comment->revision !== $data['expected_revision']) {
                         throw StaleCommentException::forComment($comment->id);
                     }
 
@@ -130,13 +130,13 @@ final readonly class CommentModerationWriter
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return array{status: CommentStatus, expectedRevision: int, reason: ?string, pinned: ?bool}
+     * @return array{status: CommentStatus, expected_revision: int, reason: ?string, pinned: ?bool}
      */
     private function normalizeModeration(array $attributes): array
     {
-        if (array_diff(array_keys($attributes), ['status', 'expectedRevision', 'reason', 'pinned']) !== []
-            || ! is_int($attributes['expectedRevision'] ?? null)
-            || $attributes['expectedRevision'] < 1
+        if (array_diff(array_keys($attributes), ['status', 'expected_revision', 'reason', 'pinned']) !== []
+            || ! is_int($attributes['expected_revision'] ?? null)
+            || $attributes['expected_revision'] < 1
             || (array_key_exists('reason', $attributes)
                 && $attributes['reason'] !== null
                 && ! is_string($attributes['reason']))
@@ -155,7 +155,7 @@ final readonly class CommentModerationWriter
         }
 
         return [
-            'expectedRevision' => $attributes['expectedRevision'],
+            'expected_revision' => $attributes['expected_revision'],
             'status' => $status,
             'reason' => $attributes['reason'] ?? null,
             'pinned' => $attributes['pinned'] ?? null,

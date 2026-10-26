@@ -15,6 +15,8 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 /**
  * Builds batched viewer-safe documents and mention projections from stored snapshots.
+ *
+ * @internal
  */
 final readonly class CommentMentionProjectionFactory
 {

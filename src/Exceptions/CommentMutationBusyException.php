@@ -8,7 +8,7 @@ use Illuminate\Contracts\Debug\ShouldntReport;
 
 /**
  * @api
-
+ *
  * Signals that a concurrent comment mutation still owns the serialization lock.
  */
 final class CommentMutationBusyException extends CommentsException implements ShouldntReport {}

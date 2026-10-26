@@ -10,6 +10,8 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 
 /**
  * Enforces lifecycle concurrency, audit-reason, and idempotency invariants.
+ *
+ * @internal
  */
 final class CommentLifecycleGuard
 {
@@ -46,11 +48,11 @@ final class CommentLifecycleGuard
     /**
      * Validate the required terminal anonymization audit reason.
      *
-     * @param  array{expectedRevision: int, reason: string}  $data
+     * @param  array{expected_revision: int, reason: string}  $data
      */
     public function anonymization(array $data): void
     {
-        $this->expectedRevision($data['expectedRevision']);
+        $this->expectedRevision($data['expected_revision']);
 
         if (! mb_check_encoding($data['reason'], 'UTF-8')
             || preg_match('/\S/u', $data['reason']) !== 1) {

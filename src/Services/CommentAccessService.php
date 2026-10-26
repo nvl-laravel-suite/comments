@@ -13,6 +13,8 @@ use Nvl\Comments\Models\Comment;
 
 /**
  * Evaluates comment authorization and standardizes denial behavior.
+ *
+ * @internal
  */
 final readonly class CommentAccessService
 {

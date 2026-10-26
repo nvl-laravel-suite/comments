@@ -29,7 +29,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Irreversibly anonymizes one comment while retaining thread and audit structure.
  *
- * @api
+ * @internal
  */
 final readonly class CommentAnonymizer
 {
@@ -64,9 +64,9 @@ final readonly class CommentAnonymizer
             throw new AuthorizationException('Comment anonymization requires an identified actor.');
         }
 
-        if (array_diff(array_keys($data), ['expectedRevision', 'reason']) !== []
-            || ! is_int($data['expectedRevision'] ?? null)
-            || $data['expectedRevision'] < 1
+        if (array_diff(array_keys($data), ['expected_revision', 'reason']) !== []
+            || ! is_int($data['expected_revision'] ?? null)
+            || $data['expected_revision'] < 1
             || ! is_string($data['reason'] ?? null)
             || preg_match('/\S/u', $data['reason']) !== 1
             || mb_strlen($data['reason']) > 2000) {
@@ -124,7 +124,7 @@ final readonly class CommentAnonymizer
                     return $authorizationComment->refresh();
                 }
 
-                if ($authorizationComment->revision !== $data['expectedRevision']) {
+                if ($authorizationComment->revision !== $data['expected_revision']) {
                     throw StaleCommentException::forComment($authorizationComment->id);
                 }
 
@@ -170,7 +170,7 @@ final readonly class CommentAnonymizer
                             return $comment->refresh();
                         }
 
-                        if ($comment->revision !== $data['expectedRevision']) {
+                        if ($comment->revision !== $data['expected_revision']) {
                             throw StaleCommentException::forComment($comment->id);
                         }
 

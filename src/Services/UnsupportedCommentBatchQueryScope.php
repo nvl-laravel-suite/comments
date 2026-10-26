@@ -15,7 +15,11 @@ use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 
-/** Defers actionable unsupported-policy failure until a nonempty read is used. */
+/**
+ * Defers actionable unsupported-policy failure until a nonempty read is used.
+ *
+ * @internal
+ */
 final readonly class UnsupportedCommentBatchQueryScope implements CommentBatchQueryScope
 {
     /** Fail closed when active single-target policies cannot prove batch compatibility. */

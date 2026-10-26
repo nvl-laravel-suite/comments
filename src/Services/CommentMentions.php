@@ -15,7 +15,11 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
 
-/** Viewer-safe registered resource lookups for rich comments. */
+/**
+ * Viewer-safe registered resource lookups for rich comments.
+ *
+ * @api
+ */
 final readonly class CommentMentions
 {
     public function __construct(

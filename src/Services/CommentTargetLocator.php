@@ -16,6 +16,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Resolves a comment's canonical target on the target model's own connection.
+ *
+ * @internal
  */
 final readonly class CommentTargetLocator
 {

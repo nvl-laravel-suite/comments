@@ -20,6 +20,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Resolves one declaratively registered Eloquent mention resource.
+ *
+ * @internal
  */
 final readonly class EloquentCommentMentionResourceResolver implements CommentMentionResourceResolver, ViewerIndependentCommentMentionResource
 {

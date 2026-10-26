@@ -10,6 +10,8 @@ use Nvl\Comments\Support\CommentsConfiguration;
 
 /**
  * Enforces encoded limits around registry-normalized comment metadata.
+ *
+ * @internal
  */
 final readonly class CommentMetadataGuard
 {

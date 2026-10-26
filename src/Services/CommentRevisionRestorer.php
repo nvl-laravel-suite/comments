@@ -23,7 +23,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Restores historical comment content as a new optimistic revision.
  *
- * @api
+ * @internal
  */
 final readonly class CommentRevisionRestorer
 {

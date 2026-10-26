@@ -8,7 +8,7 @@ use Illuminate\Contracts\Debug\ShouldntReport;
 
 /**
  * @api
-
+ *
  * Rejects a comment lifecycle transition that violates durable state invariants.
  */
 final class InvalidCommentLifecycleException extends CommentsException implements ShouldntReport {}

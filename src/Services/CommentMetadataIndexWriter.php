@@ -16,6 +16,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Synchronizes and queries the hash-only registered metadata index.
+ *
+ * @internal
  */
 final readonly class CommentMetadataIndexWriter
 {

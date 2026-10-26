@@ -18,7 +18,11 @@ use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
-/** Composes mandatory ownership/deletion predicates around nested SQL authorization. */
+/**
+ * Composes mandatory ownership/deletion predicates around nested SQL authorization.
+ *
+ * @internal
+ */
 final readonly class CommentBatchQueryBuilder
 {
     /** Retain active package ownership and canonical host admission. */

@@ -8,6 +8,8 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 
 /**
  * Enforces workflow text invariants for native service callers.
+ *
+ * @internal
  */
 final class CommentWorkflowGuard
 {

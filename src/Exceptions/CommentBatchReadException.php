@@ -6,5 +6,6 @@ namespace Nvl\Comments\Exceptions;
 
 /**
  * @api
- Unsupported SQL authorization or storage capabilities prevent a safe batch read. */
+ * Unsupported SQL authorization or storage capabilities prevent a safe batch read.
+ */
 final class CommentBatchReadException extends CommentsException {}

@@ -33,6 +33,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 /**
  * Owns atomic native comment creation and delegates lifecycle mutations to the
  * existing domain writers.
+ *
+ * @api
  */
 final readonly class CommentWriter
 {
@@ -171,7 +173,7 @@ final readonly class CommentWriter
         );
     }
 
-    /** @param array{expectedRevision: int, reason: string} $attributes */
+    /** @param array{expected_revision: int, reason: string} $attributes */
     public function anonymize(
         Comment|string $comment,
         array $attributes,
@@ -189,7 +191,7 @@ final readonly class CommentWriter
     /**
      * Execute the common target, hierarchy, access, idempotency, and persistence lifecycle.
      *
-     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      * @param  array{version: int, blocks: array<array-key, mixed>}|null  $inputDocument
      */
     private function execute(
@@ -200,7 +202,7 @@ final readonly class CommentWriter
         ?array $inputDocument = null,
         ?string $canonicalDocument = null,
     ): Comment {
-        $idempotencyKey = $this->lifecycle->idempotencyKey($data['idempotencyKey']);
+        $idempotencyKey = $this->lifecycle->idempotencyKey($data['idempotency_key']);
         $targetPrototype = new ($target::class);
         $targetLookupKey = CommentTargetIdentifier::lookupKey($targetPrototype, $target->getKey());
         $commentConnectionName = (CommentModelRegistry::newInstance())->getConnectionName();
@@ -508,7 +510,7 @@ final readonly class CommentWriter
     /**
      * Authorize one root or reply creation before rich resource resolution.
      *
-     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      */
     private function authorizeCreation(
         Model $target,
@@ -555,7 +557,7 @@ final readonly class CommentWriter
     /**
      * Build the plain or rich canonical idempotency digest.
      *
-     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      */
     private function idempotencyHash(
         string $targetType,
@@ -596,7 +598,7 @@ final readonly class CommentWriter
     /**
      * Verify an exact keyed request against current target and participation access.
      *
-     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
+     * @param  (array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string}|array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}})  $data
      */
     private function authorizedReplay(
         Comment $comment,
@@ -658,11 +660,11 @@ final readonly class CommentWriter
 
     /**
      * @param  array<string, mixed>  $attributes
-     * @return ($rich is true ? array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}} : array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotencyKey: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string})
+     * @return ($rich is true ? array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, document: array{version: int, blocks: array<array-key, mixed>}} : array{format: CommentFormat, visibility: CommentVisibility, locale: ?string, parentId: ?string, idempotency_key: ?string, tags: list<mixed>, metadata: array<string, mixed>, body: string})
      */
     private function normalizeCreate(array $attributes, bool $rich = false): array
     {
-        $allowed = ['visibility', 'locale', 'parentId', 'tags', 'metadata', 'idempotencyKey'];
+        $allowed = ['visibility', 'locale', 'parentId', 'tags', 'metadata', 'idempotency_key'];
         $allowed = $rich ? [...$allowed, 'document'] : [...$allowed, 'body', 'format'];
         if (array_diff(array_keys($attributes), $allowed) !== []) {
             throw new InvalidCommentMutationException('Comment creation contains unsupported attributes.');
@@ -680,7 +682,7 @@ final readonly class CommentWriter
 
         $locale = $attributes['locale'] ?? null;
         $parentId = $attributes['parentId'] ?? null;
-        $idempotencyKey = $attributes['idempotencyKey'] ?? null;
+        $idempotencyKey = $attributes['idempotency_key'] ?? null;
         $tags = $attributes['tags'] ?? [];
         $metadata = $attributes['metadata'] ?? [];
         if (! $visibility instanceof CommentVisibility
@@ -706,7 +708,7 @@ final readonly class CommentWriter
             'visibility' => $visibility,
             'locale' => $locale,
             'parentId' => $parentId,
-            'idempotencyKey' => $idempotencyKey,
+            'idempotency_key' => $idempotencyKey,
             'tags' => $tags,
             'metadata' => $metadataMap,
         ];

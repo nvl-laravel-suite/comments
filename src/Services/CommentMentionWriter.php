@@ -11,6 +11,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Synchronizes current normalized mention rows from canonical documents.
+ *
+ * @internal
  */
 final readonly class CommentMentionWriter
 {

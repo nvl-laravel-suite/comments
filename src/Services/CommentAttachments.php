@@ -27,7 +27,11 @@ use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Integrations\OptionalIntegration;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
-/** Comment-authorized association operations over the optional native Media service. */
+/**
+ * Comment-authorized association operations over the optional native Media service.
+ *
+ * @api
+ */
 final readonly class CommentAttachments
 {
     public function __construct(

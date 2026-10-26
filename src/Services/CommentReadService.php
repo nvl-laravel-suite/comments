@@ -18,6 +18,8 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
  * Builds target-bound comment reads with trusted authorization scoping.
+ *
+ * @internal
  */
 final readonly class CommentReadService
 {

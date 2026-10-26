@@ -17,6 +17,8 @@ use Nvl\Comments\Support\CommentsConfiguration;
 
 /**
  * Resolves registered metadata schemas and owns canonical scalar normalization.
+ *
+ * @internal
  */
 final class CommentMetadataRegistry
 {

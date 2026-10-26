@@ -13,7 +13,11 @@ use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Support\Owners\OwnerBatch;
 
-/** Canonical owner admission plus fixed-query counts and latest rows bounded in SQL. */
+/**
+ * Canonical owner admission plus fixed-query counts and latest rows bounded in SQL.
+ *
+ * @internal
+ */
 final readonly class CommentBatchReader
 {
     /** Retain compatible SQL policy and focused storage predicates. */

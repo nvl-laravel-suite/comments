@@ -13,6 +13,8 @@ use Symfony\Polyfill\Intl\Normalizer\Normalizer;
 
 /**
  * Validates, resolves, and canonically compiles version-one rich documents.
+ *
+ * @internal
  */
 final readonly class CommentDocumentNormalizer
 {

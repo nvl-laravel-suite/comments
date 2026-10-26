@@ -10,7 +10,11 @@ use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Support\Enums\SystemActor;
 
-/** Explicit host-authorized moderation operations. */
+/**
+ * Explicit host-authorized moderation operations.
+ *
+ * @api
+ */
 final readonly class CommentModeration
 {
     public function __construct(
