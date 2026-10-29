@@ -47,3 +47,5 @@ Reads return audience-safe shaped arrays or paginators of them. Batch owner read
 Writes preserve canonical target identity, ownership admission, revision checks, idempotency, and transactional lifecycle changes. Rich documents use bounded blocks and registered mention resources. Metadata accepts only registered fields and projects values by audience. A missing optional Media provider does not affect comment reads and writes; an explicitly requested attachment operation fails clearly.
 
 Run `php artisan nvl:comments:doctor` after configuring the package. See [events](docs/events.md) for domain notifications and [contributing](CONTRIBUTING.md) for package development.
+
+Shared [service contracts, model extensions and composition](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/docs/consumer-api.md) apply alongside the package-specific rules above.

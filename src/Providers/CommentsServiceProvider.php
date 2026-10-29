@@ -157,13 +157,13 @@ final class CommentsServiceProvider extends ServiceProvider implements Ownership
 
         $this->publishes([
             __DIR__.'/../../config/nvl-comments.php' => config_path('nvl-comments.php'),
-        ], 'comments-config');
+        ], 'nvl-comments-config');
         $this->publishesMigrations([
             __DIR__.'/../../database/migrations' => database_path('migrations'),
-        ], 'comments-migrations');
+        ], 'nvl-comments-migrations');
         $this->publishes([
             __DIR__.'/../../resources/boost/skills' => base_path('.agents/skills'),
-        ], 'comments-skills');
+        ], 'nvl-comments-skills');
     }
 
     private function registerTransactionListeners(Dispatcher $events): void

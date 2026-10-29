@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\ConfiguredCommentAuthorization;
-use Nvl\Support\Config\PackageEnvironment;
 
 /** Complete runtime defaults; publication sections are declared in ../resources/config/sections.json. */
 return [
@@ -15,10 +14,10 @@ return [
     'connection' => null,
 
     'tables' => [
-        CommentsTables::Comments => CommentsTables::Comments,
-        CommentsTables::Reactions => CommentsTables::Reactions,
-        CommentsTables::Revisions => CommentsTables::Revisions,
-        CommentsTables::Reports => CommentsTables::Reports,
+        'comments' => CommentsTables::Comments,
+        'reactions' => CommentsTables::Reactions,
+        'revisions' => CommentsTables::Revisions,
+        'reports' => CommentsTables::Reports,
     ],
 
     'migrations' => [
@@ -49,7 +48,7 @@ return [
     ],
 
     'idempotency' => [
-        'digest_key' => PackageEnvironment::get('NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY'),
+        'digest_key' => env('NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY'),
     ],
 
     'threading' => [
@@ -67,7 +66,7 @@ return [
         'strict' => false,
         'maximum_bytes' => 16_384,
         'maximum_registered_fields' => 50,
-        'digest_key' => PackageEnvironment::get('NVL_COMMENTS_METADATA_DIGEST_KEY'),
+        'digest_key' => env('NVL_COMMENTS_METADATA_DIGEST_KEY'),
         'schemas' => [],
     ],
 
@@ -102,7 +101,6 @@ return [
 
     'mutation_lock' => [
         'enabled' => true,
-        'store' => null,
         'seconds' => 300,
         'wait_seconds' => 30,
         'allow_local_store' => false,
@@ -120,5 +118,6 @@ return [
         'default' => 25,
         'maximum' => 100,
     ],
+    'locks' => ['mutation' => ['store' => null]],
 
 ];

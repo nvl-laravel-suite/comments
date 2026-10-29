@@ -50,14 +50,14 @@ final class CommentMutationLockConfiguration
             $storeName = null;
         } elseif (! is_string($store)) {
             throw new CommentMutationLockConfigurationException(
-                'nvl-comments.mutation_lock.store must be null or a non-blank cache store name.',
+                'nvl-comments.locks.mutation.store must be null or a non-blank cache store name.',
             );
         } else {
             $storeName = trim($store);
 
             if ($storeName === '') {
                 throw new CommentMutationLockConfigurationException(
-                    'nvl-comments.mutation_lock.store must be null or a non-blank cache store name.',
+                    'nvl-comments.locks.mutation.store must be null or a non-blank cache store name.',
                 );
             }
         }

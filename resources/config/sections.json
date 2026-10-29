@@ -7,16 +7,16 @@
                 "attachments.enabled",
                 "authorization.class",
                 "connection",
+                "locks.mutation.store",
                 "mentions.enabled",
                 "migrations.enabled",
                 "models.comment",
                 "mutation_lock.enabled",
-                "mutation_lock.store",
                 "ownership.target_resources",
-                "tables.nvl_comments_comments",
-                "tables.nvl_comments_reactions",
-                "tables.nvl_comments_reports",
-                "tables.nvl_comments_revisions"
+                "tables.comments",
+                "tables.reactions",
+                "tables.reports",
+                "tables.revisions"
             ],
             "advanced": [
                 "attachments.allow_public_media",
