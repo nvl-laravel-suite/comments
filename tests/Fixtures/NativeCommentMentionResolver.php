@@ -11,8 +11,12 @@ use Nvl\Comments\ValueObjects\CommentMentionContext;
 
 final class NativeCommentMentionResolver implements CommentMentionResourceResolver
 {
+    public static int $resolutions = 0;
+
     public function resolve(CommentMentionContext $context, array $ids): Collection
     {
+        self::$resolutions++;
+
         return collect($ids)->filter(static fn (string $id): bool => $id === 'member-1')
             ->map($this->resource(...))->values();
     }

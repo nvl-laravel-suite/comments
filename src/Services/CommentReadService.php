@@ -7,6 +7,7 @@ namespace Nvl\Comments\Services;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -48,6 +49,31 @@ final readonly class CommentReadService
             CommentAbility::List,
             $withTrashed,
         );
+    }
+
+    /** Count only audience-visible replies after the target's List admission.
+     *
+     * @param  Collection<int, Comment>  $comments
+     * @return array<string, int>
+     */
+    public function replyCounts(Collection $comments, Model $target, CommentActor $actor, CommentAudience $audience): array
+    {
+        if ($comments->isEmpty()) {
+            return [];
+        }
+        $counts = $this->scopedQuery($target, $actor, $audience, CommentAbility::List, withTrashed: false)
+            ->whereIn('parent_id', $comments->pluck('id')->all())
+            ->select('parent_id')->selectRaw('COUNT(*) AS visible_count')
+            ->groupBy('parent_id')->toBase()->pluck('visible_count', 'parent_id');
+        $result = [];
+        foreach ($counts as $id => $count) {
+            if ((! is_int($count) && ! is_string($count)) || ! is_numeric($count)) {
+                throw new \LogicException('The visible comment reply count is not numeric.');
+            }
+            $result[(string) $id] = (int) $count;
+        }
+
+        return $result;
     }
 
     /**
@@ -220,20 +246,16 @@ final readonly class CommentReadService
     ): Builder {
         $identity = CommentTargetIdentifier::canonical($target);
 
-        $query = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
+        $query = $this->boundary->query(CommentModelRegistry::query()->useWritePdo(), 'comments.comments')
             ->when($withTrashed, static fn (Builder $query): Builder => $query->withTrashed())
             ->where(
                 'commentable_identity_hash',
                 CommentIdentity::pair($identity['type'], $identity['id']),
             );
 
-        $this->queryScope->scopeComments(
-            $query,
-            $actor->principal,
-            $target,
-            $audience,
-            $ability,
-        );
+        $query->where(function (Builder $scope) use ($actor, $target, $audience, $ability): void {
+            $this->queryScope->scopeComments($scope, $actor->principal, $target, $audience, $ability);
+        });
 
         return $query;
     }

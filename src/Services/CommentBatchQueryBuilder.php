@@ -58,7 +58,7 @@ final readonly class CommentBatchQueryBuilder
             'body', 'format', 'anonymized_at', 'created_at', 'updated_at',
         ])->selectRaw('ROW_NUMBER() OVER (PARTITION BY commentable_identity_hash ORDER BY created_at DESC, id DESC) AS nvl_comment_rank');
 
-        return $visible->newQuery()->fromSub($ranked, 'nvl_ranked_comments')
+        return $visible->newQuery()->useWritePdo()->fromSub($ranked, 'nvl_ranked_comments')
             ->where('nvl_comment_rank', '<=', $limit)->orderBy('commentable_identity_hash')->orderBy('nvl_comment_rank');
     }
 
@@ -102,7 +102,7 @@ final readonly class CommentBatchQueryBuilder
             $query->select($owner->qualifyColumn('*'));
         }
 
-        return $query->addSelect(['nvl_visible_comment_count' => $comments->selectRaw('COUNT(*)')])->withCasts(['nvl_visible_comment_count' => 'integer']);
+        return $query->useWritePdo()->addSelect(['nvl_visible_comment_count' => $comments->selectRaw('COUNT(*)')])->withCasts(['nvl_visible_comment_count' => 'integer']);
     }
 
     /**
@@ -133,7 +133,7 @@ final readonly class CommentBatchQueryBuilder
      */
     private function base(): Builder
     {
-        $query = CommentModelRegistry::query()->withoutEagerLoads();
+        $query = CommentModelRegistry::query()->useWritePdo()->withoutEagerLoads();
         if (! in_array($query->getModel()->getConnection()->getDriverName(), ['sqlite', 'pgsql', 'mysql', 'mariadb'], true)) {
             throw new CommentBatchReadException('Comment batch reads require SQLite, PostgreSQL, MySQL or MariaDB window-query support.');
         }

@@ -34,7 +34,7 @@ final readonly class CommentTargetLocator
         $prototype = new ($target::class);
         $lookupKey = CommentTargetIdentifier::lookupKey($prototype, $target->getKey());
 
-        $query = $prototype->newQuery();
+        $query = $prototype->newQuery()->useWritePdo();
         if (CommentsOwnership::active()) {
             $query = $this->boundary->query($query, CommentsOwnership::resource($prototype));
         }
@@ -91,7 +91,7 @@ final readonly class CommentTargetLocator
             );
         }
 
-        $query = $prototype->newQuery();
+        $query = $prototype->newQuery()->useWritePdo();
         if (CommentsOwnership::active()) {
             $query = $this->boundary->query($query, CommentsOwnership::resource($prototype));
         }

@@ -7,6 +7,7 @@ namespace Nvl\Comments\Services;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
+use Nvl\Support\Auth\CanonicalActorResolver;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
 
@@ -32,11 +33,7 @@ final readonly class CommentActor
             return $identity;
         }
 
-        $prototype = new ($principal::class);
-        $current = $prototype->newQuery()->whereKey($principal->getKey())->first();
-        if (! $current instanceof Authenticatable) {
-            throw new AuthorizationException('The comment actor is unavailable.');
-        }
+        $current = app(CanonicalActorResolver::class)->resolve($principal);
 
         return self::inspect($current);
     }

@@ -1,5 +1,11 @@
 # Upgrading NVL Comments
 
+Native paginated/latest reads and revision history now expose viewer-safe `document` and `mentions` projections. Revision metadata is projected into audience-visible namespace/value records instead of exposing the stored metadata map. Update consumers that accessed raw historical metadata keys.
+
+`replyCount` now reflects audience-visible replies rather than the stored lifecycle total. SQL query-scope predicates remain inside the mandatory target boundary, including caller `OR` clauses. Actor and target authority reloads and comment visibility queries use writer connections to avoid stale replica privileges or visibility. No dependencies or schema migrations are added.
+
+Pass an authenticated model, `SystemActor::Background`, or `PublicActor::Anonymous` directly to `withNvlVisibleCommentCount`; the scope now resolves the internal canonical actor itself, matching native service inputs.
+
 ## NVL Light: planned family 7
 
 Light requires PHP 8.4 and Laravel 13. Replace retired package Actions, transport DTOs, HTTP endpoints and generated frontend types with host-owned adapters around the native services documented in [README.md](README.md). Models remain ordinary Eloquent models; domain operations retain their documented policies, validation, locks and lifecycle guarantees. Pass explicit admitted actors and configure optional integrations deliberately.

@@ -7,6 +7,7 @@ namespace Nvl\Comments\Services;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
@@ -34,6 +35,7 @@ final readonly class CommentReader
         private CommentTargetLocator $targets,
         private CommentMetadataRegistry $metadata,
         private OwnershipBoundary $boundary,
+        private CommentMentionProjectionFactory $projections,
     ) {}
 
     /** @return LengthAwarePaginator<int, array<string, mixed>> */
@@ -54,9 +56,13 @@ final readonly class CommentReader
             $query->whereNull('parent_id');
         }
 
-        return $query->orderByDesc('created_at')->orderByDesc('id')
-            ->paginate($this->pageSize($perPage))
-            ->through(fn (Comment $comment): array => $this->summary($comment, $audience));
+        $page = $query->orderByDesc('created_at')->orderByDesc('id')
+            ->paginate($this->pageSize($perPage));
+        $comments = $page->getCollection();
+        $replyCounts = $this->reads->replyCounts($comments, $target, $identity, $audience);
+        $projections = $this->projections->project($comments, $target, $identity, $audience);
+
+        return $page->through(fn (Comment $comment): array => $this->summary($comment, $audience, $replyCounts[$comment->id] ?? 0, $projections[$comment->id]));
     }
 
     /**
@@ -79,13 +85,21 @@ final readonly class CommentReader
         CommentAudience $audience = CommentAudience::Public,
     ): ?array {
         $target = $this->targets->reload($target);
-        $comment = $this->reads->query($target, CommentActor::from($actor), $audience, withTrashed: false)
+        $identity = CommentActor::from($actor);
+        $comment = $this->reads->query($target, $identity, $audience, withTrashed: false)
             ->orderByDesc('created_at')->orderByDesc('id')->first();
 
-        return $comment instanceof Comment ? $this->summary($comment, $audience) : null;
+        if (! $comment instanceof Comment) {
+            return null;
+        }
+        $comments = new Collection([$comment]);
+        $replyCounts = $this->reads->replyCounts($comments, $target, $identity, $audience);
+
+        return $this->summary($comment, $audience, $replyCounts[$comment->id] ?? 0,
+            $this->projections->project($comments, $target, $identity, $audience)[$comment->id]);
     }
 
-    /** @return LengthAwarePaginator<int, array{id: string, revision: int, body: string, format: CommentFormat, locale: ?string, tags: list<string>|null, metadata: array<string, mixed>|null}> */
+    /** @return LengthAwarePaginator<int, array{id: string, revision: int, body: string, format: CommentFormat, locale: ?string, tags: list<string>|null, metadata: list<array{namespace:string,values:array<string,mixed>}>,document:array<string,mixed>|null,mentions:list<array<string,mixed>>}> */
     public function revisions(
         Comment|string $comment,
         Authenticatable|SystemActor|PublicActor $actor,
@@ -94,28 +108,33 @@ final readonly class CommentReader
     ): LengthAwarePaginator {
         $identity = CommentActor::from($actor);
         $comment = $this->reads->resolveById($comment, $identity, $audience, CommentAbility::ViewHistory);
+        $target = $this->targets->locate($comment);
         $this->access->authorize(
             CommentAbility::ViewHistory,
             $identity,
             $comment,
-            $this->targets->locate($comment),
+            $target,
             $audience,
             asNotFound: $audience !== CommentAudience::Management,
         );
 
-        return $this->boundary->query(CommentRevision::query(), 'comments.revisions')
+        $page = $this->boundary->query(CommentRevision::query(), 'comments.revisions')
             ->where('comment_id', $comment->id)
             ->orderByDesc('revision')->orderByDesc('id')
-            ->paginate($this->pageSize($perPage))
-            ->through(static fn (CommentRevision $revision): array => [
-                'id' => $revision->id,
-                'revision' => $revision->revision,
-                'body' => $revision->body,
-                'format' => $revision->format,
-                'locale' => $revision->locale,
-                'tags' => $revision->tags,
-                'metadata' => $revision->metadata,
-            ]);
+            ->paginate($this->pageSize($perPage));
+        $projections = $this->projections->project($page->getCollection(), $target, $identity, $audience);
+
+        return $page->through(fn (CommentRevision $revision): array => [
+            'id' => $revision->id,
+            'revision' => $revision->revision,
+            'body' => $revision->body,
+            'format' => $revision->format,
+            'locale' => $revision->locale,
+            'tags' => $revision->tags,
+            'metadata' => $this->metadata->project($revision->metadata, $audience),
+            'document' => $projections[$revision->id]['document'],
+            'mentions' => $projections[$revision->id]['mentions'],
+        ]);
     }
 
     /** @return LengthAwarePaginator<int, array{id: string, reason: string, details: ?string, status: CommentReportStatus, resolution: ?string}> */
@@ -161,15 +180,18 @@ final readonly class CommentReader
         return max(1, min($maximum, $perPage ?? $default));
     }
 
-    /** @return array<string, mixed> */
-    private function summary(Comment $comment, CommentAudience $audience): array
+    /**
+     * @param  array{document:array<string,mixed>|null,mentions:list<array<string,mixed>>}  $projection
+     * @return array<string, mixed>
+     */
+    private function summary(Comment $comment, CommentAudience $audience, int $replyCount, array $projection): array
     {
         $result = [
             'id' => $comment->id,
             'parentId' => $comment->parent_id,
             'revision' => $comment->revision,
             'createdAt' => $comment->created_at->format(DATE_ATOM),
-            'replyCount' => $comment->reply_count,
+            'replyCount' => $replyCount,
             'reactionCount' => $comment->reaction_count,
             'metadata' => $this->metadata->project($comment->metadata, $audience),
         ];
@@ -181,6 +203,6 @@ final readonly class CommentReader
             $result['status'] = $comment->status;
         }
 
-        return $result;
+        return $result + $projection;
     }
 }

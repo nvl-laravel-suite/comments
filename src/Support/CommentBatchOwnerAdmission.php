@@ -35,7 +35,7 @@ final readonly class CommentBatchOwnerAdmission
         $loaded = [];
         foreach ($groups as $class => $ids) {
             $prototype = new $class;
-            $query = $this->scope($prototype->newQuery()->withoutEagerLoads());
+            $query = $this->scope($prototype->newQuery()->useWritePdo()->withoutEagerLoads());
             $query->where(function (Builder $keys) use ($prototype, $ids): void {
                 foreach ($ids as $id) {
                     $keys->orWhere(function (Builder $key) use ($prototype, $id): void {

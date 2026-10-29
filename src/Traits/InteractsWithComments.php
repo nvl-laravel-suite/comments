@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Traits;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -14,6 +15,8 @@ use Nvl\Comments\Relations\StringMorphMany;
 use Nvl\Comments\Services\CommentActor;
 use Nvl\Comments\Services\CommentBatchQueryBuilder;
 use Nvl\Comments\Services\CommentModelRegistry;
+use Nvl\Support\Enums\PublicActor;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Adds a string-key-compatible comment relationship to a model.
@@ -32,9 +35,9 @@ trait InteractsWithComments
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
-    public function scopeWithNvlVisibleCommentCount(Builder $query, CommentActor $actor, CommentAudience $audience = CommentAudience::Public, ?CommentBatchQueryScope $policy = null): Builder
+    public function scopeWithNvlVisibleCommentCount(Builder $query, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience = CommentAudience::Public, ?CommentBatchQueryScope $policy = null): Builder
     {
-        return app(CommentBatchQueryBuilder::class)->withVisibleCount($query, $actor, $audience, $policy ?? app(CommentBatchQueryScope::class));
+        return app(CommentBatchQueryBuilder::class)->withVisibleCount($query, CommentActor::from($actor), $audience, $policy ?? app(CommentBatchQueryScope::class));
     }
 
     /**

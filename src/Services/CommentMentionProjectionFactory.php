@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 
@@ -31,7 +32,9 @@ final readonly class CommentMentionProjectionFactory
     /**
      * Project one authorized comment batch with one bounded lookup per resource alias.
      *
-     * @param  Collection<int, Comment>  $comments
+     * @template T of Comment|CommentRevision
+     *
+     * @param  Collection<int, T>  $comments
      * @return array<string, array{document: array<string, mixed>|null, mentions: list<array<string, mixed>>}>
      */
     public function project(
@@ -45,7 +48,7 @@ final readonly class CommentMentionProjectionFactory
         $idsByAlias = [];
 
         foreach ($comments as $comment) {
-            if ($this->isTombstone($comment)
+            if (($comment instanceof Comment && $this->isTombstone($comment))
                 || $comment->format !== CommentFormat::RichText
                 || ! is_array($comment->document)) {
                 continue;
