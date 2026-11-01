@@ -188,6 +188,7 @@ final readonly class CommentStateReconciler
                 $maximumDepth,
                 $repair,
             ): void {
+                $replyCounts = $this->replyCounts($comments);
                 $missingTargetIds = $this->missingCanonicalTargetIds($comments);
                 [$fingerprintMismatchIds, $fingerprintMismatchCount] =
                     $this->fingerprintDrift($comments);
@@ -235,10 +236,7 @@ final readonly class CommentStateReconciler
                     }
 
                     $invalidAttachmentAssociations += $invalidAttachmentCount;
-                    $actualReplyCount = $this->integerAggregate(
-                        $comment,
-                        'actual_reply_count',
-                    );
+                    $actualReplyCount = $replyCounts[$comment->id] ?? 0;
                     $actualReactionCount = $this->integerAggregate(
                         $comment,
                         'actual_reaction_count',
@@ -464,7 +462,6 @@ final readonly class CommentStateReconciler
             ->with('metadataValues')
             ->with($this->parentRelations($maximumDepth))
             ->withCount([
-                'replies as actual_reply_count',
                 'reactions as actual_reaction_count',
                 'reports as actual_report_count',
                 'reports as actual_open_report_count' => static fn (Builder $query): Builder => $query
@@ -485,6 +482,32 @@ final readonly class CommentStateReconciler
                 'commentable_identity_hash',
                 CommentIdentity::pair($identity['type'], $identity['id']),
             );
+    }
+
+    /**
+     * Count live replies from canonical scoped storage without a self-relation alias.
+     *
+     * @param  Collection<int, Comment>  $comments
+     * @return array<string, int>
+     */
+    private function replyCounts(Collection $comments): array
+    {
+        $counts = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
+            ->whereIn('parent_id', $comments->modelKeys())
+            ->selectRaw('parent_id, count(*) as reply_count')
+            ->groupBy('parent_id')
+            ->toBase()
+            ->pluck('reply_count', 'parent_id');
+        $result = [];
+        foreach ($counts as $parentId => $count) {
+            $count = filter_var($count, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            if (! is_string($parentId) || ! is_int($count)) {
+                throw new InvalidArgumentException('Stored comment reply counts must be nonnegative integers keyed by comment identifiers.');
+            }
+            $result[$parentId] = $count;
+        }
+
+        return $result;
     }
 
     /**

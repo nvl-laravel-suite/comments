@@ -1,31 +1,79 @@
 ---
 name: nvl-comments
-description: Use for native NVL Comments reads, writes, moderation, reactions, mentions, and optional Media attachments.
+description: Use when integrating nvl/comments discussion targets, plain or rich comments, audience-safe reads, moderation, reactions, mentions, revision history, anonymity or optional Media attachments.
 ---
 
 # NVL Comments
 
-Use the package's native domain services. Host applications own controllers, routes, request validation, API resources, actor presentation, and frontend types. The package does not register HTTP endpoints or publish TypeScript contracts.
+Use native PHP 8.4 / Laravel 13 domain services. The host owns controllers,
+routes, requests, resources, actor presentation, editor UI and frontend types.
 
-## Configure
+## References
 
-Register target aliases in `nvl-comments.targets` with `CommentTargetResolver` implementations. Bind `CommentAuthorization`, `CommentQueryScope`, and `CommentBatchQueryScope` to host policy when the conservative default does not cover the application. Every policy method receives an explicit `Authenticatable|SystemActor|PublicActor` actor; do not read the current guard or infer a system permission. A persisted human actor must keep its registered class, key, table, and connection. `SystemActor::Background` is an identity and is denied by default. `PublicActor::Anonymous` is available only for supported public operations and anonymous creation must be enabled explicitly.
+- [Installation](references/installation.md): dependencies, configuration, locks, migrations and publication.
+- [Native API](references/api.md): exact public methods, enums, contracts and domain values.
+- [Usage](references/usage.md): target/policy setup, payload examples, privacy and optional integrations.
 
-Use one migration source: vendor loading or published host migrations. Run `php artisan nvl:comments:doctor` after configuration. Ownership, visibility, and moderation are checked against canonically reloaded targets and comments. Never take target class, owner scope, audience, or actor identity directly from an untrusted request.
+## Select a native capability
 
-## Services
+| Need | Service |
+| --- | --- |
+| Create plain/rich, edit, delete/restore, restore revision, anonymize | `CommentWriter` |
+| Page/latest, owner summaries, revisions and reports | `CommentReader` |
+| Approve/reject/hide/spam, report or resolve report | `CommentModeration` |
+| Set/remove a configured reaction | `CommentReactions` |
+| Resolve mentions or suggest registered resources | `CommentMentions` |
+| Attach/detach native assets | `CommentAttachments` |
 
-- `CommentWriter`: `create`, `createRich`, `update`, `updateRich`, `delete`, `restore`, `restoreRevision`, `anonymize`.
-- `CommentReader`: `paginate`, `forOwners`, `latest`, `revisions`, `reports`. Results are audience-safe arrays or paginators of arrays. Owner batches return ordered `order` and `values` and have deterministic bounded reads.
-- `CommentReactions`: `add`, `remove` for configured reaction types.
-- `CommentModeration`: `moderate`, `report`, `resolveReport` with host policy.
-- `CommentMentions`: `resolve`, `suggest` for explicitly registered mention resources.
-- `CommentAttachments`: `attach`, `detach` through optional native Media authorization and slots.
+## Canonical target and host policy
 
-Pass native Eloquent models, enums, scalars, and shaped arrays. Mutations return package models for trusted host code; map consumer-facing resources yourself and never expose stored actor identity from a raw model. Use an expected revision for lifecycle changes. Rich documents and metadata use configured allowlists. Keep idempotency keys stable for retried creation/reporting. Requested Media operations fail explicitly when the provider is absent; ordinary comments continue without Media.
+Register stable target aliases and `CommentTargetResolver` implementations in
+`nvl-comments.targets`. Keep target class/owner capability registration server-owned.
+Services reload actor, target and comment facts on writer connections with host
+scopes and native Ownership intact; submitted identities never establish authority.
 
-Paginate/latest/history reads include viewer-safe `document` and `mentions` projections, with bounded resource batches. Plain rows have a null document and empty mentions; owner-batch latest rows remain text snippets. Historical metadata uses the audience-visible namespace/value projection. `replyCount` is computed for the explicit actor and audience, including moderation visibility, in one aggregate per page. Query-scope predicates are nested inside the canonical target boundary; use predicate/relationship constraints so loose OR clauses cannot expose other targets.
+Choose `CommentAuthorization`, `CommentQueryScope` and `CommentBatchQueryScope`
+together. Imperative permission checks do not replace SQL visibility predicates.
+Default policy is conservative public discussion, not a private-thread/moderator
+policy. `SystemActor::Background` is denied by default; anonymous creation needs
+explicit opt-in. Public, Member and Management audiences are policy boundaries.
 
-Actor and target policy facts reload through writer connections with host scopes intact. Comment visibility queries, batch summaries and correlated host counts also use writer connections to prevent stale replica visibility. Bulk targets reload once per model class. The `withNvlVisibleCommentCount` model scope accepts native explicit principals directly and resolves the canonical actor internally. Preserve these boundaries when adding host projections or callbacks.
+## Native mutation and privacy contracts
 
-Run the owning Pest suite after changing package behavior, and keep audience, privacy, revision, idempotency, canonical identity, and bounded batch assertions active.
+- Create accepts closed plain/Markdown keys; rich documents use `createRich`.
+- Updates and moderation carry `expected_revision`; delete/restore take it separately.
+- Preserve null/omission for optional locale, tags and metadata as the operation defines.
+- Keep one creation `idempotency_key` for the same retried input.
+- Reports accept reason/details; they do not accept a caller idempotency key.
+- Reactions request an explicit enabled/removed state rather than a toggle.
+- Rich documents, mentions and metadata retain their registered schemas/allowlists.
+
+Mutations return native models for trusted host orchestration. Never serialize a
+raw model as public actor identity. Reader output is audience-safe arrays/paginators;
+plain documents are null with no mentions. Revision metadata uses visible
+namespace/value projection. Owner-batch latest entries remain text snippets.
+
+## Batches and optional integrations
+
+Query scopes nest inside canonical target predicates so loose OR clauses cannot
+escape into another target. Preserve bounded resource batches, actor-aware reply
+counts and correlated visible-comment counts. Batch admission/SQL callbacks must
+not issue per-row queries. Explicit actor/audience also applies to model count scopes.
+
+Mention resources require `nvl-comments.mentions.enabled` and declared resolvers
+or model/search/exposure/authorization configuration. Optional Media attachments
+use `attachments.enabled` (null detection, false disable, true require), native
+Media permissions and slots. Ordinary comments work without Media.
+
+## Models, transactions and checks
+
+Select `nvl-comments.models.comment` before boot with a concrete Comment subclass.
+Keep native UUIDs, casts, rich-document/content hooks and configured storage.
+Ownership is unscoped or inherited through canonical `commentable`; fixed history,
+reports and reaction models are not replaceable roots. Added columns need host migrations.
+
+Keep mutation locks, source-connection transactions, revisions, idempotency digests,
+moderation counters and outer-commit events intact. Test audience privacy, actor/target
+substitution, retries, parent/depth rules, rich mentions, optional asset absence,
+revision restoration/anonymization and rollback. Use [usage](references/usage.md)
+for actual payloads; avoid inventing routes or blanket policy grants.

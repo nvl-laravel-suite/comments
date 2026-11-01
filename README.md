@@ -44,6 +44,8 @@ $summaries = app(CommentReader::class)->forOwners([$article], $user);
 
 Reads return audience-safe shaped arrays or paginators of them. Batch owner reads return `order` and `values`, preserve requested owner order, and return an explicit empty result for an empty owner list. Raw Eloquent models returned by mutation services contain stored actor identity and belong only in trusted application code. Consumers should map their own API resources.
 
+Comment summaries include the boolean `pinned` moderation state. Thread/reply pagination sorts pinned visible comments first, then creation instant and UUID descending. `latest` and owner-batch `latest` retain chronological meaning and include `pinned` for presentation. Pinning never bypasses the selected audience's visibility and authorization predicates.
+
 `paginate`, `latest` and `revisions` include viewer-safe `document` and `mentions` fields. Plain comments return `document: null` and an empty mention list. Rich reads resolve registered resources in bounded batches; restricted resource identifiers are omitted. Historical metadata uses the same audience projection as current comments: a list of namespace/value records, never raw stored metadata. Batch-owner `latest` rows remain compact text snippets.
 
 `replyCount` counts replies visible to the requested audience and actor, including moderation constraints. Page reads use one scoped aggregate rather than one count query per comment. Stored counters remain internal lifecycle totals. Custom `CommentQueryScope` predicates are nested inside the mandatory target boundary, so an `orWhere` cannot widen the read to another target. Use predicate/relationship constraints in these scopes.

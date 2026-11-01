@@ -9,20 +9,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentMentionState;
+use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentActor;
 use Nvl\Comments\Services\CommentMentionResourceRegistry;
 use Nvl\Comments\Services\CommentMetadataRegistry;
+use Nvl\Comments\Services\CommentModeration;
 use Nvl\Comments\Services\CommentReader;
 use Nvl\Comments\Services\CommentTargetLocator;
 use Nvl\Comments\Services\CommentWriter;
 use Nvl\Comments\Support\CommentBatchOwnerAdmission;
 use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
 use Nvl\Comments\Tests\Fixtures\NativeCommentMentionResolver;
+use Nvl\Comments\Tests\Fixtures\NativeModerationPolicy;
 use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Support\Enums\PublicActor;
@@ -45,6 +49,34 @@ it('returns audience scoped public rows without persisted actor identity', funct
     expect($public->items()[0]['body'])->toBe('Public');
     expect($public->items()[0])->not->toHaveKey('actorId');
     expect($public->items()[0])->not->toHaveKey('actorType');
+});
+
+it('exposes pin state and orders thread pages by pins while latest stays chronological', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $author = NativeCommentActor::create(['name' => 'Author']);
+    $this->travelTo('2026-11-01 10:00:00');
+    $older = app(CommentWriter::class)->create($target, ['body' => 'Pinned'], $author, CommentAudience::Public);
+    $this->travel(1)->minute();
+    $newer = app(CommentWriter::class)->create($target, ['body' => 'Newest'], $author, CommentAudience::Public);
+
+    $authorization = app(CommentAuthorization::class);
+    $scope = app(CommentQueryScope::class);
+    $moderation = new NativeModerationPolicy;
+    app()->instance(CommentAuthorization::class, $moderation);
+    app()->instance(CommentQueryScope::class, $moderation);
+    app(CommentModeration::class)->moderate($older, ['status' => CommentStatus::Approved, 'pinned' => true, 'expected_revision' => $older->revision], SystemActor::Background);
+    app()->instance(CommentAuthorization::class, $authorization);
+    app()->instance(CommentQueryScope::class, $scope);
+
+    $reader = app(CommentReader::class);
+    $page = $reader->paginate($target, PublicActor::Anonymous)->items();
+    expect(array_column($page, 'id'))->toBe([$older->id, $newer->id])
+        ->and(array_column($page, 'pinned'))->toBe([true, false]);
+    expect($reader->latest($target, PublicActor::Anonymous))->toMatchArray(['id' => $newer->id, 'pinned' => false]);
+    $batch = $reader->forOwners([$target], PublicActor::Anonymous, latestLimit: 2);
+    $latest = $batch['values'][$target->getMorphClass()][$target->id]['latest'];
+    expect(array_column($latest, 'id'))->toBe([$newer->id, $older->id])
+        ->and(array_column($latest, 'pinned'))->toBe([false, true]);
 });
 
 it('returns explicit empty owner summaries and bounded latest rows', function (): void {

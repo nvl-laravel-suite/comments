@@ -87,7 +87,7 @@ final class CommentMutationLockStore
 
         if (! is_string($storeName)) {
             throw new CommentMutationLockConfigurationException(
-                'cache.default must be a non-blank cache store name when comments.mutation_lock.store is null.',
+                'cache.default must be a non-blank cache store name when nvl-comments.locks.mutation.store is null.',
             );
         }
 
@@ -95,7 +95,7 @@ final class CommentMutationLockStore
 
         if ($storeName === '') {
             throw new CommentMutationLockConfigurationException(
-                'cache.default must be a non-blank cache store name when comments.mutation_lock.store is null.',
+                'cache.default must be a non-blank cache store name when nvl-comments.locks.mutation.store is null.',
             );
         }
 

@@ -35,7 +35,7 @@ final class CommentMutationLockConfiguration
         }
 
         $enabled = $configuration['enabled'] ?? null;
-        $store = $configuration['store'] ?? null;
+        $store = config('nvl-comments.locks.mutation.store');
         $seconds = $configuration['seconds'] ?? null;
         $waitSeconds = $configuration['wait_seconds'] ?? null;
         $allowLocalStore = $configuration['allow_local_store'] ?? null;

@@ -56,7 +56,7 @@ final readonly class CommentReader
             $query->whereNull('parent_id');
         }
 
-        $page = $query->orderByDesc('created_at')->orderByDesc('id')
+        $page = $query->orderByDesc('is_pinned')->orderByDesc('created_at')->orderByDesc('id')
             ->paginate($this->pageSize($perPage));
         $comments = $page->getCollection();
         $replyCounts = $this->reads->replyCounts($comments, $target, $identity, $audience);
@@ -191,6 +191,7 @@ final readonly class CommentReader
             'parentId' => $comment->parent_id,
             'revision' => $comment->revision,
             'createdAt' => $comment->created_at->format(DATE_ATOM),
+            'pinned' => $comment->is_pinned,
             'replyCount' => $replyCount,
             'reactionCount' => $comment->reaction_count,
             'metadata' => $this->metadata->project($comment->metadata, $audience),

@@ -5,6 +5,11 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Align NVL peers and consumer contracts on the coordinated 7.x line. Review [UPGRADING.md](UPGRADING.md) for adoption and application-owned integration requirements.
+- Expose pin state in safe reader projections and order thread/reply pages by visible pins while retaining chronological latest/batch-latest reads.
+
 ## [6.0.1] - 2026-10-21
 
 ### Changed

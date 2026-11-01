@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Nvl\Comments\Contracts\CommentAuthorization;
@@ -20,12 +21,76 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Services\CommentActor;
 use Nvl\Comments\Services\CommentAnonymizer;
+use Nvl\Comments\Services\CommentStateReconciler;
 use Nvl\Comments\Services\CommentWriter;
 use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
 use Nvl\Comments\Tests\Fixtures\NativeModerationPolicy;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
+
+it('audits and repairs native counter drift without changing the comment body', function (): void {
+    config(['nvl-comments.anonymous.enabled' => true]);
+    $target = TestCommentTarget::create(['name' => 'Reconciliation target']);
+    $comment = app(CommentWriter::class)->create($target, ['body' => 'Retained body'], PublicActor::Anonymous, CommentAudience::Public);
+    Comment::query()->whereKey($comment->id)->update(['reply_count' => 8, 'reaction_count' => 6, 'report_count' => 4, 'open_report_count' => 2]);
+    $service = app(CommentStateReconciler::class);
+
+    $audit = $service->reconcile($target, 1);
+    expect($audit['drifted'])->toBe(1)
+        ->and($audit['replyCountMismatches'])->toBe(1)
+        ->and($comment->fresh()->reply_count)->toBe(8);
+
+    $repair = $service->reconcile($target, 1, repair: true);
+    expect($repair['repaired'])->toBe(1)
+        ->and($repair['remaining'])->toBe(0)
+        ->and($repair['healthy'])->toBeTrue()
+        ->and($comment->fresh()->only(['reply_count', 'reaction_count', 'report_count', 'open_report_count', 'body']))
+        ->toBe(['reply_count' => 0, 'reaction_count' => 0, 'report_count' => 0, 'open_report_count' => 0, 'body' => 'Retained body']);
+});
+
+it('limits native reconciliation repairs to the selected target', function (): void {
+    config(['nvl-comments.anonymous.enabled' => true]);
+    $first = TestCommentTarget::create(['name' => 'First target']);
+    $second = TestCommentTarget::create(['name' => 'Second target']);
+    $writer = app(CommentWriter::class);
+    $one = $writer->create($first, ['body' => 'First'], PublicActor::Anonymous, CommentAudience::Public);
+    $two = $writer->create($second, ['body' => 'Second'], PublicActor::Anonymous, CommentAudience::Public);
+    Comment::query()->whereIn('id', [$one->id, $two->id])->update(['reaction_count' => 9]);
+
+    app(CommentStateReconciler::class)->reconcile($first, 1, repair: true);
+
+    expect($one->fresh()->reaction_count)->toBe(0)->and($two->fresh()->reaction_count)->toBe(9);
+});
+
+it('repairs native reply lineage from its canonical parent chain', function (): void {
+    config(['nvl-comments.anonymous.enabled' => true]);
+    $target = TestCommentTarget::create(['name' => 'Reply lineage']);
+    $writer = app(CommentWriter::class);
+    $parent = $writer->create($target, ['body' => 'Root'], PublicActor::Anonymous, CommentAudience::Public);
+    $reply = $writer->create($target, ['body' => 'Reply', 'parentId' => $parent->id], PublicActor::Anonymous, CommentAudience::Public);
+    Comment::query()->whereKey($reply->id)->update(['root_id' => null, 'depth' => 0]);
+
+    $result = app(CommentStateReconciler::class)->reconcile($target, 1, repair: true);
+
+    expect($result['threadMismatches'])->toBe(1)
+        ->and($result['remaining'])->toBe(0)
+        ->and($reply->fresh()->root_id)->toBe($parent->id)
+        ->and($reply->fresh()->depth)->toBe(1);
+});
+
+it('reports missing canonical targets without deleting retained native comments', function (): void {
+    config(['nvl-comments.anonymous.enabled' => true]);
+    $target = TestCommentTarget::create(['name' => 'Missing target']);
+    $comment = app(CommentWriter::class)->create($target, ['body' => 'Retained'], PublicActor::Anonymous, CommentAudience::Public);
+    DB::table($target->getTable())->where('id', $target->id)->delete();
+
+    $result = app(CommentStateReconciler::class)->reconcile(null, 1, repair: true);
+
+    expect($result['missingTargetComments'])->toBe(1)
+        ->and($result['healthy'])->toBeFalse()
+        ->and($comment->fresh()->body)->toBe('Retained');
+});
 
 it('creates an anonymous public comment only when the host enables it', function (): void {
     $target = TestCommentTarget::create(['name' => 'Article']);
