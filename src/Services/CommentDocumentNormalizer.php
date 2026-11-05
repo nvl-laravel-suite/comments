@@ -226,11 +226,12 @@ final readonly class CommentDocumentNormalizer
         array $document,
         bool $allowSnapshots,
     ): array {
-        if (($document['version'] ?? null) !== 1
+        if (! $this->hasExactKeys($document, ['version', 'blocks'])
+            || ($document['version'] ?? null) !== 1
             || ! is_array($document['blocks'] ?? null)
             || ! array_is_list($document['blocks'])) {
             throw new InvalidCommentMutationException(
-                'Comment documents must use version one and a block list.',
+                'Comment documents must contain only version one and a block list.',
             );
         }
 

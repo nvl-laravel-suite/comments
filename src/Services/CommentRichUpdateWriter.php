@@ -220,7 +220,7 @@ final readonly class CommentRichUpdateWriter
             throw new InvalidCommentMutationException('Rich comment update attributes are invalid.');
         }
 
-        $normalized = ['document' => ['version' => $document['version'], 'blocks' => $document['blocks']], 'expected_revision' => $attributes['expected_revision']];
+        $normalized = ['document' => $document, 'expected_revision' => $attributes['expected_revision']];
         if (array_key_exists('locale', $attributes)) {
             $normalized['locale'] = $attributes['locale'];
         }

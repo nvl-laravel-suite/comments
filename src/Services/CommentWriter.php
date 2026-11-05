@@ -721,7 +721,7 @@ final readonly class CommentWriter
                 throw new InvalidCommentMutationException('Rich comment creation requires a document.');
             }
 
-            $normalized['document'] = ['version' => $document['version'], 'blocks' => $document['blocks']];
+            $normalized['document'] = $document;
         } else {
             if (! is_string($attributes['body'] ?? null)) {
                 throw new InvalidCommentMutationException('Comment creation requires a body.');
