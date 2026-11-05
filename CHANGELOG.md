@@ -5,9 +5,17 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [7.0.1] - 2026-11-05
+
 ### Fixed
 
 - Reject unsupported fields on rich document envelopes before creation or update, preserving the closed document contract without silently discarding client input.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- reject unsupported rich document fields
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.0.0] - 2026-11-03
 
