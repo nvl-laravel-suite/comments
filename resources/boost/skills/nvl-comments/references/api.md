@@ -671,7 +671,9 @@ class Nvl\Comments\Models\Comment extends Illuminate\Database\Eloquent\Model imp
 public function commentable(): Illuminate\Database\Eloquent\Relations\MorphTo
 @return MorphTo<Model, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\MorphTo<Illuminate\Database\Eloquent\Model, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -807,7 +809,9 @@ final class Nvl\Comments\Models\CommentMention extends Illuminate\Database\Eloqu
 public function comment(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<Comment, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Comments\Models\Comment, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -844,7 +848,9 @@ final class Nvl\Comments\Models\CommentMetadataValue extends Illuminate\Database
 public function comment(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<Comment, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Comments\Models\Comment, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -879,7 +885,9 @@ final class Nvl\Comments\Models\CommentReaction extends Illuminate\Database\Eloq
 public function comment(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<Comment, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Comments\Models\Comment, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -916,7 +924,9 @@ final class Nvl\Comments\Models\CommentReport extends Illuminate\Database\Eloque
 public function comment(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<Comment, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Comments\Models\Comment, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -961,7 +971,9 @@ public const null UPDATED_AT=null
 public function comment(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<Comment, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Comments\Models\Comment, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
