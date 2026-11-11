@@ -85,9 +85,4 @@ final readonly class CommentActor
     {
         return self::from(PublicActor::Anonymous);
     }
-
-    public static function fromAuthenticatable(Authenticatable $principal): self
-    {
-        return self::from($principal);
-    }
 }

@@ -11,7 +11,7 @@ php artisan migrate
 
 Laravel discovers `Nvl\Comments\Providers\CommentsServiceProvider`. Vendor migrations load by default. If the host publishes them, set `nvl-comments.migrations.enabled` to `false` before migrating so only one migration source runs. The package config and translations may be published with `nvl-comments-config` and `nvl-comments-translations`.
 
-Register each comment target through `nvl-comments.targets` with a `CommentTargetResolver`. Bind `CommentAuthorization`, `CommentQueryScope`, and `CommentBatchQueryScope` to host policy implementations when the default public discussion policy is insufficient. Host policy receives the explicit actor on every call. `SystemActor::Background` identifies background work; it does not grant permission. Human actors must be persisted `Authenticatable` Eloquent models with canonical table, key, and connection. Anonymous creation uses `PublicActor::Anonymous` and requires `nvl-comments.anonymous.enabled=true`.
+`nvl-comments.targets` maps an alias to a `CommentTargetResolver` for `nvl:comments:reconcile --target=alias:identifier` and the Doctor only; writers and readers do not consult it. Bind `CommentAuthorization`, `CommentQueryScope`, and `CommentBatchQueryScope` to host policy implementations when the default public discussion policy is insufficient. Host policy receives the explicit actor on every call. `SystemActor::Background` identifies background work; it does not grant permission. Human actors must be persisted `Authenticatable` Eloquent models with canonical table, key, and connection. Anonymous creation uses `PublicActor::Anonymous` and requires `nvl-comments.anonymous.enabled=true`.
 
 ## Native services
 
@@ -25,6 +25,12 @@ Inject these services from the Laravel container. Inputs are native models, enum
 | `CommentModeration` | `moderate`, `report`, `resolveReport` |
 | `CommentMentions` | `resolve`, `suggest` |
 | `CommentAttachments` | `attach`, `detach`, when `nvl/media` is installed and enabled |
+
+Before running the sample:
+
+- Mutation locks reject the `array`, `null` and `failover` cache drivers, and `file` unless `nvl-comments.mutation_lock.allow_local_store` is `true`. Replies, updates, deletes and reactions therefore throw under Laravel's stock test environment (`CACHE_STORE=array`). Select a shared store with `nvl-comments.locks.mutation.store`; `null` uses `cache.default`.
+- New comments are `pending` (`nvl-comments.moderation.new_status`) and the default policy shows `CommentAudience::Public` readers only approved comments, so `paginate` below returns an empty page until the comment is approved or `new_status` is `approved`.
+- `createRich` and `updateRich` throw unless `nvl-comments.mentions.enabled` is `true`.
 
 ```php
 use Nvl\Comments\Enums\CommentAudience;
@@ -55,6 +61,14 @@ Writes preserve canonical target identity, ownership admission, revision checks,
 Actor and target facts used for authorization reload from their writer connections while retaining host scopes. Visibility queries, including batch summaries and correlated host counts, also use the writer connection so a stale read replica cannot expose newly hidden comments. Batch targets still reload once per model class.
 
 The `withNvlVisibleCommentCount` model scope accepts the same explicit native principals as the services: an authenticated model, `SystemActor::Background`, or `PublicActor::Anonymous`. It resolves the canonical actor internally and retains host scopes and selections.
+
+Reply pages (`paginate` with a `parentId`) are additionally capped by `nvl-comments.threading.maximum_replies_per_page`. `CommentMentions::suggest` uses `nvl-comments.mentions.suggestion_limit` when no limit is passed. Text inputs reject NUL bytes.
+
+Correlated host counts and `whereHas('comments')` / `withCount('comments')` use the `(commentable_type, commentable_id)` index and compare the host key in the comments column's collation, so host key columns with another collation are supported. A `database` cache lock store may share the Comments connection: inside a PostgreSQL transaction each lock attempt runs in a savepoint, so contention is reported as `CommentMutationBusyException` instead of aborting the host transaction.
+
+Force-deleting a comment removes its replies through Eloquent so every removed comment cleans up its Media attachments. That cleanup runs as `SystemActor::Background`; the host `MediaAuthorization` must admit it, otherwise the force delete fails.
+
+Idempotency digests and the metadata index are HMACs keyed by `nvl-comments.idempotency.digest_key` and `nvl-comments.metadata.digest_key`, which fall back to `APP_KEY`. Pin `NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY` to the current `APP_KEY` before rotating `APP_KEY`. After a change of the effective key, earlier idempotency keys are rejected as conflicts and `php artisan nvl:comments:reconcile --repair` rebuilds the metadata index.
 
 Run `php artisan nvl:comments:doctor` after configuring the package. See [events](docs/events.md) for domain notifications and [contributing](CONTRIBUTING.md) for package development.
 

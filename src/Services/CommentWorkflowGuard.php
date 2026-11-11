@@ -56,6 +56,7 @@ final class CommentWorkflowGuard
         bool $required = false,
     ): void {
         if (! mb_check_encoding($value, 'UTF-8')
+            || str_contains($value, "\0")
             || ($required && preg_match('/\S/u', $value) !== 1)) {
             throw new InvalidCommentMutationException(
                 "{$label} must contain valid".($required ? ', non-blank' : '').' UTF-8 text.',

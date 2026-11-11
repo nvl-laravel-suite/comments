@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Closure;
+use Illuminate\Cache\DatabaseLock;
 use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\DatabaseTransactionRecord;
 use Illuminate\Database\DatabaseTransactionsManager;
 use Illuminate\Database\Events\TransactionRolledBack;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Nvl\Comments\Exceptions\CommentMutationBusyException;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
@@ -110,7 +112,7 @@ final class CommentMutationLock
             foreach ($commentIds as $commentId) {
                 $key = $this->lockKey($commentId);
                 $lock = $provider->lock($key, $settings['seconds']);
-                $lock->block($settings['wait_seconds']);
+                $this->acquire($lock, $settings['wait_seconds']);
                 $locks[] = $lock;
                 $keys[] = $key;
                 $this->heldKeys[$key] = true;
@@ -180,6 +182,40 @@ final class CommentMutationLock
     /**
      * Build a stable cache key without exposing the comment identity.
      */
+    /**
+     * Wait for one lock. A database lock taken inside a PostgreSQL transaction contains each
+     * attempt in a savepoint: a contended insert would otherwise abort the host transaction.
+     */
+    private function acquire(Lock $lock, int $waitSeconds): void
+    {
+        $connection = $lock instanceof DatabaseLock ? DB::connection($lock->getConnectionName()) : null;
+        if ($connection === null || $connection->getDriverName() !== 'pgsql' || $connection->transactionLevel() === 0) {
+            $lock->block($waitSeconds);
+
+            return;
+        }
+
+        $deadline = microtime(true) + $waitSeconds;
+        while (true) {
+            try {
+                $acquired = $connection->transaction(static function () use ($lock): bool {
+                    $lock->pruneExpiredLocks();
+
+                    return $lock->get() === true;
+                });
+            } catch (QueryException) {
+                $acquired = false;
+            }
+            if ($acquired) {
+                return;
+            }
+            if (microtime(true) >= $deadline) {
+                throw new LockTimeoutException;
+            }
+            usleep(250_000);
+        }
+    }
+
     private function lockKey(string $commentId): string
     {
         $identity = CommentsOwnership::active()

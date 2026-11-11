@@ -6,7 +6,9 @@ namespace Nvl\Comments\Services;
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -63,6 +65,9 @@ final readonly class CommentAttachments
         return $this->locks->execute($commentId, fn (): MediaAssociation => $connection->transaction(function () use ($actor, $audience, $commentId, $identity, $mediaId): MediaAssociation {
             $comment = $this->reads->resolveById($commentId, $identity, $audience, CommentAbility::Attach, withTrashed: false, lockForUpdate: true);
             $this->access->authorize(CommentAbility::Attach, $identity, $comment, $this->targets->locate($comment), $audience, asNotFound: $audience !== CommentAudience::Management);
+            if (! Str::isUuid($mediaId)) {
+                throw (new ModelNotFoundException)->setModel(Media::class, [$mediaId]);
+            }
             $media = $this->boundary->query(MediaModelRegistry::query(), 'media.assets')->lockForUpdate()->findOrFail($mediaId);
             $authorization = app(MediaAuthorization::class);
             foreach ([MediaAbility::Associate, MediaAbility::View, MediaAbility::Download] as $ability) {
@@ -112,6 +117,9 @@ final readonly class CommentAttachments
         return $this->locks->execute($commentId, function () use ($actor, $associationId, $audience, $commentId, $identity): bool {
             $comment = $this->reads->resolveById($commentId, $identity, $audience, CommentAbility::Detach, withTrashed: false);
             $this->access->authorize(CommentAbility::Detach, $identity, $comment, $this->targets->locate($comment), $audience, asNotFound: $audience !== CommentAudience::Management);
+            if (! Str::isUuid($associationId)) {
+                return false;
+            }
             $association = $this->boundary->query(MediaAssociation::query(), 'media.associations')
                 ->whereKey($associationId)
                 ->where('associable_type', $comment->getMorphClass())

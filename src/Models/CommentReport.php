@@ -51,7 +51,6 @@ final class CommentReport extends Model implements Ownable
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id',
         'comment_id',
         'reporter_type',
         'reporter_id',

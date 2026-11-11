@@ -46,7 +46,6 @@ final class CommentMention extends Model implements Ownable
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id',
         'comment_id',
         'token_id',
         'resource_alias',

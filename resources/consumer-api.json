@@ -708,7 +708,6 @@
                 "status",
                 "status_hash",
                 "tags",
-                "tenant_id",
                 "updated_at",
                 "visibility",
                 "visibility_hash"
@@ -796,7 +795,6 @@
                 "comment_id",
                 "created_at",
                 "id",
-                "tenant_id",
                 "type",
                 "type_hash",
                 "updated_at"
@@ -866,8 +864,7 @@
                 "locale",
                 "metadata",
                 "revision",
-                "tags",
-                "tenant_id"
+                "tags"
             ],
             "constants": [
                 "UPDATED_AT"

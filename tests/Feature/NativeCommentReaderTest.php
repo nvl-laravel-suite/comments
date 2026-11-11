@@ -318,3 +318,18 @@ it('keeps SQL and mention lookups bounded as rich comment pages grow', function 
         NativeCommentMentionResolver::$resolutions = 0;
     }
 });
+
+it('caps reply pages at the configured replies per page', function (): void {
+    config(['nvl-comments.threading.maximum_replies_per_page' => 2]);
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $parent = $writer->create($target, ['body' => 'Parent'], $actor);
+    foreach (range(1, 3) as $index) {
+        $writer->create($target, ['body' => "Reply {$index}", 'parentId' => $parent->id], $actor);
+    }
+    $reader = app(CommentReader::class);
+
+    expect($reader->paginate($target, PublicActor::Anonymous, perPage: 50, parentId: $parent->id)->perPage())->toBe(2)
+        ->and($reader->paginate($target, PublicActor::Anonymous, perPage: 50)->perPage())->toBe(50);
+});

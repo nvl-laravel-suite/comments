@@ -22,7 +22,6 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * Immutable snapshot of comment content before an edit.
  *
  * @property string $id
- * @property string|null $tenant_id
  * @property string $comment_id
  * @property int $revision
  * @property string $body
@@ -50,7 +49,6 @@ final class CommentRevision extends Model implements Ownable
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id',
         'comment_id',
         'revision',
         'body',

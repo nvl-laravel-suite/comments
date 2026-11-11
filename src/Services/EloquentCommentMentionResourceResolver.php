@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Nvl\Comments\Services;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
@@ -52,7 +54,11 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
     {
         $model = new $this->modelClass;
         $key = $model->getKeyName();
-        $query = $this->resourceQuery($model, $context)->whereKey($ids);
+        // A malformed identifier can never match a UUID key and would fail the comparison on PostgreSQL.
+        $keys = in_array(HasUuids::class, class_uses_recursive($model), true)
+            ? array_values(array_filter($ids, Str::isUuid(...)))
+            : $ids;
+        $query = $this->resourceQuery($model, $context)->whereKey($keys);
         $this->authorization->scope($query, $context);
         $authorized = $query
             ->select($this->selectedFields($key))

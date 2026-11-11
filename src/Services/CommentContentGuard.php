@@ -113,16 +113,16 @@ final class CommentContentGuard
 
     private function assertBody(string $body): void
     {
-        if (! mb_check_encoding($body, 'UTF-8') || preg_match('/\S/u', $body) !== 1) {
+        if (! mb_check_encoding($body, 'UTF-8') || str_contains($body, "\0") || preg_match('/\S/u', $body) !== 1) {
             throw new InvalidCommentMutationException(
                 'Comment content must contain valid, non-blank UTF-8 text.',
             );
         }
 
-        $maximumBytes = CommentsConfiguration::positiveInteger(
+        $maximumBytes = min(CommentsConfiguration::MAXIMUM_BODY_BYTES, CommentsConfiguration::positiveInteger(
             'nvl-comments.content.maximum_bytes',
             20_000,
-        );
+        ));
 
         if (strlen($body) > $maximumBytes) {
             throw new InvalidCommentMutationException(
@@ -136,7 +136,7 @@ final class CommentContentGuard
      */
     private function assertDerivedBody(string $body): void
     {
-        if (! mb_check_encoding($body, 'UTF-8') || preg_match('/\S/u', $body) !== 1) {
+        if (! mb_check_encoding($body, 'UTF-8') || str_contains($body, "\0") || preg_match('/\S/u', $body) !== 1) {
             throw new InvalidCommentMutationException(
                 'Derived rich comment content must contain valid, non-blank UTF-8 text.',
             );
@@ -163,7 +163,7 @@ final class CommentContentGuard
     private function assertLocale(?string $locale): void
     {
         if ($locale !== null
-            && (! mb_check_encoding($locale, 'UTF-8') || mb_strlen($locale) > 35)) {
+            && (! mb_check_encoding($locale, 'UTF-8') || str_contains($locale, "\0") || mb_strlen($locale) > 35)) {
             throw new InvalidCommentMutationException(
                 'Comment locale must be valid UTF-8 containing at most 35 characters.',
             );

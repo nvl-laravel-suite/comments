@@ -40,6 +40,9 @@ final class CommentMentionResourceRegistry
      */
     private array $resources = [];
 
+    /** @var array<string, true> Declarative aliases whose columns were verified against the live schema. */
+    private array $verifiedColumns = [];
+
     /**
      * Create the mention resource alias registry.
      */
@@ -212,20 +215,12 @@ final class CommentMentionResourceRegistry
         }
 
         $model = new $modelClass;
-        $table = $model->getTable();
-        $columns = $model->getConnection()->getSchemaBuilder()->getColumnListing($table);
         $requiredColumns = array_unique([
             $model->getKeyName(),
             $labelField,
             ...$searchable,
             ...$exposed,
         ]);
-
-        if ($columns === [] || array_diff($requiredColumns, $columns) !== []) {
-            throw new InvalidArgumentException(
-                'Declarative comment mention resources reference nonexistent columns.',
-            );
-        }
 
         $explicitlyGuarded = array_values(array_filter(
             $model->getGuarded(),
@@ -426,6 +421,31 @@ final class CommentMentionResourceRegistry
     }
 
     /**
+     * Check a declarative resource against the live schema when it is first used, not when
+     * the registry is built, so plain comments neither query the schema nor fail on its table.
+     *
+     * @param  EloquentResolverDefinition  $definition
+     */
+    private function assertColumnsExist(string $alias, array $definition): void
+    {
+        if (isset($this->verifiedColumns[$alias])) {
+            return;
+        }
+
+        $model = new $definition['model'];
+        $columns = $model->getConnection()->getSchemaBuilder()->getColumnListing($model->getTable());
+        $required = [$model->getKeyName(), $definition['label'], ...$definition['searchable'], ...$definition['exposed']];
+
+        if ($columns === [] || array_diff($required, $columns) !== []) {
+            throw new InvalidArgumentException(
+                'Declarative comment mention resources reference nonexistent columns.',
+            );
+        }
+
+        $this->verifiedColumns[$alias] = true;
+    }
+
+    /**
      * Resolve one registered resource implementation.
      */
     private function resolver(string $alias): CommentMentionResourceResolver
@@ -436,6 +456,10 @@ final class CommentMentionResourceRegistry
             throw new InvalidCommentMutationException(
                 'Comment document contains an unregistered mention resource.',
             );
+        }
+
+        if (is_array($registered)) {
+            $this->assertColumnsExist($alias, $registered);
         }
 
         try {

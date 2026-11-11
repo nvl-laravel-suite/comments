@@ -344,3 +344,26 @@ it('publishes comment facts after the host commit and discards rolled back facts
     Event::assertDispatched(CommentChanged::class, static fn ($event): bool => $event->commentId === $committed->id);
     Event::assertDispatchedTimes(CommentChanged::class, 1);
 });
+
+it('caps configured content limits at the capacity of the body column', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    config()->set([
+        'nvl-comments.mentions.enabled' => true,
+        'nvl-comments.content.maximum_bytes' => 100_000,
+        'nvl-comments.rich_text.maximum_bytes' => 131_072,
+    ]);
+    $writer = app(CommentWriter::class);
+    $rich = fn (int $bytes): array => ['document' => ['version' => 1, 'blocks' => [
+        ['type' => 'paragraph', 'children' => [['type' => 'text', 'text' => str_repeat('a', $bytes)]]],
+    ]]];
+
+    expect(fn () => $writer->create($target, ['body' => str_repeat('a', 65_536)], $actor))
+        ->toThrow(InvalidCommentMutationException::class, 'Comment content exceeds 65535 bytes.')
+        ->and(fn () => $writer->createRich($target, $rich(65_536), $actor))
+        ->toThrow(InvalidCommentMutationException::class)
+        ->and(Comment::query()->count())->toBe(0);
+
+    expect(strlen($writer->create($target, ['body' => str_repeat('a', 65_535)], $actor)->body))->toBe(65_535)
+        ->and(strlen($writer->createRich($target, $rich(60_000), $actor)->body))->toBe(60_000);
+});

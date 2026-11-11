@@ -38,7 +38,6 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * Polymorphic user-authored comment or reply.
  *
  * @property string $id
- * @property string|null $tenant_id
  * @property string $commentable_type
  * @property string $commentable_id
  * @property string $commentable_identity_hash
@@ -125,7 +124,6 @@ class Comment extends Model implements Ownable
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id',
         'commentable_type',
         'commentable_id',
         'root_id',
@@ -257,9 +255,7 @@ class Comment extends Model implements Ownable
      */
     public function resolveRouteBinding($value, $field = null): ?Comment
     {
-        $model = CommentModelRegistry::newInstance();
-
-        return $model->newQuery()->where($field ?? $model->getRouteKeyName(), $value)->first();
+        return $this->routeBindingQuery($value, $field)?->first();
     }
 
     /** Resolve explicit trashed bindings without losing canonical ownership.
@@ -268,9 +264,23 @@ class Comment extends Model implements Ownable
      */
     public function resolveSoftDeletableRouteBinding($value, $field = null): ?Comment
     {
-        $model = CommentModelRegistry::newInstance();
+        return $this->routeBindingQuery($value, $field)?->withTrashed()->first();
+    }
 
-        return $model->newQuery()->withTrashed()->where($field ?? $model->getRouteKeyName(), $value)->first();
+    /**
+     * Build the canonical binding query, or nothing when a UUID column is asked for a malformed identifier.
+     *
+     * @return Builder<Comment>|null
+     */
+    private function routeBindingQuery(mixed $value, ?string $field): ?Builder
+    {
+        $model = CommentModelRegistry::newInstance();
+        $field ??= $model->getRouteKeyName();
+        if (in_array($field, $model->uniqueIds(), true) && ! $model->isValidUniqueId($value)) {
+            return null;
+        }
+
+        return $model->newQuery()->where($field, $value);
     }
 
     public function getTable(): string

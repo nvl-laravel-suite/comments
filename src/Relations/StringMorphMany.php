@@ -94,13 +94,24 @@ final class StringMorphMany extends MorphMany
             $query->qualifyColumn($this->getMorphType()),
         );
 
-        return $query
+        $query
             ->select($columns)
             ->whereRaw(new TextColumnComparison($parentKey, $foreignKey, $driver))
             ->whereRaw(
                 TextColumnComparison::value($morphColumn, $driver),
                 [$this->morphClass, $this->morphClass],
-            );
+            )
+            ->where($query->qualifyColumn($this->getMorphType()), $this->morphClass);
+        // Plain equalities let the (commentable_type, commentable_id) index find the rows the byte-exact checks then confirm.
+        $indexable = TextColumnComparison::indexable(
+            $query->getModel()->getConnection(),
+            $query->getModel()->getTable(),
+            $this->getForeignKeyName(),
+            $foreignKey,
+            $query->getQuery()->getGrammar()->wrap($this->getQualifiedParentKeyName()),
+        );
+
+        return $indexable === null ? $query : $query->whereRaw($indexable);
     }
 
     /**

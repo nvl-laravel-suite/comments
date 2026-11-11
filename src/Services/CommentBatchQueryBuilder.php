@@ -97,6 +97,12 @@ final readonly class CommentBatchQueryBuilder
         $right = TextColumnComparison::text($grammar->wrap($owner->getQualifiedKeyName()), $connection->getDriverName());
         $comparison = new TextColumnComparison($left, $right, $connection->getDriverName());
         $comments->whereRaw($comparison);
+        // Plain equalities let the (commentable_type, commentable_id) index find the rows the byte-exact checks then confirm.
+        $comments->where($comments->getModel()->qualifyColumn('commentable_type'), $owner->getMorphClass());
+        $indexable = TextColumnComparison::indexable($connection, $comments->getModel()->getTable(), 'commentable_id', $left, $grammar->wrap($owner->getQualifiedKeyName()));
+        if ($indexable !== null) {
+            $comments->whereRaw($indexable);
+        }
         $comments->where(fn (Builder $nested) => $policy->scopeHostComments($nested, $owner, $actor->principal, $audience));
         if ($query->getQuery()->columns === null) {
             $query->select($owner->qualifyColumn('*'));

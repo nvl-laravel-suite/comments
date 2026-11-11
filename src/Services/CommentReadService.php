@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
@@ -107,38 +108,6 @@ final readonly class CommentReadService
     }
 
     /**
-     * Resolve one comment through its canonical target and audience scope.
-     */
-    public function find(
-        Model $target,
-        Comment|string $comment,
-        CommentActor $actor,
-        CommentAudience $audience,
-        bool $withTrashed = true,
-    ): Comment {
-        $commentId = $comment instanceof Comment ? $comment->id : $comment;
-        $resolved = $this->resolve(
-            $target,
-            $commentId,
-            $actor,
-            $audience,
-            CommentAbility::View,
-            $withTrashed,
-        );
-
-        $this->access->authorize(
-            CommentAbility::View,
-            $actor,
-            $resolved,
-            $target,
-            $audience,
-            asNotFound: $audience !== CommentAudience::Management,
-        );
-
-        return $resolved;
-    }
-
-    /**
      * Resolve and authorize one comment when the caller has only its identifier.
      */
     public function findById(
@@ -179,7 +148,7 @@ final readonly class CommentReadService
         bool $withTrashed = true,
         bool $lockForUpdate = false,
     ): Comment {
-        $commentId = $comment instanceof Comment ? $comment->id : $comment;
+        $commentId = $this->identifier($comment);
         $query = $this->scopedQuery(
             $target,
             $actor,
@@ -206,7 +175,7 @@ final readonly class CommentReadService
         bool $withTrashed = true,
         bool $lockForUpdate = false,
     ): Comment {
-        $commentId = $comment instanceof Comment ? $comment->id : $comment;
+        $commentId = $this->identifier($comment);
         $unscopedComment = $this->boundary->query(CommentModelRegistry::query(), 'comments.comments')
             ->withTrashed()
             ->findOrFail($commentId);
@@ -230,6 +199,17 @@ final readonly class CommentReadService
             $withTrashed,
             $lockForUpdate,
         );
+    }
+
+    /** Refuse a malformed identifier as not found before it reaches a UUID column. */
+    private function identifier(Comment|string $comment): string
+    {
+        $identifier = $comment instanceof Comment ? $comment->id : $comment;
+        if (! Str::isUuid($identifier)) {
+            throw (new ModelNotFoundException)->setModel(Comment::class, [$identifier]);
+        }
+
+        return $identifier;
     }
 
     /**

@@ -22,7 +22,6 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * One actor's idempotent reaction type on a comment.
  *
  * @property string $id
- * @property string|null $tenant_id
  * @property string $comment_id
  * @property string $actor_type
  * @property string $actor_id
@@ -44,7 +43,7 @@ final class CommentReaction extends Model implements Ownable
     use HasUuids;
 
     /** @var list<string> */
-    protected $fillable = ['tenant_id', 'comment_id', 'actor_type', 'actor_id', 'type'];
+    protected $fillable = ['comment_id', 'actor_type', 'actor_id', 'type'];
 
     /** @var list<string> */
     protected $hidden = ['actor_identity_hash', 'type_hash'];

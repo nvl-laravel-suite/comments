@@ -39,7 +39,7 @@ final readonly class CommentDocumentNormalizer
             );
         }
 
-        $inputBlocks = $this->validate($document, allowSnapshots: false);
+        $inputBlocks = $this->validate($document, allowSnapshots: false, enforceLimits: true);
         $normalized = ['version' => 1, 'blocks' => $inputBlocks];
         $mentionsByAlias = [];
 
@@ -79,7 +79,7 @@ final readonly class CommentDocumentNormalizer
             $blocks[] = ['type' => 'paragraph', 'children' => $children];
         }
 
-        return ['version' => 1, 'blocks' => $this->validate(['version' => 1, 'blocks' => $blocks], allowSnapshots: true)];
+        return ['version' => 1, 'blocks' => $this->validate(['version' => 1, 'blocks' => $blocks], allowSnapshots: true, enforceLimits: true)];
     }
 
     /**
@@ -90,11 +90,12 @@ final readonly class CommentDocumentNormalizer
      */
     public function normalizeUnresolved(array $document): array
     {
-        return ['version' => 1, 'blocks' => $this->validate($document, allowSnapshots: false)];
+        return ['version' => 1, 'blocks' => $this->validate($document, allowSnapshots: false, enforceLimits: true)];
     }
 
     /**
-     * Validate a stored historical document without live resource resolution.
+     * Validate the structure of a stored document without live resource resolution or
+     * the current write limits, so lowering a limit never makes stored comments unreadable.
      *
      * @param  array<string, mixed>  $document
      * @return array{version: int, blocks: list<array{type: string, children: list<array<string, string>>}>}
@@ -111,7 +112,7 @@ final readonly class CommentDocumentNormalizer
 
         $blocks = $document['blocks'];
 
-        return ['version' => 1, 'blocks' => $this->validate(['version' => $document['version'], 'blocks' => $blocks], allowSnapshots: true)];
+        return ['version' => 1, 'blocks' => $this->validate(['version' => $document['version'], 'blocks' => $blocks], allowSnapshots: true, enforceLimits: false)];
     }
 
     /**
@@ -123,7 +124,7 @@ final readonly class CommentDocumentNormalizer
     {
         $paragraphs = [];
 
-        foreach ($this->validate($document, allowSnapshots: true) as $block) {
+        foreach ($this->validate($document, allowSnapshots: true, enforceLimits: false) as $block) {
             $body = '';
 
             foreach ($block['children'] as $node) {
@@ -156,7 +157,7 @@ final readonly class CommentDocumentNormalizer
         $references = [];
         $position = 0;
 
-        foreach ($this->validate($document, allowSnapshots: $requireSnapshots) as $block) {
+        foreach ($this->validate($document, allowSnapshots: $requireSnapshots, enforceLimits: false) as $block) {
             foreach ($block['children'] as $node) {
                 if ($node['type'] !== 'mention') {
                     continue;
@@ -209,15 +210,15 @@ final readonly class CommentDocumentNormalizer
     {
         return [
             'version' => 1,
-            'blocks' => $this->validate($document, allowSnapshots: true),
+            'blocks' => $this->validate($document, allowSnapshots: true, enforceLimits: false),
         ];
     }
 
     /**
-     * Validate and canonicalize one document with strict node-key ownership.
-     */
-    /**
-     * Validate one document into canonical block and string-node maps.
+     * Validate one document into canonical block and string-node maps with strict node-key ownership.
+     *
+     * Client input is bounded by the configured limits; already normalized and stored documents
+     * are validated for structure only.
      *
      * @param  array<string, mixed>  $document
      * @return list<array{type: string, children: list<array<string, string>>}>
@@ -225,6 +226,7 @@ final readonly class CommentDocumentNormalizer
     private function validate(
         array $document,
         bool $allowSnapshots,
+        bool $enforceLimits,
     ): array {
         if (! $this->hasExactKeys($document, ['version', 'blocks'])
             || ($document['version'] ?? null) !== 1
@@ -235,14 +237,8 @@ final readonly class CommentDocumentNormalizer
             );
         }
 
-        $maximumBlocks = min(250, CommentsConfiguration::positiveInteger(
-            'nvl-comments.rich_text.maximum_blocks',
-            100,
-        ));
-        $maximumNodes = min(1_000, CommentsConfiguration::positiveInteger(
-            'nvl-comments.rich_text.maximum_nodes',
-            500,
-        ));
+        $maximumBlocks = $this->limit($enforceLimits, 'nvl-comments.rich_text.maximum_blocks', 100, 250);
+        $maximumNodes = $this->limit($enforceLimits, 'nvl-comments.rich_text.maximum_nodes', 500, 1_000);
 
         if ($document['blocks'] === [] || count($document['blocks']) > $maximumBlocks) {
             throw new InvalidCommentMutationException(
@@ -377,14 +373,8 @@ final readonly class CommentDocumentNormalizer
             $blocks[] = ['type' => 'paragraph', 'children' => $children];
         }
 
-        $maximumMentions = min(100, CommentsConfiguration::positiveInteger(
-            'nvl-comments.mentions.maximum_per_comment',
-            25,
-        ));
-        $maximumResources = min(20, CommentsConfiguration::positiveInteger(
-            'nvl-comments.mentions.maximum_resource_types_per_comment',
-            10,
-        ));
+        $maximumMentions = $this->limit($enforceLimits, 'nvl-comments.mentions.maximum_per_comment', 25, 100);
+        $maximumResources = $this->limit($enforceLimits, 'nvl-comments.mentions.maximum_resource_types_per_comment', 10, 20);
 
         if ($mentionCount > $maximumMentions || count($resourceAliases) > $maximumResources) {
             throw new InvalidCommentMutationException(
@@ -393,10 +383,7 @@ final readonly class CommentDocumentNormalizer
         }
 
         $normalized = ['version' => 1, 'blocks' => $blocks];
-        $maximumBytes = min(131_072, CommentsConfiguration::positiveInteger(
-            'nvl-comments.rich_text.maximum_bytes',
-            32_768,
-        ));
+        $maximumBytes = $this->limit($enforceLimits, 'nvl-comments.rich_text.maximum_bytes', 32_768, CommentsConfiguration::MAXIMUM_BODY_BYTES);
 
         if (strlen($this->canonicalJson($normalized)) > $maximumBytes
             || preg_match('/\S/u', $this->unresolvedBody($blocks)) !== 1) {
@@ -409,9 +396,18 @@ final readonly class CommentDocumentNormalizer
     }
 
     /**
-     * Return text sufficient to reject structurally non-empty but blank documents.
+     * Resolve one configured write limit under its hard cap, or no limit for stored documents.
+     *
+     * @param  positive-int  $default
      */
+    private function limit(bool $enforced, string $key, int $default, int $hardCap): int
+    {
+        return $enforced ? min($hardCap, CommentsConfiguration::positiveInteger($key, $default)) : PHP_INT_MAX;
+    }
+
     /**
+     * Return text sufficient to reject structurally non-empty but blank documents.
+     *
      * @param  list<array{type: string, children: list<array<string, string>>}>  $blocks
      */
     private function unresolvedBody(array $blocks): string
@@ -436,7 +432,7 @@ final readonly class CommentDocumentNormalizer
      */
     private function normalizeText(string $text): string
     {
-        if (! mb_check_encoding($text, 'UTF-8')) {
+        if (! mb_check_encoding($text, 'UTF-8') || str_contains($text, "\0")) {
             throw new InvalidCommentMutationException(
                 'Comment document text must be valid UTF-8.',
             );

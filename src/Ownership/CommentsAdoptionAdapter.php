@@ -40,6 +40,7 @@ final readonly class CommentsAdoptionAdapter implements OwnershipAdoptionAdapter
         foreach ($this->resources() as $key) {
             $model = new ($this->resources->get($key)->model);
             $schema = $model->getConnection()->getSchemaBuilder();
+            // Installations adopted from the retired Tenancy bridge keep a `tenant_id` column nothing writes any more.
             if ($schema->hasColumn($model->getTable(), 'tenant_id')) {
                 $schema->table($model->getTable(), static fn (Blueprint $table) => $table->uuid('tenant_id')->nullable()->change());
             }

@@ -794,7 +794,6 @@ resolved @property-read (Nvl\Comments\Models\Comment | null) $root
 resolved @property Nvl\Comments\Enums\CommentStatus $status
 @property string $status_hash
 @property (list<string> | null) $tags
-@property (string | null) $tenant_id
 @property Carbon $updated_at
 resolved @property Illuminate\Support\Carbon $updated_at
 @property CommentVisibility $visibility
@@ -910,7 +909,6 @@ resolved @property-read Nvl\Comments\Models\Comment $comment
 @property Carbon $created_at
 resolved @property Illuminate\Support\Carbon $created_at
 @property string $id
-@property (string | null) $tenant_id
 @property string $type
 @property string $type_hash
 @property Carbon $updated_at
@@ -1003,7 +1001,6 @@ resolved @property Nvl\Comments\Enums\CommentFormat $format
 @property (array<string, mixed> | null) $metadata
 @property int $revision
 @property (list<string> | null) $tags
-@property (string | null) $tenant_id
 ```
 
 ## Nvl\Comments\Services\CommentAttachments
@@ -1022,7 +1019,7 @@ final readonly class Nvl\Comments\Services\CommentMentions
 public function __construct(Nvl\Comments\Services\CommentAccessService $access, Nvl\Comments\Services\CommentMentionProjectionFactory $projections, Nvl\Comments\Services\CommentMentionResourceRegistry $resources, Nvl\Comments\Services\CommentReadService $reads, Nvl\Comments\Services\CommentTargetLocator $targets): mixed
 public function resolve(Nvl\Comments\Models\Comment|string $comment, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): array
 @return list<array<string, mixed>>
-public function suggest(Illuminate\Database\Eloquent\Model $target, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, string $resource, string $query, int $limit=10, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): array
+public function suggest(Illuminate\Database\Eloquent\Model $target, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, string $resource, string $query, ?int $limit=null, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): array
 @return list<array{id: string, label: ?string, fields: array<string, (scalar | null)>, url: ?string}>
 ```
 

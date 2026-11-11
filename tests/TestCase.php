@@ -78,6 +78,29 @@ abstract class TestCase extends Orchestra
             $table->timestamps();
         });
 
+        Schema::create('cache_locks', function (Blueprint $table): void {
+            $table->string('key')->primary();
+            $table->string('owner');
+            $table->integer('expiration');
+        });
+
+        Schema::create('comment_integer_targets', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        // A host key whose collation differs from the comments table's on every driver.
+        Schema::create('comment_string_targets', function (Blueprint $table): void {
+            $table->string('id', 64)->primary()->collation(match (Schema::getConnection()->getDriverName()) {
+                'pgsql' => 'C',
+                'sqlite' => 'NOCASE',
+                default => 'utf8mb4_general_ci',
+            });
+            $table->string('name');
+            $table->timestamps();
+        });
+
         Schema::create('comment_mention_test_resources', function (Blueprint $table): void {
             $table->string('id')->primary();
             $table->string('tenant_id');

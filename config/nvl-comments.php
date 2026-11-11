@@ -18,6 +18,8 @@ return [
         'reactions' => CommentsTables::Reactions,
         'revisions' => CommentsTables::Revisions,
         'reports' => CommentsTables::Reports,
+        'metadata_values' => CommentsTables::MetadataValues,
+        'mentions' => CommentsTables::Mentions,
     ],
 
     'migrations' => [
@@ -38,7 +40,6 @@ return [
         'new_status' => 'pending',
         'edited_status' => 'pending',
         'restored_status' => 'pending',
-        'actionable_statuses' => ['pending', 'spam'],
         'allow_author_delete' => true,
         'allow_author_restore' => true,
     ],
@@ -96,7 +97,6 @@ return [
         'maximum_per_comment' => 5,
         'maximum_file_bytes' => 10 * 1024 * 1024,
         'allow_public_media' => false,
-        'signed_url_lifetime' => 5,
     ],
 
     'mutation_lock' => [

@@ -2,7 +2,7 @@
 
 Submit reports through [this package's private vulnerability reporting form](https://github.com/nvl-laravel-suite/comments/security/advisories/new).
 
-Security fixes are provided for the published `5.x` release line and the `6.x` line once published. Prepared 6.0.0 source does not establish release certification. Enabled Ownership requires Laravel 13; disabled/unowned hosts keep the declared framework range. Composer declares PHP `^8.4` and Laravel `^12.0|^13.0`. The local Dagger release gate verifies PHP 8.4/Laravel 13 with MySQL 8.4 and PostgreSQL 17 persistence contracts; PHP 8.5, Laravel 12 and MariaDB require separate compatibility evidence. Upstream security lifecycle limits still apply.
+Security fixes are provided for the published `7.x` release line. Earlier lines no longer receive fixes. Enabled Ownership requires Laravel 13; disabled/unowned hosts keep the declared framework range. Composer declares PHP `^8.4` and Laravel `^12.0|^13.0`. The local Dagger release gate verifies PHP 8.4/Laravel 13 with MySQL 8.4 and PostgreSQL 17 persistence contracts; PHP 8.5, Laravel 12 and MariaDB require separate compatibility evidence. Upstream security lifecycle limits still apply.
 
 Include the target alias, audience, visibility, actor type, Action or route,
 Media visibility, and impact. Do not include personal production content,
@@ -103,8 +103,10 @@ deployment blocker.
 Use optimistic `expectedRevision` checks for all lifecycle, comment moderation,
 and report-review mutations. Preserve the unique constraints for creation
 idempotency, reactions, reports, and associations. The keyed idempotency digest
-protects canonical request comparison; rotate application secrets only with an
-explicit policy for outstanding idempotency keys.
+protects canonical request comparison. Pin `NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY`
+to the current `APP_KEY` before rotating `APP_KEY`; a changed digest key turns
+retries of earlier idempotency keys into conflicts and requires
+`nvl:comments:reconcile --repair` for the metadata index.
 
 Check keyed digest equality/conflict before mutable content limits, but re-run
 current target `Create` or scoped parent `View`/`Reply` authorization before an

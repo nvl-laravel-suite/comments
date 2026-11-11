@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentChangeOperation;
@@ -67,6 +69,9 @@ final readonly class CommentReportResolver
 
         $this->guard->resolution($data);
         $this->lifecycle->expectedRevision($data['expected_revision']);
+        if (! Str::isUuid($reportId)) {
+            throw (new ModelNotFoundException)->setModel(CommentReport::class, [$reportId]);
+        }
         $commentId = $this->boundary->query(CommentReport::query(), 'comments.reports')
             ->findOrFail($reportId)->comment_id;
 

@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Str;
-use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMetadataValue;
-use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 
 /**
- * Synchronizes and queries the hash-only registered metadata index.
+ * Synchronizes the hash-only registered metadata index.
  *
  * @internal
  */
@@ -69,38 +65,5 @@ final readonly class CommentMetadataIndexWriter
     {
         $this->boundary->query(CommentMetadataValue::query(), 'comments.metadata')
             ->where('comment_id', $comment->id)->delete();
-    }
-
-    /**
-     * Apply bounded hash-only equality criteria to a comment query.
-     *
-     * @param  Builder<Comment>  $query
-     * @param  array<string, string|int|bool|null>  $criteria
-     */
-    public function apply(Builder $query, array $criteria): void
-    {
-        $table = CommentsConfiguration::table(CommentsTables::get(CommentsTables::MetadataValues));
-        $commentId = (CommentModelRegistry::newInstance())->qualifyColumn('id');
-
-        foreach ($this->registry->selectorRows($criteria) as $index => $row) {
-            $alias = "comment_metadata_selector_{$index}";
-            $query->whereExists(
-                static function (QueryBuilder $subquery) use (
-                    $alias,
-                    $commentId,
-                    $row,
-                    $table,
-                ): void {
-                    $subquery
-                        ->selectRaw('1')
-                        ->from("{$table} as {$alias}")
-                        ->whereColumn("{$alias}.comment_id", $commentId)
-                        ->where("{$alias}.schema_namespace", $row['schema_namespace'])
-                        ->where("{$alias}.field_name", $row['field_name'])
-                        ->where("{$alias}.value_type", $row['value_type'])
-                        ->where("{$alias}.value_hash", $row['value_hash']);
-                },
-            );
-        }
     }
 }

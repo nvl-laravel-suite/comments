@@ -139,6 +139,10 @@ final class CommentsServiceProvider extends ServiceProvider implements Ownership
         });
         CommentModelRegistry::modelClass()::deleting(function (Comment $comment): void {
             if ($comment->isForceDeleting() && ($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) === true) {
+                // The parent foreign key cascades in the database without model events, so remove
+                // replies through Eloquent first and let each clean up its own attachments.
+                $comment->newQuery()->withTrashed()->where('parent_id', $comment->id)->lazyById(100)
+                    ->each(static fn (Comment $reply): ?bool => $reply->forceDelete());
                 $this->app->make(MediaCommentAttachmentLifecycle::class)->deleteOwnerMedia($comment);
             }
         });

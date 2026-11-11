@@ -11,6 +11,7 @@ use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Models\Comment;
+use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
@@ -54,7 +55,7 @@ final readonly class CommentMentions
         Authenticatable|SystemActor|PublicActor $actor,
         string $resource,
         string $query,
-        int $limit = 10,
+        ?int $limit = null,
         CommentAudience $audience = CommentAudience::Public,
     ): array {
         $target = $this->targets->reload($target);
@@ -74,7 +75,7 @@ final readonly class CommentMentions
             $resource,
             new CommentMentionContext($target, $identity, $audience),
             $query,
-            $limit,
+            $limit ?? CommentsConfiguration::positiveInteger('nvl-comments.mentions.suggestion_limit', 10),
         )->map(static fn ($resolved): array => [
             'id' => $resolved['id'],
             'label' => $resolved['label'],

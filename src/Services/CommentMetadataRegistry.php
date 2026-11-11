@@ -219,38 +219,6 @@ final class CommentMetadataRegistry
     }
 
     /**
-     * Normalize bounded equality criteria into hash-only index predicates.
-     *
-     * @param  array<string, string|int|bool|null>  $criteria
-     * @return list<array{schema_namespace: string, field_name: string, value_type: string, value_hash: string}>
-     */
-    public function selectorRows(array $criteria): array
-    {
-        $rows = [];
-
-        foreach ($criteria as $alias => $value) {
-            $field = $this->fields[$alias] ?? null;
-
-            if (! $field instanceof CommentMetadataField || ! $field->queryable) {
-                throw new InvalidArgumentException(
-                    'Comment metadata selectors require a registered queryable field.',
-                );
-            }
-
-            $normalized = $this->normalizeFieldValue($field, $value);
-            [$namespace, $fieldName] = $this->splitAlias($alias);
-            $rows[] = [
-                'schema_namespace' => $namespace,
-                'field_name' => $fieldName,
-                'value_type' => $this->valueType($field, $normalized),
-                'value_hash' => $this->hashValue($field, $normalized),
-            ];
-        }
-
-        return $rows;
-    }
-
-    /**
      * Determine whether a stable metadata digest key can be resolved.
      */
     public function hasStableDigestKey(): bool

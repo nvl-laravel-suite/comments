@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Nvl\Comments\Ownership;
 
 use Illuminate\Database\Eloquent\Model;
-use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Services\OwnershipQueueCapture;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
@@ -37,14 +36,6 @@ final class CommentsOwnership
     public static function envelope(): OwnershipJobEnvelope
     {
         return app(OwnershipQueueCapture::class)->capture();
-    }
-
-    /** Bind signed capabilities to the complete owner and generation. */
-    public static function capability(): ?string
-    {
-        return self::declared()
-            ? app(OwnershipBoundary::class)->key('comments.comments', 'attachment-url')
-            : null;
     }
 
     /** Owned discussions cannot attach or project a globally accessible asset graph. */

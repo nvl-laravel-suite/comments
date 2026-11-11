@@ -56,8 +56,13 @@ final readonly class CommentReader
             $query->whereNull('parent_id');
         }
 
+        $pageSize = $this->pageSize($perPage);
+        if ($parentId !== null) {
+            $pageSize = min($pageSize, CommentsConfiguration::positiveInteger('nvl-comments.threading.maximum_replies_per_page', 100));
+        }
+
         $page = $query->orderByDesc('is_pinned')->orderByDesc('created_at')->orderByDesc('id')
-            ->paginate($this->pageSize($perPage));
+            ->paginate($pageSize);
         $comments = $page->getCollection();
         $replyCounts = $this->reads->replyCounts($comments, $target, $identity, $audience);
         $projections = $this->projections->project($comments, $target, $identity, $audience);

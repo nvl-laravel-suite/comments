@@ -55,6 +55,7 @@ final class CommentLifecycleGuard
         $this->expectedRevision($data['expected_revision']);
 
         if (! mb_check_encoding($data['reason'], 'UTF-8')
+            || str_contains($data['reason'], "\0")
             || preg_match('/\S/u', $data['reason']) !== 1) {
             throw new InvalidCommentLifecycleException(
                 'An anonymization reason must contain valid, non-blank UTF-8 text.',

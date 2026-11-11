@@ -5,6 +5,22 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Treat malformed comment, parent, revision and report identifiers, and malformed route bindings, as not found before they reach a UUID column, instead of a PostgreSQL type error that aborts the surrounding transaction.
+- Keep stored rich comments and revisions readable after `rich_text.*` or `mentions.maximum_per_comment` limits are lowered; the limits now bound new input only.
+- Cap `content.maximum_bytes` and `rich_text.maximum_bytes` at 65,535 bytes, the capacity of the `body` column on MySQL and MariaDB. Larger values are clamped at write time and reported by `nvl:comments:doctor` as invalid configuration.
+- Add the `comments_target_pair_idx` index on `(commentable_type, commentable_id)` and plain equalities next to the byte-exact comparisons, so `withNvlVisibleCommentCount`, `whereHas('comments')` and `withCount('comments')` use an index instead of scanning the comments table per host row. The host key is compared in the comments column's collation, so a host key with another collation neither fails on MySQL nor stops the index from being used. Run the new migration.
+- Treat malformed Media and association identifiers in `CommentAttachments::attach()` / `detach()` as not found, and malformed identifiers of UUID-keyed declarative mention resources as missing, before they reach a UUID column.
+- Stop shipping the unused `database/tenancy-migrations` and `database/tenancy` directories and drop `tenant_id` from the models' fillable attributes. The Ownership adoption adapter still migrates installations that carry the column.
+- Enforce `threading.maximum_replies_per_page` on reply pages and use `mentions.suggestion_limit` as the default of `CommentMentions::suggest()`. Remove `moderation.actionable_statuses` and `attachments.signed_url_lifetime`, which nothing read, and list the `metadata_values` and `mentions` table keys.
+- Check declarative mention resources against the schema when they are first used instead of when the registry is built, so plain comments neither query the schema nor fail while the resource table is missing.
+- Contain each `database` cache lock attempt in a savepoint inside a PostgreSQL transaction, so a contended lock is reported as busy instead of aborting the host transaction, and an expired lock can still be taken over.
+- Remove replies through Eloquent when a comment is force-deleted so their Media attachments are cleaned up instead of being orphaned by the database cascade.
+- Reject NUL bytes in comment bodies, rich text, locales and moderation, report and anonymization text instead of failing in PostgreSQL.
+- Report the `(commentable_type, commentable_id)` index in `nvl:comments:doctor`.
+- Rewrite `UPGRADING.md` under release headings and document digest key rotation.
+
 ## [7.0.2] - 2026-11-09
 
 ### Changed

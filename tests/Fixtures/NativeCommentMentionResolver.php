@@ -13,6 +13,8 @@ final class NativeCommentMentionResolver implements CommentMentionResourceResolv
 {
     public static int $resolutions = 0;
 
+    public static ?int $suggestionLimit = null;
+
     public function resolve(CommentMentionContext $context, array $ids): Collection
     {
         self::$resolutions++;
@@ -23,6 +25,8 @@ final class NativeCommentMentionResolver implements CommentMentionResourceResolv
 
     public function suggest(CommentMentionContext $context, string $query, int $limit): Collection
     {
+        self::$suggestionLimit = $limit;
+
         return $this->resolve($context, ['member-1'])->take($limit)->values();
     }
 

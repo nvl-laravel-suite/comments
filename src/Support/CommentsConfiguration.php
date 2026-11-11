@@ -13,6 +13,12 @@ use Nvl\Support\Config\PackageStorage;
 final class CommentsConfiguration
 {
     /**
+     * Bytes the `body` TEXT column holds on MySQL and MariaDB. Plain bodies and rich documents,
+     * whose derived body is never longer than the document, are capped here on every driver.
+     */
+    public const int MAXIMUM_BODY_BYTES = 65_535;
+
+    /**
      * Resolve the optional package database connection name.
      */
     public static function connection(): ?string

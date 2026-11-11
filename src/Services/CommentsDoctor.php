@@ -612,6 +612,9 @@ final class CommentsDoctor
                 'columns' => ['idempotency_key'],
                 'unique' => true,
             ],
+            'target_pair' => [
+                'columns' => ['commentable_type', 'commentable_id'],
+            ],
             'target_visibility' => [
                 'columns' => [
                     'commentable_identity_hash',
@@ -1183,7 +1186,6 @@ final class CommentsDoctor
             'nvl-comments.metadata.maximum_registered_fields',
             'nvl-comments.attachments.maximum_per_comment',
             'nvl-comments.attachments.maximum_file_bytes',
-            'nvl-comments.attachments.signed_url_lifetime',
             'nvl-comments.transactions.attempts',
             'nvl-comments.reconciliation.chunk_size',
             'nvl-comments.pagination.default',
@@ -1196,6 +1198,10 @@ final class CommentsDoctor
             if (! is_int($value) || $value < 1) {
                 return false;
             }
+        }
+
+        if (config('nvl-comments.content.maximum_bytes') > CommentsConfiguration::MAXIMUM_BODY_BYTES) {
+            return false;
         }
 
         $connection = config('nvl-comments.connection');
@@ -1226,13 +1232,11 @@ final class CommentsDoctor
 
         $formats = config('nvl-comments.content.allowed_formats');
         $reactions = config('nvl-comments.reactions.allowed');
-        $actionableStatuses = config('nvl-comments.moderation.actionable_statuses');
         $validFormats = array_column(CommentFormat::cases(), 'value');
         $validStatuses = array_column(CommentStatus::cases(), 'value');
 
         if (! $this->enumListReady($formats, $validFormats)
-            || ! $this->stringListReady($reactions, 64, allowEmpty: true)
-            || ! $this->enumListReady($actionableStatuses, $validStatuses)) {
+            || ! $this->stringListReady($reactions, 64, allowEmpty: true)) {
             return false;
         }
 
@@ -1253,7 +1257,7 @@ final class CommentsDoctor
     private function richTextBoundsReady(): bool
     {
         foreach ([
-            'nvl-comments.rich_text.maximum_bytes' => 131_072,
+            'nvl-comments.rich_text.maximum_bytes' => CommentsConfiguration::MAXIMUM_BODY_BYTES,
             'nvl-comments.rich_text.maximum_blocks' => 250,
             'nvl-comments.rich_text.maximum_nodes' => 1_000,
         ] as $key => $hardMaximum) {

@@ -44,7 +44,6 @@ final class CommentMetadataValue extends Model implements Ownable
 
     /** @var list<string> */
     protected $fillable = [
-        'tenant_id',
         'comment_id',
         'schema_namespace',
         'field_name',

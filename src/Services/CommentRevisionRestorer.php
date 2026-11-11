@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentChangeOperation;
@@ -103,6 +105,9 @@ final readonly class CommentRevisionRestorer
                             throw StaleCommentException::forComment($comment->id);
                         }
 
+                        if (! Str::isUuid($revisionId)) {
+                            throw (new ModelNotFoundException)->setModel(CommentRevision::class, [$revisionId]);
+                        }
                         $revision = $this->boundary->query(CommentRevision::query(), 'comments.revisions')
                             ->where('comment_id', $comment->id)
                             ->whereKey($revisionId)
