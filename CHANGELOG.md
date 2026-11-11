@@ -5,6 +5,8 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [7.0.3] - 2026-11-11
+
 ### Fixed
 
 - Treat malformed comment, parent, revision and report identifiers, and malformed route bindings, as not found before they reach a UUID column, instead of a PostgreSQL type error that aborts the surrounding transaction.
@@ -20,6 +22,12 @@ All notable changes to `nvl/comments` are documented here.
 - Reject NUL bytes in comment bodies, rich text, locales and moderation, report and anonymization text instead of failing in PostgreSQL.
 - Report the `(commentable_type, commentable_id)` index in `nvl:comments:doctor`.
 - Rewrite `UPGRADING.md` under release headings and document digest key rotation.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- harden identifiers, locks, digests and target lookups
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.0.2] - 2026-11-09
 
