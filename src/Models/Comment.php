@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use LogicException;
 use Nvl\Comments\Database\Factories\CommentFactory;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
@@ -330,7 +329,7 @@ class Comment extends Model implements Ownable
         $morphType = $this->getAttribute($type);
 
         if (! is_string($morphType) || $morphType === '') {
-            $query = new Builder(DB::connection()->query());
+            $query = new Builder($this->getConnection()->query());
             $query->setModel(new Pivot);
 
             return new CommentTargetMorphTo(

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Services\CommentModeration;
 use Nvl\Comments\Services\CommentReactions;
+use Nvl\Comments\Services\CommentsDoctor;
 use Nvl\Comments\Services\CommentStateReconciler;
 use Nvl\Comments\Services\CommentWriter;
 use Nvl\Comments\Tests\Fixtures\OwnershipActor;
@@ -15,9 +16,10 @@ use Nvl\Comments\Tests\Fixtures\OwnershipCompany;
 use Nvl\Comments\Tests\OwnershipTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
 use Nvl\Ownership\Services\OwnershipWriter;
+use Nvl\Ownership\Tests\Fixtures\OptsIntoAdoptedSchemaReuse;
 use Nvl\Ownership\ValueObjects\OwnershipAssignment;
 
-uses(OwnershipTestCase::class);
+uses(OwnershipTestCase::class, OptsIntoAdoptedSchemaReuse::class);
 
 it('fences native comments replies mutations and reconciliation to the admitted owner', function (): void {
     $records = [];
@@ -80,4 +82,19 @@ it('partitions native idempotency receipts without replaying another owners comm
 
     expect($comments[0]->id)->not->toBe($comments[1]->id)
         ->and($comments[0]->getRawOriginal('owner_scope_key'))->not->toBe($comments[1]->getRawOriginal('owner_scope_key'));
+});
+
+it('reports adopted idempotency index and metadata compatibility in unscoped doctor inspection', function (): void {
+    config()->set('nvl-comments.idempotency.digest_key', 'owned-native-doctor-key');
+    app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail(7), OwnershipActor::firstOrFail(), function (): void {
+        $target = app(OwnershipWriter::class)->create(OwnershipCommentTarget::class,
+            fn (OwnershipAssignment $assignment) => OwnershipCommentTarget::query()->forceCreate([...$assignment->attributes(), 'name' => 'Target']));
+        app(CommentWriter::class)->create($target, ['body' => 'Scoped comment for doctor'], OwnershipActor::firstOrFail());
+    });
+
+    $report = app(CommentsDoctor::class)->inspect();
+
+    expect($report['index.nvl_comments_comments.idempotency_unique'])->toBeTrue()
+        ->and($report['metadata.strict_compatible'])->toBeTrue()
+        ->and($report['metadata.strict_incompatible_records'])->toBe(0);
 });

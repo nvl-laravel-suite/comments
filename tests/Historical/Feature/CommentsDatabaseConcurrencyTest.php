@@ -42,8 +42,8 @@ function commentsConcurrencySkipReason(): ?string
 {
     $driver = DB::connection()->getDriverName();
 
-    if (! in_array($driver, ['mysql', 'pgsql'], true)) {
-        return 'The process concurrency gates run in the PostgreSQL/MySQL matrix.';
+    if ($driver !== 'pgsql') {
+        return 'The process concurrency gates run in the PostgreSQL matrix.';
     }
 
     if (! function_exists('pcntl_exec')
@@ -469,7 +469,7 @@ it('reloads one idempotent comment after a real database uniqueness race', funct
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );
 
 it('rejects one payload when concurrent requests reuse a key with different data', function (): void {
@@ -520,7 +520,7 @@ it('rejects one payload when concurrent requests reuse a key with different data
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );
 
 it('serializes a deleted reply restore against a competing delete', function (): void {
@@ -603,7 +603,7 @@ it('serializes a deleted reply restore against a competing delete', function ():
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );
 
 it('never leaves an attachment on a concurrently anonymized comment', function (): void {
@@ -704,7 +704,7 @@ it('never leaves an attachment on a concurrently anonymized comment', function (
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );
 
 it('preserves a live reply while reconciliation repairs stale counters', function (): void {
@@ -786,7 +786,7 @@ it('preserves a live reply while reconciliation repairs stale counters', functio
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );
 
 it('counts distinct concurrent reporters exactly once each', function (): void {
@@ -842,7 +842,7 @@ it('counts distinct concurrent reporters exactly once each', function (): void {
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );
 
 it('allows exactly one concurrent rich update for an expected revision', function (): void {
@@ -943,5 +943,5 @@ it('allows exactly one concurrent rich update for an expected revision', functio
     }
 })->skip(
     fn (): bool => commentsConcurrencySkipReason() !== null,
-    'The process concurrency gates require PostgreSQL/MySQL and pcntl.',
+    'The process concurrency gates require PostgreSQL and pcntl.',
 );

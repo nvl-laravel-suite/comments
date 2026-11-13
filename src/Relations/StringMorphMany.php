@@ -105,8 +105,6 @@ final class StringMorphMany extends MorphMany
         // Plain equalities let the (commentable_type, commentable_id) index find the rows the byte-exact checks then confirm.
         $indexable = TextColumnComparison::indexable(
             $query->getModel()->getConnection(),
-            $query->getModel()->getTable(),
-            $this->getForeignKeyName(),
             $foreignKey,
             $query->getQuery()->getGrammar()->wrap($this->getQualifiedParentKeyName()),
         );

@@ -216,16 +216,8 @@ it('resolves persisted comments through integer and string target relationships'
 });
 
 it('isolates exact target actor reaction and report identities', function (): void {
-    $driver = DB::connection()->getDriverName();
-
-    Schema::create('comment_string_targets', function (Blueprint $table) use ($driver): void {
-        $identifier = $table->string('id');
-
-        if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            $identifier->collation('utf8mb4_bin');
-        }
-
-        $identifier->primary();
+    Schema::create('comment_string_targets', function (Blueprint $table): void {
+        $table->string('id')->primary();
         $table->string('name');
         $table->timestamps();
     });

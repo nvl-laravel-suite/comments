@@ -238,3 +238,20 @@ it('rejects NUL bytes in stored text instead of failing in the database', functi
     'rich text node' => [fn ($target, $actor) => app(CommentWriter::class)->createRich($target, ['document' => ['version' => 1, 'blocks' => [['type' => 'paragraph', 'children' => [['type' => 'text', 'text' => "a\0b"]]]]]], $actor)],
     'report reason' => [fn ($target, $actor, $comment) => app(CommentModeration::class)->report($comment, ['reason' => "sp\0am"], $actor)],
 ]);
+
+it('suggests Unicode mention resources case-insensitively', function (): void {
+    config()->set(['nvl-comments.mentions.enabled' => true, 'nvl-comments.mentions.resources' => ['author' => [
+        'model' => TestCommentTarget::class,
+        'searchable_fields' => ['name'], 'exposed_fields' => ['name'], 'label_field' => 'name',
+        'authorization' => PermissiveCommentMentionAuthorization::class, 'public' => false,
+    ]]]);
+    app()->forgetInstance(CommentMentionResourceRegistry::class);
+
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $unicodeResource = TestCommentTarget::create(['name' => 'Георги Иванов']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+
+    $suggestions = app(CommentMentions::class)->suggest($target, $actor, 'author', 'георги иванов', audience: CommentAudience::Member);
+
+    expect(array_column($suggestions, 'id'))->toBe([(string) $unicodeResource->id]);
+});

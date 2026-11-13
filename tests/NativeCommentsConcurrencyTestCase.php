@@ -11,7 +11,7 @@ use Nvl\Support\Providers\LocaleServiceProvider;
 use Orchestra\Testbench\TestCase;
 use RuntimeException;
 
-/** Committed native race fixtures on an explicitly dedicated PostgreSQL/MySQL/MariaDB source. */
+/** Committed native race fixtures on an explicitly dedicated PostgreSQL source. */
 abstract class NativeCommentsConcurrencyTestCase extends TestCase
 {
     /** @return list<class-string> */
@@ -23,11 +23,11 @@ abstract class NativeCommentsConcurrencyTestCase extends TestCase
     protected function defineEnvironment($app): void
     {
         $driver = getenv('NVL_COMMENTS_CONCURRENCY_DRIVER');
-        if (! in_array($driver, ['pgsql', 'mysql', 'mariadb'], true)) {
+        if ($driver !== 'pgsql') {
             return;
         }
         $database = getenv('NVL_COMMENTS_CONCURRENCY_DATABASE');
-        if (! is_string($database) || preg_match('/^nvl_own_test_(?:commentrace_[a-f0-9]{8}_(?:pgsql|mysql|mariadb)|comments_[a-f0-9]{8}_primary)$/D', $database) !== 1) {
+        if (! is_string($database) || preg_match('/^nvl_own_test_(?:commentrace_[a-f0-9]{8}_pgsql|comments_[a-f0-9]{8}_primary)$/D', $database) !== 1) {
             throw new RuntimeException('Comment races require an explicitly dedicated Comments race or package database.');
         }
         $app['config']->set([
@@ -35,12 +35,12 @@ abstract class NativeCommentsConcurrencyTestCase extends TestCase
             'database.connections.comments_concurrency' => [
                 'driver' => $driver, 'url' => null,
                 'host' => getenv('NVL_COMMENTS_CONCURRENCY_HOST') ?: '127.0.0.1',
-                'port' => getenv('NVL_COMMENTS_CONCURRENCY_PORT') ?: ($driver === 'pgsql' ? '5432' : '13306'),
+                'port' => getenv('NVL_COMMENTS_CONCURRENCY_PORT') ?: '5432',
                 'database' => $database,
-                'username' => getenv('NVL_COMMENTS_CONCURRENCY_USERNAME') ?: ($driver === 'pgsql' ? get_current_user() : 'root'),
+                'username' => getenv('NVL_COMMENTS_CONCURRENCY_USERNAME') ?: get_current_user(),
                 'password' => getenv('NVL_COMMENTS_CONCURRENCY_PASSWORD') ?: '',
-                'charset' => $driver === 'pgsql' ? 'utf8' : 'utf8mb4',
-                'collation' => 'utf8mb4_unicode_ci', 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'prefer',
+                'charset' => 'utf8',
+                'prefix' => '', 'search_path' => 'public', 'sslmode' => 'prefer',
             ],
             'database.redis.client' => 'phpredis',
             'database.redis.comments_concurrency' => ['host' => '127.0.0.1', 'port' => getenv('NVL_COMMENTS_CONCURRENCY_REDIS_PORT') ?: '16379', 'database' => 0],
@@ -61,8 +61,8 @@ abstract class NativeCommentsConcurrencyTestCase extends TestCase
     {
         parent::setUp();
         $driver = getenv('NVL_COMMENTS_CONCURRENCY_DRIVER');
-        if (! in_array($driver, ['pgsql', 'mysql', 'mariadb'], true)) {
-            $this->markTestSkipped('Native comment races require an explicitly dedicated PostgreSQL/MySQL/MariaDB database and Redis.');
+        if ($driver !== 'pgsql') {
+            $this->markTestSkipped('Native comment races require an explicitly dedicated PostgreSQL database and Redis.');
         }
         if (! function_exists('pcntl_fork') || ! function_exists('pcntl_exec')) {
             $this->markTestSkipped('Native comment races require pcntl fork/exec.');

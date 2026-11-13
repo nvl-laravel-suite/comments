@@ -6,9 +6,9 @@ namespace Nvl\Comments\Services;
 
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Schema\Builder as SchemaBuilder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Contracts\CommentTargetResolver;
@@ -16,7 +16,7 @@ use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Models\Comment;
-use Nvl\Comments\Models\CommentRevision;
+use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentMutationLockConfiguration;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Media\Models\Media;
@@ -789,9 +789,13 @@ final class CommentsDoctor
 
         try {
             $connectionName = CommentsConfiguration::connection();
-            $schema = Schema::connection($connectionName);
-            $driver = strtolower(DB::connection($connectionName)->getDriverName());
+            $connection = $connectionName !== null
+                ? DB::connection($connectionName)
+                : CommentModelRegistry::newInstance()->getConnection();
+            $schema = $connection->getSchemaBuilder();
+            $driver = strtolower($connection->getDriverName());
         } catch (Throwable) {
+            $connection = null;
             $schema = null;
             $driver = '';
         }
@@ -826,16 +830,27 @@ final class CommentsDoctor
             'message' => $migrationOwnershipReady
                 ? 'Automatic vendor migration loading does not overlap a published host copy.'
                 : sprintf(
-                    'Automatic vendor migration loading overlaps published host migration(s): %s. Disable comments.migrations.enabled before running host-owned copies.',
+                    'Automatic vendor migration loading overlaps published host migration(s): %s. Disable nvl-comments.migrations.enabled before running host-owned copies.',
                     implode(', ', $migrationDuplicates),
                 ),
         ];
 
         foreach (self::REQUIRED_COLUMNS as $key => $requiredColumns) {
             try {
-                $table = CommentsConfiguration::table($key);
-                $tableReady = $schema instanceof SchemaBuilder && $schema->hasTable($table);
-                $columnMetadata = $tableReady ? $schema->getColumns($table) : [];
+                [$tableReady, $columnMetadata, $indexes, $foreignKeys] = $this->probe(
+                    $connection,
+                    static function () use ($key, $schema): array {
+                        $table = CommentsConfiguration::table($key);
+                        $exists = $schema instanceof SchemaBuilder && $schema->hasTable($table);
+
+                        return [
+                            $exists,
+                            $exists ? $schema->getColumns($table) : [],
+                            $exists ? $schema->getIndexes($table) : [],
+                            $exists ? $schema->getForeignKeys($table) : [],
+                        ];
+                    },
+                );
                 $tableColumns[$key] = [];
 
                 foreach ($columnMetadata as $column) {
@@ -843,8 +858,8 @@ final class CommentsDoctor
                 }
 
                 $columns = array_keys($tableColumns[$key]);
-                $tableIndexes[$key] = $tableReady ? $schema->getIndexes($table) : [];
-                $tableForeignKeys[$key] = $tableReady ? $schema->getForeignKeys($table) : [];
+                $tableIndexes[$key] = $indexes;
+                $tableForeignKeys[$key] = $foreignKeys;
             } catch (Throwable) {
                 $tableReady = false;
                 $columns = [];
@@ -873,11 +888,18 @@ final class CommentsDoctor
             }
         }
 
+        $ownershipAdopted = $this->ownershipAdopted($tableColumns[CommentsTables::Comments]);
+
         foreach (self::REQUIRED_INDEXES as $key => $requiredIndexes) {
             foreach ($requiredIndexes as $name => $definition) {
+                $requiredIndexColumns = $key === CommentsTables::Comments
+                    && $name === 'idempotency_unique'
+                    && $ownershipAdopted
+                    ? ['owner_scope_key', 'idempotency_key']
+                    : $definition['columns'];
                 $indexReady = $this->indexReady(
                     $tableIndexes[$key],
-                    $definition['columns'],
+                    $requiredIndexColumns,
                     $definition['unique'] ?? false,
                     $definition['primary'] ?? false,
                 );
@@ -887,10 +909,12 @@ final class CommentsDoctor
         }
 
         try {
-            $commentsTable = CommentsConfiguration::table(CommentsTables::get(CommentsTables::Comments));
+            $commentsTable = CommentsConfiguration::table(CommentsTables::Comments);
         } catch (Throwable) {
             $commentsTable = '';
         }
+
+        $tablePrefix = $connection?->getTablePrefix() ?? '';
 
         foreach (self::REQUIRED_FOREIGN_KEYS as $key => $requiredForeignKeys) {
             foreach ($requiredForeignKeys as $name => $columns) {
@@ -898,6 +922,7 @@ final class CommentsDoctor
                     $tableForeignKeys[$key],
                     $columns,
                     $commentsTable,
+                    $tablePrefix,
                 );
                 $checks["foreign_key.{$key}.{$name}"] = $foreignKeyReady;
                 $requiredChecks[] = $foreignKeyReady;
@@ -907,9 +932,10 @@ final class CommentsDoctor
         $metadataDigestReady = $metadata->hasStableDigestKey();
         [$metadataStrictCompatible, $metadataStrictIncompatibleRecords] =
             $this->strictMetadataCompatibility(
+                $connection,
                 $metadata,
-                ($checks['column.'.CommentsTables::get(CommentsTables::Comments).'.metadata'] ?? false) === true,
-                ($checks['column.'.CommentsTables::get(CommentsTables::Revisions).'.metadata'] ?? false) === true,
+                ($checks['column.'.CommentsTables::Comments.'.metadata'] ?? false) === true,
+                ($checks['column.'.CommentsTables::Revisions.'.metadata'] ?? false) === true,
             );
         $checks['metadata.schemas_ready'] = true;
         $checks['metadata.digest_key_ready'] = $metadataDigestReady;
@@ -1096,16 +1122,22 @@ final class CommentsDoctor
         }
         try {
             $association = new MediaAssociation;
-            $schema = $association->getConnection()->getSchemaBuilder();
+            $associationConnection = $association->getConnection();
+            $hasHistoricalState = $this->probe(
+                $associationConnection,
+                static function () use ($association, $associationConnection): bool {
+                    $schema = $associationConnection->getSchemaBuilder();
 
-            if (! $schema->hasTable($association->getTable())) {
-                return true;
-            }
+                    if (! $schema->hasTable($association->getTable())) {
+                        return false;
+                    }
 
-            $hasHistoricalState = MediaAssociation::query()
-                ->where('associable_type', (CommentModelRegistry::newInstance())->getMorphClass())
-                ->where('collection', 'attachments')
-                ->exists();
+                    return $associationConnection->table($association->getTable())
+                        ->where('associable_type', (CommentModelRegistry::newInstance())->getMorphClass())
+                        ->where('collection', 'attachments')
+                        ->exists();
+                },
+            );
 
             if (! $hasHistoricalState) {
                 return true;
@@ -1314,50 +1346,67 @@ final class CommentsDoctor
      * @return array{bool, int}
      */
     private function strictMetadataCompatibility(
+        ?ConnectionInterface $connection,
         CommentMetadataRegistry $metadata,
         bool $commentsTableReady,
         bool $revisionsTableReady,
     ): array {
-        if (! $commentsTableReady || ! $revisionsTableReady) {
+        if (! $connection instanceof ConnectionInterface || ! $commentsTableReady || ! $revisionsTableReady) {
             return [false, 0];
         }
 
-        $incompatibleRecords = 0;
+        try {
+            $incompatibleRecords = $this->probe(
+                $connection,
+                function () use ($connection, $metadata): int {
+                    $incompatible = 0;
+                    $tables = [
+                        CommentsConfiguration::table(CommentsTables::Comments),
+                        CommentsConfiguration::table(CommentsTables::Revisions),
+                    ];
 
-        CommentModelRegistry::query()
-            ->withTrashed()
-            ->select(['id', 'metadata'])
-            ->chunkById(500, function ($comments) use (
-                $metadata,
-                &$incompatibleRecords,
-            ): void {
-                foreach ($comments as $comment) {
-                    foreach (array_keys($comment->metadata ?? []) as $storageKey) {
-                        if (! $metadata->ownsStorageKey($storageKey)) {
-                            $incompatibleRecords++;
+                    foreach ($tables as $table) {
+                        $connection->table($table)
+                            ->select(['id', 'metadata'])
+                            ->orderBy('id')
+                            ->chunkById(500, function ($rows) use ($metadata, &$incompatible): void {
+                                foreach ($rows as $row) {
+                                    $rawMetadata = $row->metadata ?? null;
+                                    if ($rawMetadata === null) {
+                                        continue;
+                                    }
 
-                            break;
-                        }
+                                    $decoded = is_string($rawMetadata)
+                                        ? json_decode($rawMetadata, true)
+                                        : $rawMetadata;
+
+                                    if ($decoded === null) {
+                                        continue;
+                                    }
+
+                                    if (! is_array($decoded)) {
+                                        $incompatible++;
+
+                                        continue;
+                                    }
+
+                                    foreach (array_keys($decoded) as $storageKey) {
+                                        if (! $metadata->ownsStorageKey((string) $storageKey)) {
+                                            $incompatible++;
+
+                                            break;
+                                        }
+                                    }
+                                }
+                            });
                     }
-                }
-            });
 
-        CommentRevision::query()
-            ->select(['id', 'metadata'])
-            ->chunkById(500, function ($revisions) use (
-                $metadata,
-                &$incompatibleRecords,
-            ): void {
-                foreach ($revisions as $revision) {
-                    foreach (array_keys($revision->metadata ?? []) as $storageKey) {
-                        if (! $metadata->ownsStorageKey($storageKey)) {
-                            $incompatibleRecords++;
-
-                            break;
-                        }
-                    }
-                }
-            });
+                    return $incompatible;
+                },
+            );
+        } catch (Throwable) {
+            return [false, 0];
+        }
 
         return [$incompatibleRecords === 0, $incompatibleRecords];
     }
@@ -1483,7 +1532,7 @@ final class CommentsDoctor
     }
 
     /**
-     * Match Laravel's logical column kinds to every first-party database driver.
+     * Match Laravel's logical column kinds to the supported databases.
      *
      * @param  array{type: string, type_name: string}  $column
      */
@@ -1494,52 +1543,41 @@ final class CommentsDoctor
         $expectedTypeNames = match ($kind) {
             'uuid' => match ($driver) {
                 'sqlite' => ['varchar'],
-                'mysql' => ['char'],
-                'mariadb' => ['char', 'uuid'],
                 'pgsql' => ['uuid'],
-                'sqlsrv' => ['uniqueidentifier'],
                 default => [],
             },
             'string' => match ($driver) {
-                'sqlite', 'mysql', 'mariadb', 'pgsql' => ['varchar'],
-                'sqlsrv' => ['nvarchar'],
+                'sqlite', 'pgsql' => ['varchar'],
                 default => [],
             },
             'fixed_string' => match ($driver) {
                 'sqlite' => ['varchar'],
-                'mysql', 'mariadb' => ['char'],
                 'pgsql' => ['bpchar'],
-                'sqlsrv' => ['nchar'],
                 default => [],
             },
             'unsigned_small_integer' => match ($driver) {
                 'sqlite' => ['integer'],
-                'mysql', 'mariadb', 'sqlsrv' => ['smallint'],
                 'pgsql' => ['int2'],
                 default => [],
             },
             'unsigned_integer' => match ($driver) {
                 'sqlite' => ['integer'],
-                'mysql', 'mariadb', 'sqlsrv' => ['int'],
                 'pgsql' => ['int4'],
                 default => [],
             },
             'unsigned_big_integer' => match ($driver) {
                 'sqlite' => ['integer'],
-                'mysql', 'mariadb', 'sqlsrv' => ['bigint'],
                 'pgsql' => ['int8'],
                 default => [],
             },
             'boolean' => match ($driver) {
-                'sqlite', 'mysql', 'mariadb' => ['tinyint'],
+                'sqlite' => ['tinyint'],
                 'pgsql' => ['bool'],
-                'sqlsrv' => ['bit'],
                 default => [],
             },
             'timestamp' => match ($driver) {
                 'sqlite' => ['datetime'],
-                'mysql', 'mariadb', 'pgsql' => ['timestamp'],
-                'sqlsrv' => ['datetime', 'datetime2'],
+                'pgsql' => ['timestamp'],
                 default => [],
             },
             default => [],
@@ -1549,26 +1587,11 @@ final class CommentsDoctor
             return false;
         }
 
-        if ($kind === 'uuid'
-            && in_array($driver, ['mysql', 'mariadb'], true)
-            && $typeName === 'char'
-            && $this->typeLength($type) !== 36) {
-            return false;
-        }
-
-        if ($kind === 'boolean'
-            && in_array($driver, ['sqlite', 'mysql', 'mariadb'], true)
-            && $this->typeLength($type) !== 1) {
-            return false;
-        }
-
-        return ! str_starts_with($kind, 'unsigned_')
-            || ! in_array($driver, ['mysql', 'mariadb'], true)
-            || str_contains($type, ' unsigned');
+        return $kind !== 'boolean' || $driver !== 'sqlite' || $this->typeLength($type) === 1;
     }
 
     /**
-     * Validate enforced string lengths while respecting SQL Server's byte metadata.
+     * Validate enforced string lengths.
      *
      * SQLite intentionally omits varchar lengths and does not enforce them.
      *
@@ -1582,12 +1605,6 @@ final class CommentsDoctor
     ): bool {
         if ($driver === 'sqlite') {
             return true;
-        }
-
-        $typeName = strtolower(trim($column['type_name']));
-
-        if ($driver === 'sqlsrv' && in_array($typeName, ['nchar', 'nvarchar'], true)) {
-            $expectedLength *= 2;
         }
 
         return $this->typeLength($column['type']) === $expectedLength;
@@ -1744,10 +1761,18 @@ final class CommentsDoctor
         array $foreignKeys,
         array $requiredColumns,
         string $commentsTable,
+        string $tablePrefix = '',
     ): bool {
+        $expectedForeignTable = $this->stripTablePrefix(strtolower($commentsTable), strtolower($tablePrefix));
+
         foreach ($foreignKeys as $foreignKey) {
+            $actualForeignTable = $this->stripTablePrefix(
+                strtolower($foreignKey['foreign_table']),
+                strtolower($tablePrefix),
+            );
+
             if (array_map(strtolower(...), $foreignKey['columns']) === $requiredColumns
-                && strtolower($foreignKey['foreign_table']) === strtolower($commentsTable)
+                && $actualForeignTable === $expectedForeignTable
                 && array_map(strtolower(...), $foreignKey['foreign_columns']) === ['id']
                 && strtolower((string) $foreignKey['on_delete']) === 'cascade') {
                 return true;
@@ -1755,5 +1780,47 @@ final class CommentsDoctor
         }
 
         return false;
+    }
+
+    private function stripTablePrefix(string $table, string $prefix): string
+    {
+        if ($prefix !== '' && str_starts_with($table, $prefix)) {
+            return substr($table, strlen($prefix));
+        }
+
+        return $table;
+    }
+
+    /**
+     * @param  array<string, mixed>  $commentsColumns
+     */
+    private function ownershipAdopted(array $commentsColumns): bool
+    {
+        if (! isset($commentsColumns['owner_scope_key'])) {
+            return false;
+        }
+
+        try {
+            return CommentsOwnership::declared();
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Isolate schema and table probes in a savepoint when an outer transaction is open.
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $callback
+     * @return TResult
+     */
+    private function probe(?ConnectionInterface $connection, callable $callback): mixed
+    {
+        if ($connection !== null && $connection->transactionLevel() > 0) {
+            return $connection->transaction(static fn () => $callback());
+        }
+
+        return $callback();
     }
 }

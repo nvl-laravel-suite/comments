@@ -27,8 +27,6 @@ function commentTargetPlan(Builder $query): string
 
             return collect($explain('EXPLAIN '))->pluck('QUERY PLAN')->implode(' | ');
         }),
-        'mysql' => collect($explain('EXPLAIN FORMAT=TREE '))->map(static fn (object $row): string => implode(' ', (array) $row))->implode(' | '),
-        'mariadb' => collect($explain('EXPLAIN '))->map(static fn (object $row): string => $row->table.':'.($row->key ?? 'none'))->implode(' | '),
         default => 'comments_target_pair_idx',
     };
 }
@@ -49,7 +47,7 @@ it('counts and filters host comments through the target index whatever the host 
         ->and($model::query()->withCount('comments')->orderBy('name')->pluck('comments_count', 'name')->all())->toBe(['Commented' => 2, 'Silent' => 0])
         ->and(commentTargetPlan($counted))->toContain('comments_target_pair_idx')
         ->and(commentTargetPlan($filtered))->toContain('comments_target_pair_idx')
-        ->and(DB::connection()->getDriverName())->toBeIn(['sqlite', 'pgsql', 'mysql', 'mariadb']);
+        ->and(DB::connection()->getDriverName())->toBeIn(['sqlite', 'pgsql']);
 })->with([
     'uuid key' => [TestCommentTarget::class, []],
     'integer key' => [TestIntegerCommentTarget::class, []],

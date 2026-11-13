@@ -99,7 +99,7 @@ final readonly class CommentBatchQueryBuilder
         $comments->whereRaw($comparison);
         // Plain equalities let the (commentable_type, commentable_id) index find the rows the byte-exact checks then confirm.
         $comments->where($comments->getModel()->qualifyColumn('commentable_type'), $owner->getMorphClass());
-        $indexable = TextColumnComparison::indexable($connection, $comments->getModel()->getTable(), 'commentable_id', $left, $grammar->wrap($owner->getQualifiedKeyName()));
+        $indexable = TextColumnComparison::indexable($connection, $left, $grammar->wrap($owner->getQualifiedKeyName()));
         if ($indexable !== null) {
             $comments->whereRaw($indexable);
         }
@@ -140,8 +140,8 @@ final readonly class CommentBatchQueryBuilder
     private function base(): Builder
     {
         $query = CommentModelRegistry::query()->useWritePdo()->withoutEagerLoads();
-        if (! in_array($query->getModel()->getConnection()->getDriverName(), ['sqlite', 'pgsql', 'mysql', 'mariadb'], true)) {
-            throw new CommentBatchReadException('Comment batch reads require SQLite, PostgreSQL, MySQL or MariaDB window-query support.');
+        if (! in_array($query->getModel()->getConnection()->getDriverName(), ['sqlite', 'pgsql'], true)) {
+            throw new CommentBatchReadException('Comment batch reads require SQLite or PostgreSQL window-query support.');
         }
 
         return $this->boundary->query($query, 'comments.comments')->whereNull($query->getModel()->qualifyColumn('deleted_at'));

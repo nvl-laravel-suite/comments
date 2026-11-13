@@ -92,11 +92,7 @@ abstract class TestCase extends Orchestra
 
         // A host key whose collation differs from the comments table's on every driver.
         Schema::create('comment_string_targets', function (Blueprint $table): void {
-            $table->string('id', 64)->primary()->collation(match (Schema::getConnection()->getDriverName()) {
-                'pgsql' => 'C',
-                'sqlite' => 'NOCASE',
-                default => 'utf8mb4_general_ci',
-            });
+            $table->string('id', 64)->primary()->collation(Schema::getConnection()->getDriverName() === 'pgsql' ? 'C' : 'NOCASE');
             $table->string('name');
             $table->timestamps();
         });

@@ -498,7 +498,7 @@ it('compiles ranked latest and byte-exact host correlation for each supported dr
     $ownerQuery = TestCommentTarget::query();
     CommentBatchOwnerAdmission::exact($ownerQuery, $ownerQuery->getModel()->getQualifiedKeyName(), (string) $owner->getKey());
     $wrappedKey = $ownerQuery->getConnection()->getQueryGrammar()->wrap($ownerQuery->getModel()->getQualifiedKeyName());
-    $castType = in_array($driver, ['mysql', 'mariadb'], true) ? 'CHAR' : 'TEXT';
+    $castType = 'TEXT';
     expect($ownerQuery->toSql())->toContain("CAST({$wrappedKey} AS {$castType})");
     $policy = new ConfiguredCommentAuthorization;
     $visible = $builder->batch(OwnerBatch::fromModels([$owner]), new CommentActorData('member', 'viewer'), CommentAudience::Member, $policy)->toBase();
@@ -511,10 +511,9 @@ it('compiles ranked latest and byte-exact host correlation for each supported dr
     expect($sql)->toContain('nvl_visible_comment_count', 'CAST(');
     match ($driver) {
         'pgsql' => expect($sql)->toContain('AS TEXT)', 'COLLATE "C"', 'OCTET_LENGTH'),
-        'mysql', 'mariadb' => expect($sql)->toContain('AS CHAR)', 'BINARY', 'OCTET_LENGTH'),
         'sqlite' => expect($sql)->toContain('AS TEXT)', 'COLLATE BINARY', 'AS BLOB'),
     };
-})->with(['sqlite', 'pgsql', 'mysql', 'mariadb']);
+})->with(['sqlite', 'pgsql']);
 
 it('retains an early explicit batch binding when the package provider is registered again', function (): void {
     $policy = new BatchCommentPolicy;

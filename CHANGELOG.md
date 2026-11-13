@@ -5,14 +5,18 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Match Unicode mention suggestions case-insensitively across SQLite (`nvl_utf8_lower`) and PostgreSQL (`COLLATE pg_c_utf8`), retain ownership columns on partial `SELECT` projections, and harden mutation lock and Doctor checks.
+
 ## [7.0.3] - 2026-11-11
 
 ### Fixed
 
 - Treat malformed comment, parent, revision and report identifiers, and malformed route bindings, as not found before they reach a UUID column, instead of a PostgreSQL type error that aborts the surrounding transaction.
 - Keep stored rich comments and revisions readable after `rich_text.*` or `mentions.maximum_per_comment` limits are lowered; the limits now bound new input only.
-- Cap `content.maximum_bytes` and `rich_text.maximum_bytes` at 65,535 bytes, the capacity of the `body` column on MySQL and MariaDB. Larger values are clamped at write time and reported by `nvl:comments:doctor` as invalid configuration.
-- Add the `comments_target_pair_idx` index on `(commentable_type, commentable_id)` and plain equalities next to the byte-exact comparisons, so `withNvlVisibleCommentCount`, `whereHas('comments')` and `withCount('comments')` use an index instead of scanning the comments table per host row. The host key is compared in the comments column's collation, so a host key with another collation neither fails on MySQL nor stops the index from being used. Run the new migration.
+- Cap `content.maximum_bytes` and `rich_text.maximum_bytes` at 65,535 bytes. Larger values are clamped at write time and reported by `nvl:comments:doctor` as invalid configuration.
+- Add the `comments_target_pair_idx` index on `(commentable_type, commentable_id)` and plain equalities next to the byte-exact comparisons, so `withNvlVisibleCommentCount`, `whereHas('comments')` and `withCount('comments')` use an index instead of scanning the comments table per host row. Run the new migration.
 - Treat malformed Media and association identifiers in `CommentAttachments::attach()` / `detach()` as not found, and malformed identifiers of UUID-keyed declarative mention resources as missing, before they reach a UUID column.
 - Stop shipping the unused `database/tenancy-migrations` and `database/tenancy` directories and drop `tenant_id` from the models' fillable attributes. The Ownership adoption adapter still migrates installations that carry the column.
 - Enforce `threading.maximum_replies_per_page` on reply pages and use `mentions.suggestion_limit` as the default of `CommentMentions::suggest()`. Remove `moderation.actionable_statuses` and `attachments.signed_url_lifetime`, which nothing read, and list the `metadata_values` and `mentions` table keys.
@@ -254,7 +258,7 @@ All notable changes to `nvl/comments` are documented here.
   reconciliation, route, constant-query, and event regression coverage.
 - Aligned HTTP target identifiers with the 255-character UTF-8 domain contract
   for one percent-encoded path segment, and added clean source plus sealed,
-  relocated artifact consumers on Laravel 12–13, MariaDB coverage, provenance
+  relocated artifact consumers on Laravel 12–13, provenance
   checks, and production-only archive enforcement for the dependency closure.
 - Updated the README, upgrade and security guidance, package skill, generated
   TypeScript declarations, package catalog, and public-contract baseline for

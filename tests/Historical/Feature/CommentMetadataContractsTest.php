@@ -531,7 +531,7 @@ it('matches queryable string integer boolean and null metadata selectors', funct
         CommentAudience::Member,
     );
 
-    expect(DB::connection()->getDriverName())->toBeIn(['sqlite', 'mysql', 'mariadb', 'pgsql']);
+    expect(DB::connection()->getDriverName())->toBeIn(['sqlite', 'pgsql']);
 
     foreach ([
         'workflow.event' => 'submitted',

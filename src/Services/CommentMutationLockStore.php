@@ -52,7 +52,7 @@ final class CommentMutationLockStore
 
         if ($driver === 'file' && ! $allowLocalStore) {
             throw new CommentMutationLockConfigurationException(
-                "Cache store [{$storeName}] uses the file driver, which is single-host only. Set comments.mutation_lock.allow_local_store to true only for an intentional single-host deployment.",
+                "Cache store [{$storeName}] uses the file driver, which is single-host only. Set nvl-comments.mutation_lock.allow_local_store to true only for an intentional single-host deployment.",
             );
         }
 
