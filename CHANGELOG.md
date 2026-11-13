@@ -5,9 +5,17 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [7.0.4] - 2026-11-13
+
 ### Fixed
 
 - Match Unicode mention suggestions case-insensitively across SQLite (`nvl_utf8_lower`) and PostgreSQL (`COLLATE pg_c_utf8`), retain ownership columns on partial `SELECT` projections, and harden mutation lock and Doctor checks.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- harden package runtime safety, PostgreSQL portability and test performance
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.0.3] - 2026-11-11
 
