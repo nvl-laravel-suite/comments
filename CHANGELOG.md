@@ -5,9 +5,17 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [7.4.0] - 2026-11-17
+
 ### Changed
 
 - Require `nvl/core` 7.3.0, whose `TestServiceHosts` the package test fixtures use for disposable database and Redis hosts.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- native-only fixtures, storage-aware PostgreSQL filters, core 7.3 floors
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.3.0] - 2026-11-17
 
