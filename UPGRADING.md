@@ -4,6 +4,14 @@ Sections are ordered newest first. Each heading names the release its instructio
 
 ## Unreleased
 
+The package now requires the `dom` and `libxml` PHP extensions, which `HtmlCommentCodec` uses. No code or schema change is needed.
+
+## 7.1.0
+
+Requires `nvl/core` `^7.1.0`. Run `php artisan migrate`. The new `2026_11_15_234430_nvl_comments_add_moderation_attribution` migration adds nullable `approved_by_type`, `approved_by`, `approved_at`, `pinned_by_type`, `pinned_by`, `pinned_at`, `edited_by_type` and `edited_by` columns to the comments table. Hosts that own published migrations must add the same columns; `nvl:comments:doctor` reports missing ones. Existing comments gain no inferred attribution.
+
+## 7.0.3
+
 Run `php artisan migrate`. The new `2026_11_11_000000_nvl_comments_add_comment_target_index` migration adds the `comments_target_pair_idx` index on `(commentable_type, commentable_id)`, which `withNvlVisibleCommentCount`, `whereHas('comments')` and `withCount('comments')` now use instead of scanning the comments table per host row. Hosts that own published migrations (`nvl-comments.migrations.enabled=false`) must add the same index; `nvl:comments:doctor` reports it as `index.nvl_comments_comments.target_pair`.
 
 Configuration:

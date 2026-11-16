@@ -98,7 +98,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         $builder->where(function (Builder $search) use ($query): void {
             foreach ($this->searchableFields as $field) {
                 $qualified = str_contains($field, '.') ? $field : $search->qualifyColumn($field);
-                $this->textMatcher->contains($search->getQuery(), $qualified, $query, boolean: 'or');
+                $search->setQuery($this->textMatcher->contains($search->getQuery(), $qualified, $query, boolean: 'or'));
             }
         });
 

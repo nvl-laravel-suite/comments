@@ -11,8 +11,10 @@
         "moderation"
     ],
     "require": {
+        "ext-dom": "*",
         "ext-filter": "*",
         "ext-json": "*",
+        "ext-libxml": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^13.0",
         "nvl/core": "^7.1.0",

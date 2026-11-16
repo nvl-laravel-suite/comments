@@ -15,12 +15,15 @@ use Nvl\Comments\Services\CommentMentions;
 use Nvl\Comments\Services\CommentModeration;
 use Nvl\Comments\Services\CommentReader;
 use Nvl\Comments\Services\CommentWriter;
+use Nvl\Comments\Tests\Fixtures\CloningTextMatcher;
 use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
 use Nvl\Comments\Tests\Fixtures\NativeCommentMentionResolver;
 use Nvl\Comments\Tests\Fixtures\PermissiveCommentMentionAuthorization;
 use Nvl\Comments\Tests\Fixtures\TestCommentMentionAuthorization;
+use Nvl\Comments\Tests\Fixtures\TestCommentMentionResource;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 use Nvl\Comments\Tests\Fixtures\UnmigratedCommentMentionResource;
+use Nvl\Support\Contracts\TextMatcher;
 use Nvl\Support\Enums\PublicActor;
 
 it('resolves a registered private mention for a member and conceals it from public viewers', function (): void {
@@ -255,4 +258,26 @@ it('suggests Unicode mention resources case-insensitively', function (): void {
     $suggestions = app(CommentMentions::class)->suggest($target, $actor, 'author', 'георги иванов !%_', audience: CommentAudience::Member);
 
     expect(array_column($suggestions, 'id'))->toBe([(string) $unicodeResource->id]);
+});
+
+it('keeps authorization when a host matcher returns a cloned builder', function (): void {
+    app()->bind(TextMatcher::class, CloningTextMatcher::class);
+    config()->set(['nvl-comments.mentions.enabled' => true, 'nvl-comments.mentions.resources' => ['company' => [
+        'model' => TestCommentMentionResource::class,
+        'searchable_fields' => ['name', 'registration_number'], 'exposed_fields' => ['name'], 'label_field' => 'name',
+        'authorization' => TestCommentMentionAuthorization::class, 'public' => false,
+    ]]]);
+    app()->forgetInstance(CommentMentionResourceRegistry::class);
+
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $tenant = (string) $actor->id;
+    TestCommentMentionResource::create(['id' => 'r1', 'tenant_id' => $tenant, 'name' => 'Acme Holdings', 'registration_number' => 'X-1']);
+    TestCommentMentionResource::create(['id' => 'r2', 'tenant_id' => $tenant, 'name' => 'Beta Trading', 'registration_number' => 'ACME-2']);
+    TestCommentMentionResource::create(['id' => 'r3', 'tenant_id' => $tenant, 'name' => 'Gamma', 'registration_number' => 'G-3']);
+    TestCommentMentionResource::create(['id' => 'r4', 'tenant_id' => 'other-tenant', 'name' => 'Acme Foreign', 'registration_number' => 'F-4']);
+
+    $suggestions = app(CommentMentions::class)->suggest($target, $actor, 'company', 'acme', audience: CommentAudience::Member);
+
+    expect(array_column($suggestions, 'id'))->toBe(['r1', 'r2']);
 });

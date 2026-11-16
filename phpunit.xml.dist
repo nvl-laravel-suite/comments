@@ -12,7 +12,6 @@
     <testsuites>
         <testsuite name="NVL Comments">
             <directory>tests</directory>
-            <exclude>tests/Historical</exclude>
         </testsuite>
     </testsuites>
     <php>
