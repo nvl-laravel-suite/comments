@@ -5,6 +5,8 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [7.3.0] - 2026-11-17
+
 ### Fixed
 
 - Force-deleting a soft-deleted comment, or a thread whose trashed reply holds an attachment, removes the attachments instead of failing with `The Media host record is unavailable` (needs Media 7.3.0).
@@ -24,6 +26,12 @@ All notable changes to `nvl/comments` are documented here.
 ### Changed
 
 - `SECURITY.md` describes host-owned transport and the current actor types instead of retired package routes and signed attachment URLs.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- implement the Final spec audit for one release
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.2.0] - 2026-11-16
 
