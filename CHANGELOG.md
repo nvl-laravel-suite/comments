@@ -5,6 +5,8 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+## [7.2.0] - 2026-11-16
+
 ### Fixed
 
 - Search supports host matchers that return a new builder.
@@ -13,6 +15,12 @@ All notable changes to `nvl/comments` are documented here.
 
 - Require the `dom` and `libxml` PHP extensions used by `HtmlCommentCodec`.
 - Label the 7.0.3 and 7.1.0 sections of `UPGRADING.md` and document the 7.1.0 moderation attribution migration.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- adoption flow, PostgreSQL proof, release health and 7.2 floors
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.1.0] - 2026-11-16
 
