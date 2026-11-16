@@ -64,7 +64,15 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * @property int $report_count
  * @property int $open_report_count
  * @property bool $is_pinned
+ * @property string|null $pinned_by_type
+ * @property string|null $pinned_by
+ * @property Carbon|null $pinned_at
+ * @property string|null $approved_by_type
+ * @property string|null $approved_by
+ * @property Carbon|null $approved_at
  * @property Carbon|null $edited_at
+ * @property string|null $edited_by_type
+ * @property string|null $edited_by
  * @property string|null $moderated_by_type
  * @property string|null $moderated_by
  * @property string|null $moderation_reason
@@ -146,7 +154,15 @@ class Comment extends Model implements Ownable
         'report_count',
         'open_report_count',
         'is_pinned',
+        'pinned_by_type',
+        'pinned_by',
+        'pinned_at',
+        'approved_by_type',
+        'approved_by',
+        'approved_at',
         'edited_at',
+        'edited_by_type',
+        'edited_by',
         'moderated_by_type',
         'moderated_by',
         'moderation_reason',
@@ -185,6 +201,12 @@ class Comment extends Model implements Ownable
         'idempotency_key',
         'idempotency_hash',
         'document',
+        'pinned_by_type',
+        'pinned_by',
+        'approved_by_type',
+        'approved_by',
+        'edited_by_type',
+        'edited_by',
     ];
 
     /**
@@ -311,6 +333,8 @@ class Comment extends Model implements Ownable
             'report_count' => 'integer',
             'open_report_count' => 'integer',
             'is_pinned' => 'boolean',
+            'pinned_at' => 'immutable_datetime',
+            'approved_at' => 'immutable_datetime',
             'edited_at' => 'immutable_datetime',
             'moderated_at' => 'immutable_datetime',
             'restored_at' => 'immutable_datetime',

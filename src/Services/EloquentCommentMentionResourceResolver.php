@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Comments\Services;
 
-use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use Nvl\Comments\Contracts\CommentMentionResourceAuthorization;
 use Nvl\Comments\Contracts\CommentMentionResourceResolver;
 use Nvl\Comments\Contracts\CommentMentionUrlResolver;
@@ -19,10 +17,9 @@ use Nvl\Comments\Enums\CommentMentionState;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
+use Nvl\Support\Contracts\TextMatcher;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
-use PDO;
-use Pdo\Sqlite;
 
 /**
  * Resolves one declaratively registered Eloquent mention resource.
@@ -44,6 +41,7 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         private array $exposedFields,
         private string $labelField,
         private CommentMentionResourceAuthorization $authorization,
+        private TextMatcher $textMatcher,
         private ?CommentMentionUrlResolver $urlResolver = null,
         private ?OwnershipBoundary $boundary = null,
     ) {}
@@ -97,25 +95,10 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         $key = $model->getKeyName();
         $builder = $this->resourceQuery($model, $context);
         $this->authorization->scope($builder, $context);
-        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $query);
-        $connection = $builder->getModel()->getConnection();
-        $driver = strtolower($connection->getDriverName());
-        if ($driver === 'sqlite') {
-            $this->registerSqliteLowerFunction($connection);
-        }
-
-        $builder->where(function (Builder $search) use ($driver, $escaped): void {
-            foreach ($this->searchableFields as $position => $field) {
+        $builder->where(function (Builder $search) use ($query): void {
+            foreach ($this->searchableFields as $field) {
                 $qualified = str_contains($field, '.') ? $field : $search->qualifyColumn($field);
-                $column = $search->getQuery()->getGrammar()->wrap($qualified);
-                [$sql, $pattern] = match ($driver) {
-                    'pgsql' => ["(CAST({$column} AS TEXT) COLLATE pg_c_utf8) ILIKE ? ESCAPE '!'", "%{$escaped}%"],
-                    'sqlite' => ["nvl_utf8_lower({$column}) LIKE ? ESCAPE '!'", '%'.mb_strtolower($escaped, 'UTF-8').'%'],
-                    default => ["LOWER({$column}) LIKE ? ESCAPE '!'", '%'.mb_strtolower($escaped, 'UTF-8').'%'],
-                };
-                $this->assertSafeSearchSql($sql);
-                $method = $position === 0 ? 'whereRaw' : 'orWhereRaw';
-                $search->{$method}($sql, [$pattern]);
+                $this->textMatcher->contains($search->getQuery(), $qualified, $query, boolean: 'or');
             }
         });
 
@@ -224,32 +207,5 @@ final readonly class EloquentCommentMentionResourceResolver implements CommentMe
         }
 
         return (string) $identifier;
-    }
-
-    /**
-     * Prove that grammar wrapping produced one quoted allowlisted identifier only.
-     *
-     * @phpstan-assert literal-string $sql
-     */
-    private function assertSafeSearchSql(string $sql): void
-    {
-        if (preg_match("/^(?:(?:nvl_utf8_lower|LOWER)\\([A-Za-z0-9_.\"`\\[\\]]+\\)|\\(CAST\\([A-Za-z0-9_.\"`\\[\\]]+ AS TEXT\\) COLLATE pg_c_utf8\\)) I?LIKE \\? ESCAPE '!'$/D", $sql) !== 1) {
-            throw new InvalidArgumentException(
-                'Comment mention searchable fields produced unsafe SQL.',
-            );
-        }
-    }
-
-    private function registerSqliteLowerFunction(Connection $connection): void
-    {
-        $lower = static fn (?string $value): ?string => $value === null ? null : mb_strtolower($value, 'UTF-8');
-
-        foreach (array_unique([$connection->getPdo(), $connection->getReadPdo()], SORT_REGULAR) as $pdo) {
-            if ($pdo instanceof Sqlite) {
-                $pdo->createFunction('nvl_utf8_lower', $lower, 1, Sqlite::DETERMINISTIC);
-            } elseif ($pdo instanceof PDO) {
-                $pdo->sqliteCreateFunction('nvl_utf8_lower', $lower, 1, PDO::SQLITE_DETERMINISTIC);
-            }
-        }
     }
 }

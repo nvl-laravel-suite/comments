@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Nvl\Comments\Contracts\CommentQueryScope;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Exceptions\CommentTargetNotFoundException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Support\CommentIdentity;
@@ -232,6 +233,10 @@ final readonly class CommentReadService
                 'commentable_identity_hash',
                 CommentIdentity::pair($identity['type'], $identity['id']),
             );
+
+        if ($audience !== CommentAudience::Management) {
+            $query->where('status_hash', '!=', CommentIdentity::value('comment-status', CommentStatus::Flagged));
+        }
 
         $query->where(function (Builder $scope) use ($actor, $target, $audience, $ability): void {
             $this->queryScope->scopeComments($scope, $actor->principal, $target, $audience, $ability);

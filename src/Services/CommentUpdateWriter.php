@@ -16,6 +16,7 @@ use Nvl\Comments\Exceptions\StaleCommentException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Comments\Support\EncodedCommentContent;
 use Nvl\Support\Events\DomainEventDispatcher;
 
 /**
@@ -45,6 +46,7 @@ final readonly class CommentUpdateWriter
         array $data,
         CommentActor $actor,
         CommentAudience $audience = CommentAudience::Public,
+        ?EncodedCommentContent $encoded = null,
     ): Comment {
         $data = $this->normalizeUpdate($data);
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
@@ -52,7 +54,7 @@ final readonly class CommentUpdateWriter
         return $this->mutationLock->execute(
             $commentId,
             fn (): Comment => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
-                ->transaction(function () use ($actor, $audience, $commentId, $data): Comment {
+                ->transaction(function () use ($actor, $audience, $commentId, $data, $encoded): Comment {
                     $comment = $this->reads->resolveById(
                         $commentId,
                         $actor,
@@ -99,6 +101,7 @@ final readonly class CommentUpdateWriter
 
                     if ($comment->body === $data['body']
                         && $comment->format === $format
+                        && $comment->document === $encoded?->document
                         && $comment->locale === $locale
                         && $comment->tags === $tags
                         && $comment->metadata === $metadata) {
@@ -112,6 +115,7 @@ final readonly class CommentUpdateWriter
                         'locale' => $comment->locale,
                         'tags' => $comment->tags,
                         'metadata' => $comment->metadata,
+                        'document' => $comment->document,
                         'edited_by_type' => $actor->type,
                         'edited_by' => $actor->id,
                     ]);
@@ -132,9 +136,12 @@ final readonly class CommentUpdateWriter
                         'locale' => $locale,
                         'tags' => $tags,
                         'metadata' => $metadata,
+                        'document' => $encoded?->document,
                         'status' => $status ?? $comment->status,
                         'revision' => $comment->revision + 1,
                         'edited_at' => now(),
+                        'edited_by_type' => $actor->type,
+                        'edited_by' => $actor->id,
                     ];
 
                     if (! $comment->fill($attributes)->save()) {

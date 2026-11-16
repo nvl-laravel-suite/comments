@@ -27,4 +27,6 @@ enum CommentAbility: string
     case ViewHistory = 'view_history';
     case RestoreRevision = 'restore_revision';
     case Moderate = 'moderate';
+    case MoveHistory = 'move_history';
+    case AdoptHistory = 'adopt_history';
 }

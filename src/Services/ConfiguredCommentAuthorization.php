@@ -102,6 +102,8 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
                 && ! $this->isAnonymized($comment),
             CommentAbility::Anonymize,
             CommentAbility::Moderate,
+            CommentAbility::MoveHistory,
+            CommentAbility::AdoptHistory,
             CommentAbility::ViewIdentity => false,
             CommentAbility::React, CommentAbility::Report => $actor->id !== null
                 && $this->isVisibleToActor($actor, $comment, $audience)
@@ -281,6 +283,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
     private function isDefaultMemberRow(?Comment $comment): bool
     {
         return $comment !== null
+            && $comment->status !== CommentStatus::Flagged
             && (
                 in_array(
                     $comment->status,

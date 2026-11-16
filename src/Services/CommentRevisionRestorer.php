@@ -160,6 +160,9 @@ final readonly class CommentRevisionRestorer
                             : null;
                         $restoredDocument = null;
                         $restoredBody = $revision->body;
+                        $encodedSource = $revision->format !== CommentFormat::RichText && is_string($revision->document['codec'] ?? null)
+                            ? $revision->document
+                            : null;
 
                         if ($revision->format === CommentFormat::RichText) {
                             if (! is_array($revision->document)) {
@@ -181,11 +184,13 @@ final readonly class CommentRevisionRestorer
                             'tags' => $revision->tags,
                             'metadata' => $restoredMetadata,
                             'document' => $restoredDocument === null
-                                ? null
+                                ? $encodedSource
                                 : $this->documents->toArray($restoredDocument),
                             'status' => $status ?? $comment->status,
                             'revision' => $comment->revision + 1,
                             'edited_at' => now(),
+                            'edited_by_type' => $actor->type,
+                            'edited_by' => $actor->id,
                         ])->save();
 
                         if (! $saved) {

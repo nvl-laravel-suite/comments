@@ -17,6 +17,7 @@ use Nvl\Comments\Exceptions\InvalidCommentMutationException;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
+use Nvl\Support\Contracts\TextMatcher;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Throwable;
 
@@ -505,6 +506,7 @@ final class CommentMentionResourceRegistry
             exposedFields: $definition['exposed'],
             labelField: $definition['label'],
             authorization: $authorization,
+            textMatcher: $this->container->make(TextMatcher::class),
             urlResolver: $urlResolver,
             boundary: $this->container->make(OwnershipBoundary::class),
         );

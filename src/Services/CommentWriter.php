@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Nvl\Comments\Contracts\CommentContentCodec;
 use Nvl\Comments\Enums\CommentAbility;
 use Nvl\Comments\Enums\CommentAudience;
 use Nvl\Comments\Enums\CommentChangeOperation;
@@ -24,6 +25,7 @@ use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
+use Nvl\Comments\Support\EncodedCommentContent;
 use Nvl\Comments\ValueObjects\CommentMentionContext;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
@@ -109,6 +111,27 @@ final readonly class CommentWriter
         );
     }
 
+    /**
+     * Create a comment with a plain-text projection and a private versioned source envelope.
+     *
+     * @param  array<string,mixed>  $data
+     * @param  string|array<array-key,mixed>  $payload
+     */
+    public function createEncoded(Model $target, array $data, CommentContentCodec $codec, string|array $payload, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience = CommentAudience::Public): Comment
+    {
+        $this->targets->assertCanonical($target);
+        $source = EncodedCommentContent::capture($codec, $payload);
+
+        return $this->execute(
+            $target,
+            $this->normalizeCreate($this->encodedAttributes($data, $source)),
+            CommentActor::from($actor),
+            $audience,
+            canonicalDocument: $source->canonical,
+            encoded: $source,
+        );
+    }
+
     public function delete(
         Comment|string $comment,
         int $expectedRevision,
@@ -141,6 +164,19 @@ final readonly class CommentWriter
         CommentAudience $audience = CommentAudience::Public,
     ): Comment {
         return $this->richUpdates->update($comment, $attributes, CommentActor::from($actor), $audience);
+    }
+
+    /**
+     * Replace a comment with a codec projection, preserving the current source in its revision.
+     *
+     * @param  array<string,mixed>  $data
+     * @param  string|array<array-key,mixed>  $payload
+     */
+    public function updateEncoded(Comment|string $comment, array $data, CommentContentCodec $codec, string|array $payload, Authenticatable|SystemActor|PublicActor $actor, CommentAudience $audience = CommentAudience::Public): Comment
+    {
+        $source = EncodedCommentContent::capture($codec, $payload);
+
+        return $this->updates->update($comment, $this->encodedAttributes($data, $source), CommentActor::from($actor), $audience, $source);
     }
 
     public function restore(
@@ -201,6 +237,7 @@ final readonly class CommentWriter
         CommentAudience $audience,
         ?array $inputDocument = null,
         ?string $canonicalDocument = null,
+        ?EncodedCommentContent $encoded = null,
     ): Comment {
         $idempotencyKey = $this->lifecycle->idempotencyKey($data['idempotency_key']);
         $targetPrototype = new ($target::class);
@@ -228,6 +265,7 @@ final readonly class CommentWriter
                 $actor,
                 $audience,
                 $canonicalDocument,
+                $encoded,
                 $commentConnectionName,
                 $data,
                 $idempotencyKey,
@@ -244,6 +282,7 @@ final readonly class CommentWriter
                             $actor,
                             $audience,
                             $canonicalDocument,
+                            $encoded,
                             $data,
                             $idempotencyKey,
                             &$idempotencyHash,
@@ -412,9 +451,9 @@ final readonly class CommentWriter
                                 'visibility' => $visibility,
                                 'tags' => $data['tags'],
                                 'metadata' => $metadata,
-                                'document' => is_array($document)
+                                'document' => $encoded->document ?? (is_array($document)
                                     ? $this->documents->toArray($document)
-                                    : null,
+                                    : null),
                             ]);
 
                             if (! $comment->exists) {
@@ -567,7 +606,7 @@ final readonly class CommentWriter
         CommentActor $actor,
         ?string $canonicalDocument,
     ): string {
-        if (! isset($data['document'])) {
+        if (! isset($data['document']) && $canonicalDocument === null) {
             return $this->idempotency->make(
                 $targetType,
                 $targetId,
@@ -593,6 +632,19 @@ final readonly class CommentWriter
             $actor,
             $canonicalDocument,
         );
+    }
+
+    /**
+     * @param  array<string,mixed>  $data
+     * @return array<string,mixed>
+     */
+    private function encodedAttributes(array $data, EncodedCommentContent $source): array
+    {
+        if (array_intersect(array_keys($data), ['body', 'format', 'document']) !== []) {
+            throw new InvalidCommentMutationException('Encoded comments take content from the selected codec and payload.');
+        }
+
+        return [...$data, 'body' => $source->body, 'format' => CommentFormat::Plain];
     }
 
     /**

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Nvl\Comments\Contracts\CommentBatchQueryScope;
 use Nvl\Comments\Enums\CommentAudience;
+use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Exceptions\CommentBatchReadException;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Relations\TextColumnComparison;
@@ -35,7 +36,7 @@ final readonly class CommentBatchQueryBuilder
      */
     public function batch(OwnerBatch $batch, CommentActor $actor, CommentAudience $audience, CommentBatchQueryScope $policy): Builder
     {
-        $query = $this->base();
+        $query = $this->base($audience);
         $query->where(function (Builder $pairs) use ($batch): void {
             foreach ($batch->identities() as $identity) {
                 $pairs->orWhere(function (Builder $pair) use ($identity): void {
@@ -89,7 +90,7 @@ final readonly class CommentBatchQueryBuilder
             $query->whereNull($column);
         }
         $query = $this->owners->scope($query);
-        $comments = $this->base();
+        $comments = $this->base($audience);
         CommentBatchOwnerAdmission::exact($comments, 'commentable_type', $owner->getMorphClass());
         $connection = $comments->getModel()->getConnection();
         $grammar = $connection->getQueryGrammar();
@@ -137,13 +138,18 @@ final readonly class CommentBatchQueryBuilder
      *
      * @return Builder<Comment>
      */
-    private function base(): Builder
+    private function base(CommentAudience $audience): Builder
     {
         $query = CommentModelRegistry::query()->useWritePdo()->withoutEagerLoads();
         if (! in_array($query->getModel()->getConnection()->getDriverName(), ['sqlite', 'pgsql'], true)) {
             throw new CommentBatchReadException('Comment batch reads require SQLite or PostgreSQL window-query support.');
         }
 
-        return $this->boundary->query($query, 'comments.comments')->whereNull($query->getModel()->qualifyColumn('deleted_at'));
+        $query = $this->boundary->query($query, 'comments.comments')->whereNull($query->getModel()->qualifyColumn('deleted_at'));
+        if ($audience !== CommentAudience::Management) {
+            $query->where('status_hash', '!=', CommentIdentity::value('comment-status', CommentStatus::Flagged));
+        }
+
+        return $query;
     }
 }

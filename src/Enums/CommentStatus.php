@@ -16,4 +16,5 @@ enum CommentStatus: string
     case Rejected = 'rejected';
     case Hidden = 'hidden';
     case Spam = 'spam';
+    case Flagged = 'flagged';
 }

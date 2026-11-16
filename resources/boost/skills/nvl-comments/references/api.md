@@ -9,6 +9,7 @@ Search for the relevant fully qualified service or contract and read only its ma
 - `Nvl\Comments\Contracts\CommentAttachmentLifecycle`
 - `Nvl\Comments\Contracts\CommentAuthorization`
 - `Nvl\Comments\Contracts\CommentBatchQueryScope`
+- `Nvl\Comments\Contracts\CommentContentCodec`
 - `Nvl\Comments\Contracts\CommentMentionResourceAuthorization`
 - `Nvl\Comments\Contracts\CommentMentionResourceResolver`
 - `Nvl\Comments\Contracts\CommentMentionUrlResolver`
@@ -55,13 +56,17 @@ Search for the relevant fully qualified service or contract and read only its ma
 - `Nvl\Comments\Models\CommentReport`
 - `Nvl\Comments\Models\CommentRevision`
 - `Nvl\Comments\Services\CommentAttachments`
+- `Nvl\Comments\Services\CommentHistoryMover`
 - `Nvl\Comments\Services\CommentMentions`
 - `Nvl\Comments\Services\CommentModelRegistry`
 - `Nvl\Comments\Services\CommentModeration`
 - `Nvl\Comments\Services\CommentReactions`
 - `Nvl\Comments\Services\CommentReader`
+- `Nvl\Comments\Services\CommentSchemaAdopter`
 - `Nvl\Comments\Services\CommentWriter`
 - `Nvl\Comments\Services\ConfiguredCommentAuthorization`
+- `Nvl\Comments\Services\HtmlCommentCodec`
+- `Nvl\Comments\Services\RichBlockCommentCodec`
 - `Nvl\Comments\Support\CommentIdentity`
 - `Nvl\Comments\Traits\InteractsWithComments`
 - `Nvl\Comments\ValueObjects\CommentMentionContext`
@@ -99,6 +104,17 @@ resolved @param Illuminate\Database\Eloquent\Builder<Nvl\Comments\Models\Comment
 public abstract function scopeHostComments(Illuminate\Database\Eloquent\Builder $query, Illuminate\Database\Eloquent\Model $ownerPrototype, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience): void
 @param Builder<Comment> $query
 resolved @param Illuminate\Database\Eloquent\Builder<Nvl\Comments\Models\Comment> $query
+```
+
+## Nvl\Comments\Contracts\CommentContentCodec
+
+```text
+interface Nvl\Comments\Contracts\CommentContentCodec
+public abstract function identifier(): string
+public abstract function project(string|array $payload): array
+@param (string | array<array-key, mixed>) $payload
+@return array{body: string, unsupported: list<string>}
+public abstract function version(): int
 ```
 
 ## Nvl\Comments\Contracts\CommentMentionResourceAuthorization
@@ -270,6 +286,7 @@ resolved @var list<Nvl\Comments\Enums\CommentAudience>
 
 ```text
 enum Nvl\Comments\Enums\CommentAbility implements BackedEnum, UnitEnum: string
+public const Nvl\Comments\Enums\CommentAbility AdoptHistory=Nvl\Comments\Enums\CommentAbility::AdoptHistory="adopt_history"
 public const Nvl\Comments\Enums\CommentAbility Anonymize=Nvl\Comments\Enums\CommentAbility::Anonymize="anonymize"
 public const Nvl\Comments\Enums\CommentAbility Attach=Nvl\Comments\Enums\CommentAbility::Attach="attach"
 public const Nvl\Comments\Enums\CommentAbility Create=Nvl\Comments\Enums\CommentAbility::Create="create"
@@ -277,6 +294,7 @@ public const Nvl\Comments\Enums\CommentAbility Delete=Nvl\Comments\Enums\Comment
 public const Nvl\Comments\Enums\CommentAbility Detach=Nvl\Comments\Enums\CommentAbility::Detach="detach"
 public const Nvl\Comments\Enums\CommentAbility List=Nvl\Comments\Enums\CommentAbility::List="list"
 public const Nvl\Comments\Enums\CommentAbility Moderate=Nvl\Comments\Enums\CommentAbility::Moderate="moderate"
+public const Nvl\Comments\Enums\CommentAbility MoveHistory=Nvl\Comments\Enums\CommentAbility::MoveHistory="move_history"
 public const Nvl\Comments\Enums\CommentAbility React=Nvl\Comments\Enums\CommentAbility::React="react"
 public const Nvl\Comments\Enums\CommentAbility Reply=Nvl\Comments\Enums\CommentAbility::Reply="reply"
 public const Nvl\Comments\Enums\CommentAbility Report=Nvl\Comments\Enums\CommentAbility::Report="report"
@@ -388,6 +406,7 @@ public static function tryFrom(string|int $value): ?static
 ```text
 enum Nvl\Comments\Enums\CommentStatus implements BackedEnum, UnitEnum: string
 public const Nvl\Comments\Enums\CommentStatus Approved=Nvl\Comments\Enums\CommentStatus::Approved="approved"
+public const Nvl\Comments\Enums\CommentStatus Flagged=Nvl\Comments\Enums\CommentStatus::Flagged="flagged"
 public const Nvl\Comments\Enums\CommentStatus Hidden=Nvl\Comments\Enums\CommentStatus::Hidden="hidden"
 public const Nvl\Comments\Enums\CommentStatus Pending=Nvl\Comments\Enums\CommentStatus::Pending="pending"
 public const Nvl\Comments\Enums\CommentStatus Rejected=Nvl\Comments\Enums\CommentStatus::Rejected="rejected"
@@ -732,6 +751,10 @@ resolved @method Illuminate\Database\Eloquent\Relations\MorphMany<Nvl\Media\Mode
 resolved @property (Illuminate\Support\Carbon | null) $anonymized_at
 @property (string | null) $anonymized_by
 @property (string | null) $anonymized_by_type
+@property (Carbon | null) $approved_at
+resolved @property (Illuminate\Support\Carbon | null) $approved_at
+@property (string | null) $approved_by
+@property (string | null) $approved_by_type
 @property-read Collection<int, MediaAssociation> $attachmentAssociations
 resolved @property-read Illuminate\Database\Eloquent\Collection<int, Nvl\Media\Models\MediaAssociation> $attachmentAssociations
 @property string $body
@@ -750,6 +773,8 @@ resolved @property (Illuminate\Support\Carbon | null) $deleted_at
 @property (array<string, mixed> | null) $document
 @property (Carbon | null) $edited_at
 resolved @property (Illuminate\Support\Carbon | null) $edited_at
+@property (string | null) $edited_by
+@property (string | null) $edited_by_type
 @property CommentFormat $format
 resolved @property Nvl\Comments\Enums\CommentFormat $format
 @property string $id
@@ -771,6 +796,10 @@ resolved @property (Illuminate\Support\Carbon | null) $moderated_at
 @property-read (Comment | null) $parent
 resolved @property-read (Nvl\Comments\Models\Comment | null) $parent
 @property (string | null) $parent_id
+@property (Carbon | null) $pinned_at
+resolved @property (Illuminate\Support\Carbon | null) $pinned_at
+@property (string | null) $pinned_by
+@property (string | null) $pinned_by_type
 @property int $reaction_count
 @property-read Collection<int, CommentReaction> $reactions
 resolved @property-read Illuminate\Database\Eloquent\Collection<int, Nvl\Comments\Models\CommentReaction> $reactions
@@ -1012,6 +1041,16 @@ public function attach(Nvl\Comments\Models\Comment|string $comment, Nvl\Media\Mo
 public function detach(Nvl\Comments\Models\Comment|string $comment, string $associationId, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): bool
 ```
 
+## Nvl\Comments\Services\CommentHistoryMover
+
+```text
+final readonly class Nvl\Comments\Services\CommentHistoryMover
+public function __construct(Nvl\Support\OwnerRegistry $owners, Nvl\Support\Ownership\Contracts\OwnershipBoundary $boundary, Nvl\Comments\Services\CommentAccessService $access): mixed
+public function moveMany(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, string $sourceType, string $targetType, array $targets): array
+@param array<array-key, mixed> $targets
+@return array<array-key, int>
+```
+
 ## Nvl\Comments\Services\CommentMentions
 
 ```text
@@ -1077,6 +1116,25 @@ public function revisions(Nvl\Comments\Models\Comment|string $comment, Illuminat
 resolved @return Illuminate\Pagination\LengthAwarePaginator<int, array{id: string, revision: int, body: string, format: Nvl\Comments\Enums\CommentFormat, locale: ?string, tags: (list<string> | null), metadata: list<array{namespace: string, values: array<string, mixed>}>, document: (array<string, mixed> | null), mentions: list<array<string, mixed>>}>
 ```
 
+## Nvl\Comments\Services\CommentSchemaAdopter
+
+```text
+final readonly class Nvl\Comments\Services\CommentSchemaAdopter
+public function __construct(Illuminate\Database\DatabaseManager $database, Nvl\Support\OwnerRegistry $owners, Nvl\Comments\Services\CommentAccessService $access): mixed
+public function apply(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, string $fingerprint, array $source): array
+@param array<array-key, mixed> $source
+@return Review
+resolved @return array{schema_fingerprint: string, fingerprint: string, comments: int, reactions: int, staged_comments: int, staged_reactions: int, conflicts: list<string>}
+public function plan(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, array $source): array
+@param array<array-key, mixed> $source
+@return Review
+resolved @return array{schema_fingerprint: string, fingerprint: string, comments: int, reactions: int, staged_comments: int, staged_reactions: int, conflicts: list<string>}
+public function verify(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, string $fingerprint, array $source): array
+@param array<array-key, mixed> $source
+@return Review
+resolved @return array{schema_fingerprint: string, fingerprint: string, comments: int, reactions: int, staged_comments: int, staged_reactions: int, conflicts: list<string>}
+```
+
 ## Nvl\Comments\Services\CommentWriter
 
 ```text
@@ -1086,6 +1144,9 @@ public function anonymize(Nvl\Comments\Models\Comment|string $comment, array $at
 @param array{expected_revision: int, reason: string} $attributes
 public function create(Illuminate\Database\Eloquent\Model $target, array $data, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
 @param array<string, mixed> $data
+public function createEncoded(Illuminate\Database\Eloquent\Model $target, array $data, Nvl\Comments\Contracts\CommentContentCodec $codec, string|array $payload, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
+@param array<string, mixed> $data
+@param (string | array<array-key, mixed>) $payload
 public function createRich(Illuminate\Database\Eloquent\Model $target, array $data, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
 @param array<string, mixed> $data
 public function delete(Nvl\Comments\Models\Comment|string $comment, int $expectedRevision, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): bool
@@ -1093,6 +1154,9 @@ public function restore(Nvl\Comments\Models\Comment|string $comment, int $expect
 public function restoreRevision(Nvl\Comments\Models\Comment|string $comment, Nvl\Comments\Models\CommentRevision|string $revision, int $expectedRevision, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
 public function update(Nvl\Comments\Models\Comment|string $comment, array $attributes, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
 @param array<string, mixed> $attributes
+public function updateEncoded(Nvl\Comments\Models\Comment|string $comment, array $data, Nvl\Comments\Contracts\CommentContentCodec $codec, string|array $payload, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
+@param array<string, mixed> $data
+@param (string | array<array-key, mixed>) $payload
 public function updateRich(Nvl\Comments\Models\Comment|string $comment, array $attributes, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience=\Nvl\Comments\Enums\CommentAudience::Public): Nvl\Comments\Models\Comment
 @param array<string, mixed> $attributes
 ```
@@ -1113,6 +1177,24 @@ resolved @param Illuminate\Database\Eloquent\Builder<Nvl\Comments\Models\Comment
 public function scopeHostComments(Illuminate\Database\Eloquent\Builder $query, Illuminate\Database\Eloquent\Model $ownerPrototype, Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor|Nvl\Support\Enums\PublicActor $actor, Nvl\Comments\Enums\CommentAudience $audience): void
 @param Builder<Comment> $query
 resolved @param Illuminate\Database\Eloquent\Builder<Nvl\Comments\Models\Comment> $query
+```
+
+## Nvl\Comments\Services\HtmlCommentCodec
+
+```text
+final class Nvl\Comments\Services\HtmlCommentCodec implements Nvl\Comments\Contracts\CommentContentCodec
+public function identifier(): string
+public function project(string|array $payload): array
+public function version(): int
+```
+
+## Nvl\Comments\Services\RichBlockCommentCodec
+
+```text
+final class Nvl\Comments\Services\RichBlockCommentCodec implements Nvl\Comments\Contracts\CommentContentCodec
+public function identifier(): string
+public function project(string|array $payload): array
+public function version(): int
 ```
 
 ## Nvl\Comments\Support\CommentIdentity

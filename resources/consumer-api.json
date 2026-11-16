@@ -38,6 +38,17 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Contracts\\CommentContentCodec": {
+            "kind": "interface",
+            "file": "src/Contracts/CommentContentCodec.php",
+            "methods": [
+                "identifier",
+                "project",
+                "version"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Contracts\\CommentMentionResourceAuthorization": {
             "kind": "interface",
             "file": "src/Contracts/CommentMentionResourceAuthorization.php",
@@ -207,6 +218,7 @@
                 "value"
             ],
             "constants": [
+                "AdoptHistory",
                 "Anonymize",
                 "Attach",
                 "Create",
@@ -214,6 +226,7 @@
                 "Detach",
                 "List",
                 "Moderate",
+                "MoveHistory",
                 "React",
                 "Reply",
                 "Report",
@@ -353,6 +366,7 @@
             ],
             "constants": [
                 "Approved",
+                "Flagged",
                 "Hidden",
                 "Pending",
                 "Rejected",
@@ -663,6 +677,9 @@
                 "anonymized_at",
                 "anonymized_by",
                 "anonymized_by_type",
+                "approved_at",
+                "approved_by",
+                "approved_by_type",
                 "attachmentAssociations",
                 "body",
                 "commentable",
@@ -676,6 +693,8 @@
                 "depth",
                 "document",
                 "edited_at",
+                "edited_by",
+                "edited_by_type",
                 "format",
                 "id",
                 "idempotency_hash",
@@ -692,6 +711,9 @@
                 "open_report_count",
                 "parent",
                 "parent_id",
+                "pinned_at",
+                "pinned_by",
+                "pinned_by_type",
                 "reaction_count",
                 "reactions",
                 "replies",
@@ -881,6 +903,16 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Services\\CommentHistoryMover": {
+            "kind": "class",
+            "file": "src/Services/CommentHistoryMover.php",
+            "methods": [
+                "__construct",
+                "moveMany"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Services\\CommentMentions": {
             "kind": "class",
             "file": "src/Services/CommentMentions.php",
@@ -939,6 +971,18 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Comments\\Services\\CommentSchemaAdopter": {
+            "kind": "class",
+            "file": "src/Services/CommentSchemaAdopter.php",
+            "methods": [
+                "__construct",
+                "apply",
+                "plan",
+                "verify"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Comments\\Services\\CommentWriter": {
             "kind": "class",
             "file": "src/Services/CommentWriter.php",
@@ -946,11 +990,13 @@
                 "__construct",
                 "anonymize",
                 "create",
+                "createEncoded",
                 "createRich",
                 "delete",
                 "restore",
                 "restoreRevision",
                 "update",
+                "updateEncoded",
                 "updateRich"
             ],
             "properties": [],
@@ -965,6 +1011,28 @@
                 "scopeBatchComments",
                 "scopeComments",
                 "scopeHostComments"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Services\\HtmlCommentCodec": {
+            "kind": "class",
+            "file": "src/Services/HtmlCommentCodec.php",
+            "methods": [
+                "identifier",
+                "project",
+                "version"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Comments\\Services\\RichBlockCommentCodec": {
+            "kind": "class",
+            "file": "src/Services/RichBlockCommentCodec.php",
+            "methods": [
+                "identifier",
+                "project",
+                "version"
             ],
             "properties": [],
             "constants": []

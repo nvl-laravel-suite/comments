@@ -89,7 +89,7 @@ final readonly class CommentRichUpdateWriter
                         throw StaleCommentException::forComment($comment->id);
                     }
 
-                    $previousDocument = is_array($comment->document)
+                    $previousDocument = $comment->format === CommentFormat::RichText && is_array($comment->document)
                         ? $this->documents->normalizeStored($comment->document)
                         : null;
 
@@ -159,6 +159,8 @@ final readonly class CommentRichUpdateWriter
                         'status' => $status ?? $comment->status,
                         'revision' => $comment->revision + 1,
                         'edited_at' => now(),
+                        'edited_by_type' => $actor->type,
+                        'edited_by' => $actor->id,
                     ])->save()) {
                         throw new InvalidCommentMutationException(
                             'The rich comment update could not be saved.',

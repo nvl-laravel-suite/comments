@@ -93,6 +93,7 @@ final readonly class CommentModerationWriter
                             ->findOrFail($comment->id);
                     }
 
+                    $moderatedAt = now();
                     $attributes = [
                         'status' => $data['status'],
                         'is_pinned' => $isPinned,
@@ -100,8 +101,18 @@ final readonly class CommentModerationWriter
                         'moderated_by_type' => $actor->type,
                         'moderated_by' => $actor->id,
                         'moderation_reason' => $data['reason'],
-                        'moderated_at' => now(),
+                        'moderated_at' => $moderatedAt,
                     ];
+                    if ($comment->status !== CommentStatus::Approved && $data['status'] === CommentStatus::Approved) {
+                        $attributes['approved_by_type'] = $actor->type;
+                        $attributes['approved_by'] = $actor->id;
+                        $attributes['approved_at'] = $moderatedAt;
+                    }
+                    if ($comment->is_pinned !== $isPinned) {
+                        $attributes['pinned_by_type'] = $isPinned ? $actor->type : null;
+                        $attributes['pinned_by'] = $isPinned ? $actor->id : null;
+                        $attributes['pinned_at'] = $isPinned ? $moderatedAt : null;
+                    }
 
                     if (! $comment->fill($attributes)->save()) {
                         throw new InvalidCommentMutationException(

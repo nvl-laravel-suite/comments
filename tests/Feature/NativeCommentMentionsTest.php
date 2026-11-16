@@ -248,10 +248,11 @@ it('suggests Unicode mention resources case-insensitively', function (): void {
     app()->forgetInstance(CommentMentionResourceRegistry::class);
 
     $target = TestCommentTarget::create(['name' => 'Article']);
-    $unicodeResource = TestCommentTarget::create(['name' => 'Георги Иванов']);
+    $unicodeResource = TestCommentTarget::create(['name' => 'Георги Иванов !%_']);
+    TestCommentTarget::create(['name' => 'Георги Иванов !xy']);
     $actor = NativeCommentActor::create(['name' => 'Author']);
 
-    $suggestions = app(CommentMentions::class)->suggest($target, $actor, 'author', 'георги иванов', audience: CommentAudience::Member);
+    $suggestions = app(CommentMentions::class)->suggest($target, $actor, 'author', 'георги иванов !%_', audience: CommentAudience::Member);
 
     expect(array_column($suggestions, 'id'))->toBe([(string) $unicodeResource->id]);
 });
