@@ -17,7 +17,7 @@
         "ext-libxml": "*",
         "ext-mbstring": "*",
         "laravel/framework": "^13.0",
-        "nvl/core": "^7.1.0",
+        "nvl/core": "^7.3.0",
         "php": "^8.4",
         "symfony/polyfill-intl-normalizer": "^1.33"
     },
