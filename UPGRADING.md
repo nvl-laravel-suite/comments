@@ -4,7 +4,21 @@ Sections are ordered newest first. Each heading names the release its instructio
 
 ## Unreleased
 
+When `nvl/media` is installed, Comments now requires `nvl/media` 7.3.0 or later (Composer conflicts with `<7.3.0`). Attachments take Media's collection and asset locks through `MediaAttachments::lockForAttachment()` before locking rows, and force-deleting trashed comments relies on Media accepting a soft-deleted owner. Upgrade Media together with Comments.
+
 The package now requires the `dom` and `libxml` PHP extensions, which `HtmlCommentCodec` uses. No code or schema change is needed.
+
+`CommentAbility::Flag` is new. `CommentModeration::moderate()` now authorizes a request that only sets the `flagged` status (without `pinned`) as `Flag` instead of `Moderate`, through both `CommentAuthorization::allows()` and `CommentQueryScope::scopeComments()`. A host policy that let moderators flag through `Moderate` must also grant `Flag`, or flagging is denied. A host `match` over `CommentAbility` must handle the new case. The default policy denies `Flag`, as it denies `Moderate`.
+
+New attachment settings: `nvl-comments.attachments.collection` (default `attachments`) and `nvl-comments.attachments.mime_types` (default `null`, Media's image and document types). Existing installations need no change. Merge them into a published config file to change them; an invalid value throws when attachments are used. Change `collection` only together with the stored associations, for example during legacy adoption.
+
+A keyed `create` retry whose comment has since been moved to another target by `CommentHistoryMover` now throws `CommentIdempotencyConflictException` instead of returning that comment.
+
+`Comment::forceDelete()` now wraps the deletion, its replies and their attachment cleanup in one transaction. A veto on the comment or any reply rolls everything back and returns `false`; previously replies and media could already be gone. A subclass that overrides `forceDelete()` should call `parent::forceDelete()`.
+
+Reader summaries return `createdAt`/`updatedAt` as `null` for adopted rows with null timestamps, and `Comment::$created_at`/`$updated_at` are documented as nullable.
+
+`nvl:comments:doctor` now requires the `document` column on the comments and revisions tables, and fails on strict-metadata incompatibility only when `nvl-comments.metadata.strict` is `true` (`metadata.strict_compatible` is still reported). Hosts that own published migrations already have the column from `2026_08_28_000001_nvl_comments_add_comment_documents`.
 
 ## 7.1.0
 

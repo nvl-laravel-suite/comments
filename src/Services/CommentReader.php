@@ -195,7 +195,7 @@ final readonly class CommentReader
             'id' => $comment->id,
             'parentId' => $comment->parent_id,
             'revision' => $comment->revision,
-            'createdAt' => $comment->created_at->format(DATE_ATOM),
+            'createdAt' => $comment->created_at?->format(DATE_ATOM),
             'pinned' => $comment->is_pinned,
             'replyCount' => $replyCount,
             'reactionCount' => $comment->reaction_count,

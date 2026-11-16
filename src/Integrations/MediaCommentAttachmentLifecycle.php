@@ -48,7 +48,7 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
         $hasHistoricalState = MediaAssociation::query()
             ->where('associable_type', $comment->getMorphClass())
             ->where('associable_id', $comment->id)
-            ->where('collection', 'attachments')
+            ->where('collection', MediaCommentRelations::collection())
             ->exists();
 
         if (! $attachmentsEnabled && ! $hasHistoricalState) {
@@ -80,7 +80,7 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
      */
     public function ids(Comment $comment, bool $lock = false): array
     {
-        $query = MediaCommentRelations::associations($comment)->where('collection', 'attachments')->orderBy('media_id');
+        $query = MediaCommentRelations::associations($comment)->where('collection', MediaCommentRelations::collection())->orderBy('media_id');
         if ($lock) {
             $query->lockForUpdate();
         }
@@ -102,7 +102,7 @@ final readonly class MediaCommentAttachmentLifecycle implements CommentAttachmen
     /** Detach one historical attachment through Media's public mutation contract. */
     public function detach(Authenticatable|SystemActor $actor, string $id, Comment $comment): int
     {
-        return $this->attachments->detach($actor, $id, $comment, 'attachments');
+        return $this->attachments->detach($actor, $id, $comment, MediaCommentRelations::collection());
     }
 
     /** Preserve force deletion cleanup while retaining assets shared with other owners. */

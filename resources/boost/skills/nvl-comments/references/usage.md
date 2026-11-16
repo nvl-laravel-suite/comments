@@ -98,7 +98,8 @@ are not accepted.
 
 Creation defaults to pending moderation. A matching retry key replays the same
 creation safely, retaining native digest scope; do not rotate it on network retry
-or reuse it with different content. Configure stable deployment digest secrets
+or reuse it with different content. A key whose comment was moved to another
+target is a conflict. Configure stable deployment digest secrets
 where required by `idempotency.digest_key` / metadata indexing; do not use local
 or dummy mutation-lock stores to bypass real production locking.
 
@@ -156,7 +157,9 @@ $comment = app(\Nvl\Comments\Services\CommentModeration::class)->moderate($comme
 ```
 
 Moderation accepts `status`, `expected_revision`, nullable `reason`, nullable
-`pinned`. Status values are pending/approved/rejected/hidden/spam.
+`pinned`. Status values are pending/approved/rejected/hidden/spam/flagged. A request
+that only sets `flagged` (no `pinned`) is authorized as `CommentAbility::Flag`;
+every other transition, including any pin change, requires `Moderate`.
 
 Reader summaries expose `pinned` as a boolean. Thread/reply pagination places admitted visible pins first, with creation instant/UUID tie-breakers. `latest` and owner-batch latest rows remain chronological and expose the same flag; pinning never grants visibility.
 `report` accepts only `reason`, optional nullable `details`, and an identified
@@ -178,8 +181,12 @@ true to require the provider. Plain comments boot without Media; requesting
 attachments while unavailable fails explicitly. Attach/detach uses
 `CommentAttachments` and native Media lifecycle, slots and permissions. Assets
 must pass Associate/View/Download; public assets require explicit
-`allow_public_media`. Comments and Media need the same connection for atomic work.
-The host owns signed asset delivery, not invented package attachment routes.
+`allow_public_media`. `attachments.collection` (default `attachments`) and
+`attachments.mime_types` (null keeps images and documents) apply to reads, writes,
+anonymization and reconciliation alike. Comments and Media need the same connection
+for atomic work. The host owns asset delivery, not invented package attachment routes.
+Force deletion removes replies and attachments in one transaction; any veto rolls
+all of it back.
 
 Set `nvl-comments.models.comment` before boot to a concrete native subclass.
 Keep UUID, required casts, content/document hooks, effective storage and ownership.

@@ -79,6 +79,24 @@ it('exposes pin state and orders thread pages by pins while latest stays chronol
         ->and(array_column($latest, 'pinned'))->toBe([false, true]);
 });
 
+it('adopted null timestamps survive pagination and owner batches', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Adopted']);
+    $author = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $legacy = $writer->create($target, ['body' => 'Legacy'], $author, CommentAudience::Public);
+    $current = $writer->create($target, ['body' => 'Current'], $author, CommentAudience::Public);
+    Comment::query()->whereKey($legacy->id)->update(['created_at' => null, 'updated_at' => null]);
+    $reader = app(CommentReader::class);
+
+    $pages = $reader->paginate($target, PublicActor::Anonymous)->items();
+    $latest = $reader->forOwners([$target], PublicActor::Anonymous, latestLimit: 2)['values'][$target->getMorphClass()][$target->id]['latest'];
+
+    expect(array_column($pages, 'createdAt', 'id'))->toHaveKeys([$legacy->id, $current->id])
+        ->and(array_column($pages, 'createdAt', 'id')[$legacy->id])->toBeNull()
+        ->and(array_column($latest, 'updatedAt', 'id'))->toHaveKey($legacy->id, null)
+        ->and(array_column($latest, 'createdAt', 'id')[$current->id])->toBeString();
+});
+
 it('returns explicit empty owner summaries and bounded latest rows', function (): void {
     $first = TestCommentTarget::create(['name' => 'First']);
     $second = TestCommentTarget::create(['name' => 'Second']);

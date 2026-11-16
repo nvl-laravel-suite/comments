@@ -129,6 +129,35 @@ it('keeps separate approval and pin attribution and hides flagged rows outside m
         ->and($reader->latest($target, $pinner, CommentAudience::Management)['id'])->toBe($comment->id);
 });
 
+it('member may flag but cannot approve, hide or pin', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $author = NativeCommentActor::create(['name' => 'Author']);
+    $member = NativeCommentActor::create(['name' => 'Member']);
+    $comment = app(CommentWriter::class)->create($target, ['body' => 'Review me'], $author);
+    $policy = new class implements CommentAuthorization, CommentQueryScope
+    {
+        public function allows(CommentAbility $ability, Authenticatable|SystemActor|PublicActor $actor, ?Comment $comment = null, ?Model $target = null, CommentAudience $audience = CommentAudience::Public, array $context = []): bool
+        {
+            return $ability === CommentAbility::Flag;
+        }
+
+        public function scopeComments(Builder $query, Authenticatable|SystemActor|PublicActor $actor, Model $target, CommentAudience $audience, CommentAbility $ability): void {}
+    };
+    app()->instance(CommentAuthorization::class, $policy);
+    app()->instance(CommentQueryScope::class, $policy);
+    $moderation = app(CommentModeration::class);
+
+    foreach ([['status' => CommentStatus::Approved], ['status' => CommentStatus::Hidden], ['status' => CommentStatus::Flagged, 'pinned' => true]] as $transition) {
+        expect(fn () => $moderation->moderate($comment, [...$transition, 'expected_revision' => $comment->revision], $member))
+            ->toThrow(AuthorizationException::class);
+    }
+    $flagged = $moderation->moderate($comment, ['status' => CommentStatus::Flagged, 'reason' => 'Spam?', 'expected_revision' => $comment->revision], $member);
+
+    expect($flagged->status)->toBe(CommentStatus::Flagged)
+        ->and($flagged->moderated_by)->toBe((string) $member->getKey())
+        ->and($flagged->is_pinned)->toBeFalse();
+});
+
 it('moves complete histories simultaneously within the caller transaction', function (): void {
     config(['nvl-core.owners' => [TestCommentTarget::class]]);
     $source = TestCommentTarget::create(['name' => 'First']);
@@ -165,6 +194,28 @@ it('moves complete histories simultaneously within the caller transaction', func
         ->and($existing->fresh()->commentable_id)->toBe($last->id)
         ->and(Comment::withTrashed()->findOrFail($child->id))->parent_id->toBe($root->id)
         ->commentable_identity_hash->toBe(CommentIdentity::pair($type, $target->id))->deleted_at->not->toBeNull();
+});
+
+it('keyed replay cannot reveal moved history', function (): void {
+    config(['nvl-core.owners' => [TestCommentTarget::class]]);
+    $source = TestCommentTarget::create(['name' => 'Source']);
+    $destination = TestCommentTarget::create(['name' => 'Destination']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $key = (string) Str::uuid();
+    $comment = $writer->create($source, ['body' => 'Moved', 'idempotency_key' => $key], $actor);
+    app()->instance(CommentAuthorization::class, new class implements CommentAuthorization
+    {
+        public function allows(CommentAbility $ability, Authenticatable|SystemActor|PublicActor $actor, ?Comment $comment = null, ?Model $target = null, CommentAudience $audience = CommentAudience::Public, array $context = []): bool
+        {
+            return true;
+        }
+    });
+    app(CommentHistoryMover::class)->moveMany($actor, $source->getMorphClass(), $destination->getMorphClass(), [$source->id => $destination->id]);
+
+    expect(fn () => $writer->create($source, ['body' => 'Moved', 'idempotency_key' => $key], $actor))
+        ->toThrow(CommentIdempotencyConflictException::class);
+    expect($comment->fresh()->commentable_id)->toBe($destination->id);
 });
 
 it('keeps versioned source content in revision history and exposes only its text projection', function (): void {

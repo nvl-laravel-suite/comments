@@ -8,6 +8,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Nvl\Comments\Providers\CommentsServiceProvider;
 use Nvl\Support\Providers\LocaleServiceProvider;
+use Nvl\Support\Testing\TestServiceHosts;
 use Orchestra\Testbench\TestCase;
 use RuntimeException;
 
@@ -43,7 +44,7 @@ abstract class NativeCommentsConcurrencyTestCase extends TestCase
                 'prefix' => '', 'search_path' => 'public', 'sslmode' => 'prefer',
             ],
             'database.redis.client' => 'phpredis',
-            'database.redis.comments_concurrency' => ['host' => '127.0.0.1', 'port' => getenv('NVL_COMMENTS_CONCURRENCY_REDIS_PORT') ?: '16379', 'database' => 0],
+            'database.redis.comments_concurrency' => ['host' => TestServiceHosts::redisHost(), 'port' => getenv('NVL_COMMENTS_CONCURRENCY_REDIS_PORT') ?: '16379', 'database' => 0],
             'cache.default' => 'redis',
             'cache.stores.redis.connection' => 'comments_concurrency',
             'cache.stores.redis.lock_connection' => 'comments_concurrency',

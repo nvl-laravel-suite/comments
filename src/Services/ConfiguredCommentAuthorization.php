@@ -102,6 +102,7 @@ final class ConfiguredCommentAuthorization implements CommentAuthorization, Comm
                 && ! $this->isAnonymized($comment),
             CommentAbility::Anonymize,
             CommentAbility::Moderate,
+            CommentAbility::Flag,
             CommentAbility::MoveHistory,
             CommentAbility::AdoptHistory,
             CommentAbility::ViewIdentity => false,

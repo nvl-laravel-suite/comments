@@ -23,6 +23,7 @@ use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
+use Nvl\Comments\Exceptions\InvalidCommentLifecycleException;
 use Nvl\Comments\Ownership\CommentGraphOwnership;
 use Nvl\Comments\Relations\CommentTargetMorphTo;
 use Nvl\Comments\Services\CommentModelRegistry;
@@ -86,8 +87,8 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * @property string|null $anonymized_by_type
  * @property string|null $anonymized_by
  * @property string|null $anonymization_reason
- * @property Carbon $created_at
- * @property Carbon $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Model|null $commentable
  * @property-read Comment|null $parent
@@ -127,7 +128,7 @@ class Comment extends Model implements Ownable
 
     use HasOwnership { save as private saveOwned; }
     use HasUuids;
-    use SoftDeletes;
+    use SoftDeletes { forceDelete as private forceDeleteWithEvents; }
 
     /** @var list<string> */
     protected $fillable = [
@@ -223,6 +224,37 @@ class Comment extends Model implements Ownable
 
             return $this->saveOwned($options);
         });
+    }
+
+    /**
+     * Force-delete the comment and everything its listeners remove in one transaction.
+     * A veto on the comment or any descendant rolls the whole deletion back, and
+     * transaction-aware file effects run only after the outermost commit.
+     *
+     * The native return type is omitted so existing subclass overrides stay compatible.
+     *
+     * @return bool|null
+     */
+    public function forceDelete()
+    {
+        $vetoed = new InvalidCommentLifecycleException('The comment force deletion was vetoed.');
+
+        try {
+            return $this->getConnection()->transaction(function () use ($vetoed): ?bool {
+                $deleted = $this->forceDeleteWithEvents();
+                if ($deleted === false) {
+                    throw $vetoed;
+                }
+
+                return $deleted;
+            });
+        } catch (InvalidCommentLifecycleException $exception) {
+            if ($exception !== $vetoed) {
+                throw $exception;
+            }
+
+            return false;
+        }
     }
 
     private function synchronizeIdentityFingerprints(): void

@@ -62,44 +62,51 @@ final readonly class CommentAttachments
             throw new InvalidArgumentException('Comment attachments require Comments and Media on one connection.');
         }
 
-        return $this->locks->execute($commentId, fn (): MediaAssociation => $connection->transaction(function () use ($actor, $audience, $commentId, $identity, $mediaId): MediaAssociation {
-            $comment = $this->reads->resolveById($commentId, $identity, $audience, CommentAbility::Attach, withTrashed: false, lockForUpdate: true);
-            $this->access->authorize(CommentAbility::Attach, $identity, $comment, $this->targets->locate($comment), $audience, asNotFound: $audience !== CommentAudience::Management);
-            if (! Str::isUuid($mediaId)) {
-                throw (new ModelNotFoundException)->setModel(Media::class, [$mediaId]);
-            }
-            $media = $this->boundary->query(MediaModelRegistry::query(), 'media.assets')->lockForUpdate()->findOrFail($mediaId);
-            $authorization = app(MediaAuthorization::class);
-            foreach ([MediaAbility::Associate, MediaAbility::View, MediaAbility::Download] as $ability) {
-                if (! $authorization->allows($actor, $ability, $media, $comment)) {
-                    throw new AuthorizationException('The actor may not attach or receive this media.');
+        // One lock order with Media deletion: comment lock, collection lock, asset lock, then rows.
+        return $this->locks->execute($commentId, fn (): MediaAssociation => app(MediaAttachments::class)->lockForAttachment(
+            $this->reads->resolveById($commentId, $identity, $audience, CommentAbility::Attach, withTrashed: false),
+            MediaCommentRelations::collection(),
+            [$mediaId],
+            fn (): MediaAssociation => $connection->transaction(function () use ($actor, $audience, $commentId, $identity, $mediaId): MediaAssociation {
+                $comment = $this->reads->resolveById($commentId, $identity, $audience, CommentAbility::Attach, withTrashed: false, lockForUpdate: true);
+                $this->access->authorize(CommentAbility::Attach, $identity, $comment, $this->targets->locate($comment), $audience, asNotFound: $audience !== CommentAudience::Management);
+                if (! Str::isUuid($mediaId)) {
+                    throw (new ModelNotFoundException)->setModel(Media::class, [$mediaId]);
                 }
-            }
-            if ($media->is_public && config('nvl-comments.attachments.allow_public_media', false) !== true) {
-                throw new InvalidCommentMutationException('Public media is not enabled for comment attachments.');
-            }
-            $slot = MediaCommentRelations::slot();
-            if ($slot->acceptedMimeTypes !== [] && ! in_array($media->mime_type, $slot->acceptedMimeTypes, true)) {
-                throw new InvalidCommentMutationException('The media type is not allowed for comment attachments.');
-            }
-            if ($slot->maxFileSize !== null && $media->size > $slot->maxFileSize) {
-                throw new InvalidCommentMutationException('The media file exceeds the comment attachment size limit.');
-            }
-            $existing = $comment->attachmentAssociations()->where('media_id', $media->id)->exists();
-            $maximum = CommentsConfiguration::positiveInteger('nvl-comments.attachments.maximum_per_comment', 5);
-            if (! $existing && $comment->attachmentAssociations()->count() >= $maximum) {
-                throw new InvalidCommentMutationException("A comment may contain at most {$maximum} attachments.");
-            }
+                $media = $this->boundary->query(MediaModelRegistry::query(), 'media.assets')->lockForUpdate()->findOrFail($mediaId);
+                $authorization = app(MediaAuthorization::class);
+                foreach ([MediaAbility::Associate, MediaAbility::View, MediaAbility::Download] as $ability) {
+                    if (! $authorization->allows($actor, $ability, $media, $comment)) {
+                        throw new AuthorizationException('The actor may not attach or receive this media.');
+                    }
+                }
+                if ($media->is_public && config('nvl-comments.attachments.allow_public_media', false) !== true) {
+                    throw new InvalidCommentMutationException('Public media is not enabled for comment attachments.');
+                }
+                $slot = MediaCommentRelations::slot();
+                if ($slot->acceptedMimeTypes !== [] && ! in_array($media->mime_type, $slot->acceptedMimeTypes, true)) {
+                    throw new InvalidCommentMutationException('The media type is not allowed for comment attachments.');
+                }
+                if ($slot->maxFileSize !== null && $media->size > $slot->maxFileSize) {
+                    throw new InvalidCommentMutationException('The media file exceeds the comment attachment size limit.');
+                }
+                $existing = $comment->attachmentAssociations()->where('media_id', $media->id)->exists();
+                $maximum = CommentsConfiguration::positiveInteger('nvl-comments.attachments.maximum_per_comment', 5);
+                if (! $existing && $comment->attachmentAssociations()->count() >= $maximum) {
+                    throw new InvalidCommentMutationException("A comment may contain at most {$maximum} attachments.");
+                }
 
-            return app(MediaAttachments::class)->attach(
-                $actor,
-                $media,
-                $comment,
-                'attachments',
-                metadata: ['slot' => 'attachments'],
-                slot: $slot,
-            );
-        }, attempts: CommentsConfiguration::positiveInteger('nvl-comments.transactions.attempts', 3)));
+                return app(MediaAttachments::class)->attach(
+                    $actor,
+                    $media,
+                    $comment,
+                    $slot->name,
+                    metadata: ['slot' => $slot->name],
+                    slot: $slot,
+                );
+            }, attempts: CommentsConfiguration::positiveInteger('nvl-comments.transactions.attempts', 3)),
+            slot: MediaCommentRelations::slot(),
+        ));
     }
 
     public function detach(
@@ -124,14 +131,14 @@ final readonly class CommentAttachments
                 ->whereKey($associationId)
                 ->where('associable_type', $comment->getMorphClass())
                 ->where('associable_id', $comment->id)
-                ->where('collection', 'attachments')
+                ->where('collection', MediaCommentRelations::collection())
                 ->where('is_active', true)
                 ->first();
             if (! $association instanceof MediaAssociation) {
                 return false;
             }
 
-            return app(MediaAttachments::class)->detach($actor, $association->media_id, $comment, 'attachments') > 0;
+            return app(MediaAttachments::class)->detach($actor, $association->media_id, $comment, MediaCommentRelations::collection()) > 0;
         });
     }
 

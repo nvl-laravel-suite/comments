@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Exceptions\CommentMutationLockConfigurationException;
 use Nvl\Comments\Models\Comment;
@@ -11,7 +13,11 @@ use Nvl\Comments\Models\CommentReaction;
 use Nvl\Comments\Models\CommentReport;
 use Nvl\Comments\Models\CommentRevision;
 use Nvl\Comments\Services\CommentsDoctor;
+use Nvl\Comments\Services\CommentWriter;
 use Nvl\Comments\Support\CommentMutationLockConfiguration;
+use Nvl\Comments\Support\CommentsConfiguration;
+use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
+use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
 
 it('uses the published dedicated mutation lock store', function (): void {
     config(['nvl-comments.locks.mutation.store' => 'dedicated-locks']);
@@ -65,4 +71,32 @@ it('publishes every package table and no setting that nothing reads', function (
             ->flatMap(static fn (string $model): array => (new $model)->getFillable())->all())->not->toContain('tenant_id')
         ->and(config('nvl-comments.moderation'))->not->toHaveKey('actionable_statuses')
         ->and(config('nvl-comments.attachments'))->not->toHaveKey('signed_url_lifetime');
+});
+
+it('requires the comment and revision document columns', function (string $key): void {
+    expect(app(CommentsDoctor::class)->inspect()["column.{$key}.document"])->toBeTrue();
+
+    Schema::table(CommentsConfiguration::table($key), static function (Blueprint $table): void {
+        $table->dropColumn('document');
+    });
+    $checks = app(CommentsDoctor::class)->inspect();
+
+    expect($checks["column.{$key}.document"])->toBeFalse()->and($checks['healthy'])->toBeFalse();
+})->with([CommentsTables::Comments, CommentsTables::Revisions]);
+
+it('enforces strict metadata compatibility only when strict metadata is enabled', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $comment = app(CommentWriter::class)->create($target, ['body' => 'Legacy metadata'], NativeCommentActor::create(['name' => 'Author']));
+    Comment::query()->whereKey($comment->id)->update(['metadata' => json_encode(['legacy_key' => 'kept'], JSON_THROW_ON_ERROR)]);
+
+    config(['nvl-comments.metadata.strict' => false]);
+    $relaxed = app(CommentsDoctor::class)->inspect();
+    config(['nvl-comments.metadata.strict' => true]);
+    $strict = app(CommentsDoctor::class)->inspect();
+
+    expect($relaxed['metadata.strict_compatible'])->toBeFalse()
+        ->and($relaxed['metadata.strict_incompatible_records'])->toBe(1)
+        ->and($relaxed['healthy'])->toBeTrue()
+        ->and($strict['metadata.strict_compatible'])->toBeFalse()
+        ->and($strict['healthy'])->toBeFalse();
 });

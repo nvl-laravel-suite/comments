@@ -22,8 +22,10 @@
             ],
             "advanced": [
                 "attachments.allow_public_media",
+                "attachments.collection",
                 "attachments.maximum_file_bytes",
                 "attachments.maximum_per_comment",
+                "attachments.mime_types",
                 "content.allowed_formats",
                 "content.maximum_bytes",
                 "content.maximum_tags",

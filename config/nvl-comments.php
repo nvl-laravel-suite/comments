@@ -97,6 +97,8 @@ return [
         'maximum_per_comment' => 5,
         'maximum_file_bytes' => 10 * 1024 * 1024,
         'allow_public_media' => false,
+        'collection' => 'attachments',
+        'mime_types' => null,
     ],
 
     'mutation_lock' => [

@@ -37,6 +37,8 @@ final readonly class CommentModerationWriter
 
     /**
      * Apply an authorized moderation transition to a current comment revision.
+     * A request that only sets the flagged status is authorized as Flag; every
+     * other transition, including any pin change, requires Moderate.
      *
      * @param  array<string, mixed>  $data
      */
@@ -48,22 +50,25 @@ final readonly class CommentModerationWriter
         $data = $this->normalizeModeration($data);
         $commentId = $comment instanceof Comment ? $comment->id : $comment;
         $this->guard->moderation($data);
+        $ability = $data['status'] === CommentStatus::Flagged && $data['pinned'] === null
+            ? CommentAbility::Flag
+            : CommentAbility::Moderate;
 
         return $this->mutationLock->execute(
             $commentId,
             fn (): Comment => DB::connection((CommentModelRegistry::newInstance())->getConnectionName())
-                ->transaction(function () use ($actor, $commentId, $data): Comment {
+                ->transaction(function () use ($ability, $actor, $commentId, $data): Comment {
                     $comment = $this->reads->resolveById(
                         $commentId,
                         $actor,
                         CommentAudience::Management,
-                        CommentAbility::Moderate,
+                        $ability,
                         withTrashed: true,
                         lockForUpdate: true,
                     );
                     $target = $this->targets->locate($comment);
                     $this->access->authorize(
-                        CommentAbility::Moderate,
+                        $ability,
                         $actor,
                         $comment,
                         $target,

@@ -135,16 +135,22 @@ final class CommentsServiceProvider extends ServiceProvider implements Ownership
                 throw new InvalidArgumentException('Comment attachment relationships require the loaded Media provider.');
             }
 
-            return MediaCommentRelations::associations($comment)->where('collection', 'attachments')->where('is_active', true);
+            return MediaCommentRelations::associations($comment)->where('collection', MediaCommentRelations::collection())->where('is_active', true);
         });
-        CommentModelRegistry::modelClass()::deleting(function (Comment $comment): void {
+        CommentModelRegistry::modelClass()::deleting(function (Comment $comment): ?bool {
             if ($comment->isForceDeleting() && ($this->app->getLoadedProviders()[MediaServiceProvider::class] ?? false) === true) {
                 // The parent foreign key cascades in the database without model events, so remove
-                // replies through Eloquent first and let each clean up its own attachments.
-                $comment->newQuery()->withTrashed()->where('parent_id', $comment->id)->lazyById(100)
-                    ->each(static fn (Comment $reply): ?bool => $reply->forceDelete());
+                // replies through Eloquent first and let each clean up its own attachments. This
+                // runs inside Comment::forceDelete()'s transaction: a reply veto vetoes the parent.
+                foreach ($comment->newQuery()->withTrashed()->where('parent_id', $comment->id)->lazyById(100) as $reply) {
+                    if ($reply->forceDelete() === false) {
+                        return false;
+                    }
+                }
                 $this->app->make(MediaCommentAttachmentLifecycle::class)->deleteOwnerMedia($comment);
             }
+
+            return null;
         });
         $this->registerTransactionListeners($events);
 

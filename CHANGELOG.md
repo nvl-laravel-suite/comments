@@ -5,6 +5,26 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Force-deleting a soft-deleted comment, or a thread whose trashed reply holds an attachment, removes the attachments instead of failing with `The Media host record is unavailable` (needs Media 7.3.0).
+- Attaching media to a comment takes the comment lock, then Media's collection and asset locks, then the rows. It used to lock rows first, so it could deadlock with a deletion of the same media until the Media lock timed out. Needs the Media release with `MediaAttachments::lockForAttachment()`.
+- A keyed creation retry can no longer return a comment that `CommentHistoryMover` moved to another target; it is an idempotency conflict.
+- Attachments stored in a configured Media collection stay readable, detachable and erasable; reads, writes, anonymization, reconciliation and Doctor share one validated collection and MIME list.
+- Reconciliation treats adopted and encoded source envelopes as healthy and keeps them during repair.
+- Readers no longer fail on adopted comments with null timestamps.
+- A vetoed force deletion of a comment or any reply leaves the whole thread, its attachments and their files intact.
+- Doctor requires the comment and revision `document` columns and enforces strict-metadata compatibility only when strict metadata is enabled.
+
+### Added
+
+- `CommentAbility::Flag` authorizes flag-only moderation separately from `Moderate`.
+- `nvl-comments.attachments.collection` and `nvl-comments.attachments.mime_types`.
+
+### Changed
+
+- `SECURITY.md` describes host-owned transport and the current actor types instead of retired package routes and signed attachment URLs.
+
 ## [7.2.0] - 2026-11-16
 
 ### Fixed

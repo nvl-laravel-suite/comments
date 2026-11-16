@@ -18,6 +18,7 @@ use Nvl\Comments\Enums\CommentReportStatus;
 use Nvl\Comments\Enums\CommentStatus;
 use Nvl\Comments\Enums\CommentVisibility;
 use Nvl\Comments\Exceptions\InvalidCommentMutationException;
+use Nvl\Comments\Integrations\MediaCommentRelations;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Models\CommentMention;
 use Nvl\Comments\Models\CommentReaction;
@@ -26,7 +27,7 @@ use Nvl\Comments\Relations\TextColumnComparison;
 use Nvl\Comments\Support\CommentIdentity;
 use Nvl\Comments\Support\CommentsConfiguration;
 use Nvl\Comments\Support\CommentTargetIdentifier;
-use Nvl\Media\Enums\MimeType;
+use Nvl\Comments\Support\EncodedCommentContent;
 use Nvl\Media\Models\Media;
 use Nvl\Media\Models\MediaAssociation;
 use Nvl\Media\Providers\MediaServiceProvider;
@@ -376,7 +377,7 @@ final readonly class CommentStateReconciler
         $this->whereExactAssociationValue(
             $historicalStateQuery,
             'collection',
-            'attachments',
+            MediaCommentRelations::collection(),
         );
         $hasHistoricalState = $historicalStateQuery->exists();
 
@@ -530,7 +531,7 @@ final readonly class CommentStateReconciler
             return [
                 'row_mismatch' => $comment->mentions->isNotEmpty(),
                 'duplicate_identity' => $this->hasDuplicateMentionIdentity($comment),
-                'invalid_snapshot' => $document !== null,
+                'invalid_snapshot' => $document !== null && ! EncodedCommentContent::isEnvelope($document),
                 'body_mismatch' => false,
             ];
         }
@@ -681,7 +682,7 @@ final readonly class CommentStateReconciler
                         }
 
                         if ($current->format !== CommentFormat::RichText) {
-                            if ($current->document !== null) {
+                            if ($current->document !== null && ! EncodedCommentContent::isEnvelope($current->document)) {
                                 return false;
                             }
 
@@ -1070,7 +1071,7 @@ final readonly class CommentStateReconciler
                         $this->whereExactAssociationValue(
                             $query,
                             'collection',
-                            'attachments',
+                            MediaCommentRelations::collection(),
                         );
                     });
                 }
@@ -1115,10 +1116,8 @@ final readonly class CommentStateReconciler
             ];
         }
 
-        $allowedMimeTypes = array_map(
-            static fn (MimeType $type): string => $type->value,
-            [...MimeType::images(), ...MimeType::documents()],
-        );
+        $collection = MediaCommentRelations::collection();
+        $allowedMimeTypes = MediaCommentRelations::mimeTypes();
         $allowPublicMedia = config('nvl-comments.attachments.allow_public_media', false) === true;
         $maximum = CommentsConfiguration::positiveInteger(
             'nvl-comments.attachments.maximum_per_comment',
@@ -1135,7 +1134,7 @@ final readonly class CommentStateReconciler
         foreach ($associations as $association) {
             $associationOwners[$association->id] = $association->associable_id;
 
-            if ($association->collection === 'attachments') {
+            if ($association->collection === $collection) {
                 $attachmentIdsByComment[$association->associable_id][] = $association->id;
             }
 
@@ -1145,7 +1144,7 @@ final readonly class CommentStateReconciler
             foreach ($associationLocations[$association->media_id] ?? [] as $location) {
                 if ($location['type'] !== $association->associable_type
                     || $location['id'] !== $association->associable_id
-                    || $location['collection'] !== 'attachments') {
+                    || $location['collection'] !== $collection) {
                     $shared = true;
 
                     break;
@@ -1153,7 +1152,7 @@ final readonly class CommentStateReconciler
             }
 
             if (isset($anonymizedCommentIds[$association->associable_id])
-                || $association->collection !== 'attachments'
+                || $association->collection !== $collection
                 || ! $media instanceof Media
                 || $media->trashed()
                 || ! $media->isAvailable()

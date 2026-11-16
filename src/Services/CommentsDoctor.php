@@ -15,6 +15,7 @@ use Nvl\Comments\Contracts\CommentTargetResolver;
 use Nvl\Comments\Definitions\Tables\CommentsTables;
 use Nvl\Comments\Enums\CommentFormat;
 use Nvl\Comments\Enums\CommentStatus;
+use Nvl\Comments\Integrations\MediaCommentRelations;
 use Nvl\Comments\Models\Comment;
 use Nvl\Comments\Ownership\CommentsOwnership;
 use Nvl\Comments\Support\CommentMutationLockConfiguration;
@@ -58,6 +59,7 @@ final class CommentsDoctor
             'visibility_hash',
             'tags',
             'metadata',
+            'document',
             'revision',
             'reply_count',
             'reaction_count',
@@ -110,6 +112,7 @@ final class CommentsDoctor
             'locale',
             'tags',
             'metadata',
+            'document',
             'edited_by_type',
             'edited_by',
             'created_at',
@@ -950,7 +953,9 @@ final class CommentsDoctor
         $checks['metadata.strict_compatible'] = $metadataStrictCompatible;
         $checks['metadata.strict_incompatible_records'] = $metadataStrictIncompatibleRecords;
         $requiredChecks[] = $metadataDigestReady;
-        $requiredChecks[] = $metadataStrictCompatible;
+        if (config('nvl-comments.metadata.strict') === true) {
+            $requiredChecks[] = $metadataStrictCompatible;
+        }
 
         [$mentionBoundsReady, $mentionResourcesReady, $mentionDiagnostics] =
             $this->mentionReadiness($mentionResources);
@@ -1142,7 +1147,7 @@ final class CommentsDoctor
 
                     return $associationConnection->table($association->getTable())
                         ->where('associable_type', (CommentModelRegistry::newInstance())->getMorphClass())
-                        ->where('collection', 'attachments')
+                        ->where('collection', MediaCommentRelations::collection())
                         ->exists();
                 },
             );

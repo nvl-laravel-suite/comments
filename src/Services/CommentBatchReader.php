@@ -55,9 +55,9 @@ final readonly class CommentBatchReader
             $comment = (CommentModelRegistry::newInstance())->newFromBuilder($attributes);
             $summary = [
                 'id' => $comment->id,
-                'createdAt' => $comment->created_at->format(DATE_ATOM),
+                'createdAt' => $comment->created_at?->format(DATE_ATOM),
                 'pinned' => $comment->is_pinned,
-                'updatedAt' => $comment->updated_at->format(DATE_ATOM),
+                'updatedAt' => $comment->updated_at?->format(DATE_ATOM),
             ];
             if ($comment->anonymized_at === null) {
                 $summary['body'] = $comment->body;

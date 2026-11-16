@@ -53,6 +53,25 @@ final readonly class EncodedCommentContent
         return new self($projection['body'], $document, $canonical);
     }
 
+    /**
+     * Recognize a stored private source envelope written by encoded creation or adoption.
+     */
+    public static function isEnvelope(mixed $document): bool
+    {
+        if (! is_array($document)) {
+            return false;
+        }
+        $keys = array_keys($document);
+        sort($keys);
+
+        return $keys === ['codec', 'payload', 'version']
+            && is_string($document['codec'])
+            && preg_match('/\A[a-z][a-z0-9_.-]{0,63}\z/', $document['codec']) === 1
+            && is_int($document['version'])
+            && $document['version'] >= 1
+            && (is_string($document['payload']) || is_array($document['payload']));
+    }
+
     private static function assertData(mixed $value, int $depth): void
     {
         if ($depth > 32 || (! is_array($value) && ! is_scalar($value) && $value !== null)

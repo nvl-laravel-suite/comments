@@ -18,6 +18,7 @@ use Nvl\Comments\Services\CommentMetadataRegistry;
 use Nvl\Comments\Services\CommentMutationLock;
 use Nvl\Comments\Services\CommentStateReconciler;
 use Nvl\Comments\Services\CommentWriter;
+use Nvl\Comments\Services\HtmlCommentCodec;
 use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
 use Nvl\Comments\Tests\Fixtures\NativeCommentMentionResolver;
 use Nvl\Comments\Tests\Fixtures\TestCommentMetadataSchema;
@@ -131,6 +132,25 @@ it('repairs rich mention rows and body projections from snapshots without resolv
         ->and($reconciler->reconcile($target, 1, repair: true)['repaired'])->toBe(0)
         ->and(NativeCommentMentionResolver::$resolutions)->toBe(0);
     Event::assertNothingDispatched();
+});
+
+it('adopted and encoded envelopes remain healthy during inspect and repair', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Envelopes']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $encoded = $writer->createEncoded($target, [], new HtmlCommentCodec, '<p>Hello</p>', $actor);
+    $adopted = $writer->create($target, ['body' => 'Legacy', 'format' => 'markdown'], $actor);
+    $envelope = ['codec' => 'legacy-comment', 'version' => 1, 'payload' => ['content' => '**Legacy**', 'content_type' => 'markdown']];
+    Comment::query()->whereKey($adopted->id)->update(['document' => json_encode($envelope, JSON_THROW_ON_ERROR)]);
+    $reconciler = app(CommentStateReconciler::class);
+
+    expect($reconciler->reconcile($target, 10))->invalidMentionSnapshots->toBe(0)->drifted->toBe(0)->healthy->toBeTrue();
+    expect($reconciler->reconcile($target, 10, repair: true))->repaired->toBe(0)->healthy->toBeTrue()
+        ->and($encoded->fresh()->document)->toBe($encoded->document)
+        ->and($adopted->fresh()->document)->toBe($envelope);
+
+    Comment::query()->whereKey($adopted->id)->update(['document' => json_encode(['codec' => 'legacy-comment'], JSON_THROW_ON_ERROR)]);
+    expect($reconciler->reconcile($target, 10))->invalidMentionSnapshots->toBe(1)->healthy->toBeFalse();
 });
 
 it('retains native mutation locks through savepoint rollback until the source root rolls back', function (): void {

@@ -65,17 +65,33 @@ The `withNvlVisibleCommentCount` model scope accepts the same explicit native pr
 
 Reply pages (`paginate` with a `parentId`) are additionally capped by `nvl-comments.threading.maximum_replies_per_page`. `CommentMentions::suggest` uses `nvl-comments.mentions.suggestion_limit` when no limit is passed. Text inputs reject NUL bytes.
 
-Moderation records the last approval separately from the current pin. A new approval stamps `approved_by_type`, `approved_by` and `approved_at`. Pinning stamps the matching `pinned_*` fields, and unpinning clears those fields. Existing records gain no inferred attribution. Flagged comments are confined to authorized management reads, including when a host query scope would otherwise return them.
+Moderation is authorized as `CommentAbility::Moderate`, except a request that only sets the `flagged` status without `pinned`, which is authorized as `CommentAbility::Flag`. Grant `Flag` to members who may flag but not approve, hide or pin. Moderation records the last approval separately from the current pin. A new approval stamps `approved_by_type`, `approved_by` and `approved_at`. Pinning stamps the matching `pinned_*` fields, and unpinning clears those fields. Existing records gain no inferred attribution. Flagged comments are confined to authorized management reads, including when a host query scope would otherwise return them.
 
 `CommentHistoryMover::moveMany($actor, $sourceType, $targetType, $targets)` accepts Core owner declarations on the comment writer connection and a source-to-destination key map. Grant `CommentAbility::MoveHistory` for both the source and destination in the host policy. Each history moves once, including soft-deleted rows, with IDs, relationships, and timestamps preserved. The move joins the caller's database transaction.
 
 `CommentWriter::createEncoded()` and `updateEncoded()` accept a versioned `CommentContentCodec` and the original payload. `HtmlCommentCodec` uses PHP's DOM extension. `RichBlockCommentCodec` accepts JSON or an array of text blocks. Unsupported node types raise a mutation error. Comments store the codec, version and original payload with their revision history, and normal reader projections expose the plain-text body. Applications that expose or render the original payload own its authorization and sanitization.
 
-Use `CommentSchemaAdopter` to stage a quiescent legacy `comments` and `comments_reactions` graph into empty native Comments storage. Grant `CommentAbility::AdoptHistory` globally and for each affected target. Provide `actor_type` for the legacy user identity and optionally `connection`, `actor_types` by former user provider, and `owner_types` by former morph type. Review the output of `plan()`, supply its `fingerprint` to `apply()`, and call `verify()` before switching the host integration. Retry a partial copy with the same fingerprint. The adopter preserves IDs, timestamps and moderation facts, reconstructs ancestry and counters, and archives legacy content and metadata in the private source envelope. Resolve unsupported content or identity conflicts before staging. Perform native Ownership adoption separately if the host needs owner partitioning.
+Use `CommentSchemaAdopter` to stage a quiescent legacy `comments` and `comments_reactions` graph into empty native Comments storage. Grant `CommentAbility::AdoptHistory` globally and for each affected target. Provide `actor_type` for the legacy user identity and optionally `connection`, `actor_types` by former user provider, and `owner_types` by former morph type. Review the output of `plan()`, supply its `fingerprint` to `apply()`, and call `verify()` before switching the host integration. Retry a partial copy with the same fingerprint. The adopter preserves IDs, timestamps (including null legacy timestamps, which readers return as `null`) and moderation facts, reconstructs ancestry and counters, and archives legacy content and metadata in the private source envelope. Reconciliation recognizes that envelope, and the one written by `createEncoded()`, as healthy and keeps it during repair. A keyed retry of a comment whose history `CommentHistoryMover` moved to another target is an idempotency conflict. Resolve unsupported content or identity conflicts before staging. Perform native Ownership adoption separately if the host needs owner partitioning.
 
 Correlated host counts and `whereHas('comments')` / `withCount('comments')` use the `(commentable_type, commentable_id)` index and compare the host key in the comments column's collation, so host key columns with another collation are supported. A `database` cache lock store may share the Comments connection: inside a PostgreSQL transaction each lock attempt runs in a savepoint, so contention is reported as `CommentMutationBusyException` instead of aborting the host transaction.
 
-Force-deleting a comment removes its replies through Eloquent so every removed comment cleans up its Media attachments. That cleanup runs as `SystemActor::Background`; the host `MediaAuthorization` must admit it, otherwise the force delete fails.
+Attachments live in the Media collection `nvl-comments.attachments.collection` (default `attachments`) and accept `nvl-comments.attachments.mime_types` (default `null`: Media's image and document types). Relations, writes, anonymization cleanup, reconciliation and Doctor all use these values. When adopting legacy comment media, set them to the legacy values before switching the host integration. For GCT, whose comment media use the `comment-attachments` collection and also allow Word documents and archives:
+
+```php
+'attachments' => [
+    'collection' => 'comment-attachments',
+    'mime_types' => [
+        'image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml', 'image/bmp',
+        'application/pdf', 'text/csv', 'text/plain', 'application/json', 'application/xml',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/zip', 'application/gzip',
+    ],
+],
+```
+
+Confirm the list against GCT's upload validation; an association whose media type is not listed is reported by reconciliation.
+
+Force-deleting a comment removes its replies through Eloquent so every removed comment cleans up its Media attachments. The whole deletion runs in one transaction: a veto on the comment or any reply rolls everything back, and Media removes files only after the commit. That cleanup runs as `SystemActor::Background`; the host `MediaAuthorization` must admit it, otherwise the force delete fails.
 
 Idempotency digests and the metadata index are HMACs keyed by `nvl-comments.idempotency.digest_key` and `nvl-comments.metadata.digest_key`, which fall back to `APP_KEY`. Pin `NVL_COMMENTS_IDEMPOTENCY_DIGEST_KEY` to the current `APP_KEY` before rotating `APP_KEY`. After a change of the effective key, earlier idempotency keys are rejected as conflicts and `php artisan nvl:comments:reconcile --repair` rebuilds the metadata index.
 

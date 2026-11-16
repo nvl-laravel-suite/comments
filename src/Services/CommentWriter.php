@@ -661,7 +661,8 @@ final readonly class CommentWriter
         CommentAudience $audience,
     ): Comment {
         if ($comment->idempotency_hash === null
-            || ! hash_equals($comment->idempotency_hash, $idempotencyHash)) {
+            || ! hash_equals($comment->idempotency_hash, $idempotencyHash)
+            || CommentTargetIdentifier::canonical($target) !== ['type' => $comment->commentable_type, 'id' => $comment->commentable_id]) {
             throw CommentIdempotencyConflictException::forKey();
         }
 

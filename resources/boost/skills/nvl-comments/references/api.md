@@ -292,6 +292,7 @@ public const Nvl\Comments\Enums\CommentAbility Attach=Nvl\Comments\Enums\Comment
 public const Nvl\Comments\Enums\CommentAbility Create=Nvl\Comments\Enums\CommentAbility::Create="create"
 public const Nvl\Comments\Enums\CommentAbility Delete=Nvl\Comments\Enums\CommentAbility::Delete="delete"
 public const Nvl\Comments\Enums\CommentAbility Detach=Nvl\Comments\Enums\CommentAbility::Detach="detach"
+public const Nvl\Comments\Enums\CommentAbility Flag=Nvl\Comments\Enums\CommentAbility::Flag="flag"
 public const Nvl\Comments\Enums\CommentAbility List=Nvl\Comments\Enums\CommentAbility::List="list"
 public const Nvl\Comments\Enums\CommentAbility Moderate=Nvl\Comments\Enums\CommentAbility::Moderate="moderate"
 public const Nvl\Comments\Enums\CommentAbility MoveHistory=Nvl\Comments\Enums\CommentAbility::MoveHistory="move_history"
@@ -693,6 +694,8 @@ resolved @return Illuminate\Database\Eloquent\Relations\MorphTo<Illuminate\Datab
 public function delete(): mixed
 @return ($this is Pivot ? (bool | int | null) : (bool | null))
 resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
+public function forceDelete(): mixed
+@return (bool | null)
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -763,8 +766,8 @@ resolved @property-read (Illuminate\Database\Eloquent\Model | null) $commentable
 @property string $commentable_id
 @property string $commentable_identity_hash
 @property string $commentable_type
-@property Carbon $created_at
-resolved @property Illuminate\Support\Carbon $created_at
+@property (Carbon | null) $created_at
+resolved @property (Illuminate\Support\Carbon | null) $created_at
 @property (Carbon | null) $deleted_at
 resolved @property (Illuminate\Support\Carbon | null) $deleted_at
 @property (string | null) $deleted_by
@@ -823,8 +826,8 @@ resolved @property-read (Nvl\Comments\Models\Comment | null) $root
 resolved @property Nvl\Comments\Enums\CommentStatus $status
 @property string $status_hash
 @property (list<string> | null) $tags
-@property Carbon $updated_at
-resolved @property Illuminate\Support\Carbon $updated_at
+@property (Carbon | null) $updated_at
+resolved @property (Illuminate\Support\Carbon | null) $updated_at
 @property CommentVisibility $visibility
 resolved @property Nvl\Comments\Enums\CommentVisibility $visibility
 @property string $visibility_hash
