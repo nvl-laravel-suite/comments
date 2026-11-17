@@ -77,7 +77,8 @@ final readonly class CommentMentionProjectionFactory
                 continue;
             }
 
-            foreach (array_chunk(array_keys($ids), $batchSize) as $batch) {
+            // PHP turns numeric-string keys such as '123' into integers; resource IDs stay strings.
+            foreach (array_chunk(array_map(strval(...), array_keys($ids)), $batchSize) as $batch) {
                 foreach ($this->resources->resolveForProjection($alias, $context, $batch) as $resource) {
                     $live[$alias][$resource['id']] = $resource;
                 }

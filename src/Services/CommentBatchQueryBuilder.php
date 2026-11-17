@@ -57,7 +57,7 @@ final readonly class CommentBatchQueryBuilder
         $ranked = (clone $visible)->select([
             'id', 'commentable_type', 'commentable_id', 'commentable_identity_hash',
             'body', 'format', 'anonymized_at', 'created_at', 'updated_at', 'is_pinned',
-        ])->selectRaw('ROW_NUMBER() OVER (PARTITION BY commentable_identity_hash ORDER BY created_at DESC, id DESC) AS nvl_comment_rank');
+        ])->selectRaw('ROW_NUMBER() OVER (PARTITION BY commentable_identity_hash ORDER BY created_at DESC NULLS LAST, id DESC) AS nvl_comment_rank');
 
         return $visible->newQuery()->useWritePdo()->fromSub($ranked, 'nvl_ranked_comments')
             ->where('nvl_comment_rank', '<=', $limit)->orderBy('commentable_identity_hash')->orderBy('nvl_comment_rank');

@@ -5,6 +5,12 @@ All notable changes to `nvl/comments` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Rich mentions of a resource whose ID looks numeric, such as `'123'`, stay readable. Latest, page and revision reads used to fail with `InvalidCommentMutationException` because the ID became an integer.
+- Comment pages, `latest()` and owner-batch latest rows place comments with a null `created_at` (adopted legacy rows) after dated ones on PostgreSQL as well as SQLite. PostgreSQL used to list them first.
+- Creating a comment, or replaying a keyed creation, on a target stored on another connection reads the target from that connection's writer. A stale read replica could previously admit a target the writer no longer had.
+
 ## [7.4.0] - 2026-11-17
 
 ### Changed

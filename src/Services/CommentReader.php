@@ -61,7 +61,7 @@ final readonly class CommentReader
             $pageSize = min($pageSize, CommentsConfiguration::positiveInteger('nvl-comments.threading.maximum_replies_per_page', 100));
         }
 
-        $page = $query->orderByDesc('is_pinned')->orderByDesc('created_at')->orderByDesc('id')
+        $page = $query->orderByDesc('is_pinned')->orderByRaw('created_at DESC NULLS LAST')->orderByDesc('id')
             ->paginate($pageSize);
         $comments = $page->getCollection();
         $replyCounts = $this->reads->replyCounts($comments, $target, $identity, $audience);
@@ -92,7 +92,7 @@ final readonly class CommentReader
         $target = $this->targets->reload($target);
         $identity = CommentActor::from($actor);
         $comment = $this->reads->query($target, $identity, $audience, withTrashed: false)
-            ->orderByDesc('created_at')->orderByDesc('id')->first();
+            ->orderByRaw('created_at DESC NULLS LAST')->orderByDesc('id')->first();
 
         if (! $comment instanceof Comment) {
             return null;

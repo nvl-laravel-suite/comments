@@ -291,20 +291,7 @@ final readonly class CommentWriter
                             $targetLookupKey,
                             $targetPrototype,
                         ): Comment {
-                            $targetQuery = $targetPrototype->newQuery();
-
-                            if (CommentsOwnership::active()) {
-                                $targetQuery = $this->boundary->query(
-                                    $targetQuery,
-                                    CommentsOwnership::resource($targetPrototype),
-                                );
-                            }
-
-                            if ($sharesConnection) {
-                                $targetQuery->lockForUpdate();
-                            }
-
-                            $canonicalTarget = $targetQuery->find($targetLookupKey);
+                            $canonicalTarget = $this->writerTarget($targetPrototype, $targetLookupKey, lock: $sharesConnection);
 
                             if (! $canonicalTarget instanceof Model) {
                                 throw new InvalidCommentMutationException(
@@ -518,14 +505,7 @@ final readonly class CommentWriter
                         throw $exception;
                     }
 
-                    $targetQuery = $targetPrototype->newQuery();
-                    if (CommentsOwnership::active()) {
-                        $targetQuery = $this->boundary->query(
-                            $targetQuery,
-                            CommentsOwnership::resource($targetPrototype),
-                        );
-                    }
-                    $canonicalTarget = $targetQuery->find($targetLookupKey);
+                    $canonicalTarget = $this->writerTarget($targetPrototype, $targetLookupKey, lock: false);
 
                     if (! $canonicalTarget instanceof Model) {
                         throw new InvalidCommentMutationException(
@@ -544,6 +524,32 @@ final readonly class CommentWriter
                 }
             },
         );
+    }
+
+    /**
+     * Load the canonical target from its writer, inside the ownership boundary, so a stale
+     * replica on a separate target connection can never admit creation or keyed replay.
+     */
+    private function writerTarget(Model $targetPrototype, int|string $targetLookupKey, bool $lock): ?Model
+    {
+        $targetQuery = $targetPrototype->newQuery();
+
+        if (CommentsOwnership::active()) {
+            $targetQuery = $this->boundary->query(
+                $targetQuery,
+                CommentsOwnership::resource($targetPrototype),
+            );
+        }
+
+        $targetQuery->useWritePdo();
+
+        if ($lock) {
+            $targetQuery->lockForUpdate();
+        }
+
+        $target = $targetQuery->find($targetLookupKey);
+
+        return $target instanceof Model ? $target : null;
     }
 
     /**

@@ -97,6 +97,24 @@ it('adopted null timestamps survive pagination and owner batches', function (): 
         ->and(array_column($latest, 'createdAt', 'id')[$current->id])->toBeString();
 });
 
+it('orders adopted null timestamps behind dated comments on every engine', function (): void {
+    $target = TestCommentTarget::create(['name' => 'Adopted']);
+    $author = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $legacy = $writer->create($target, ['body' => 'Legacy'], $author, CommentAudience::Public);
+    $current = $writer->create($target, ['body' => 'Current'], $author, CommentAudience::Public);
+    Comment::query()->whereKey($legacy->id)->update(['created_at' => null, 'updated_at' => null]);
+    $reader = app(CommentReader::class);
+
+    $page = $reader->paginate($target, PublicActor::Anonymous)->items();
+    $latest = $reader->latest($target, PublicActor::Anonymous);
+    $batch = $reader->forOwners([$target], PublicActor::Anonymous, latestLimit: 1)['values'][$target->getMorphClass()][$target->id]['latest'];
+
+    expect(array_column($page, 'id'))->toBe([$current->id, $legacy->id])
+        ->and($latest['id'] ?? null)->toBe($current->id)
+        ->and(array_column($batch, 'id'))->toBe([$current->id]);
+});
+
 it('returns explicit empty owner summaries and bounded latest rows', function (): void {
     $first = TestCommentTarget::create(['name' => 'First']);
     $second = TestCommentTarget::create(['name' => 'Second']);

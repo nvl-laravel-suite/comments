@@ -281,3 +281,26 @@ it('keeps authorization when a host matcher returns a cloned builder', function 
 
     expect(array_column($suggestions, 'id'))->toBe(['r1', 'r2']);
 });
+
+it('keeps numeric-looking mention identifiers as strings in latest, page and revision projections', function (): void {
+    config()->set(['nvl-comments.mentions.enabled' => true, 'nvl-comments.mentions.resources' => ['company' => [
+        'model' => TestCommentMentionResource::class,
+        'searchable_fields' => ['name'], 'exposed_fields' => ['name'], 'label_field' => 'name',
+        'authorization' => TestCommentMentionAuthorization::class, 'public' => false,
+    ]]]);
+    app()->forgetInstance(CommentMentionResourceRegistry::class);
+    $target = TestCommentTarget::create(['name' => 'Article']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    TestCommentMentionResource::create(['id' => '123', 'tenant_id' => (string) $actor->id, 'name' => 'Acme', 'registration_number' => 'X-1']);
+    $document = fn (): array => ['version' => 1, 'blocks' => [['type' => 'paragraph', 'children' => [
+        ['type' => 'mention', 'tokenId' => (string) Str::uuid(), 'resource' => 'company', 'id' => '123'],
+    ]]]];
+    $writer = app(CommentWriter::class);
+    $comment = $writer->createRich($target, ['document' => $document()], $actor, CommentAudience::Member);
+    $comment = $writer->updateRich($comment, ['document' => $document(), 'expected_revision' => $comment->revision], $actor, CommentAudience::Member);
+    $reader = app(CommentReader::class);
+
+    expect($reader->latest($target, $actor, CommentAudience::Member)['mentions'][0]['resourceId'] ?? null)->toBe('123')
+        ->and($reader->paginate($target, $actor, CommentAudience::Member)->items()[0]['mentions'][0]['resourceId'] ?? null)->toBe('123')
+        ->and($reader->revisions($comment, $actor, CommentAudience::Member)->items()[0]['mentions'][0]['resourceId'] ?? null)->toBe('123');
+});

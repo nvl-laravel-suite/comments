@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nvl\Comments\Contracts\CommentAuthorization;
 use Nvl\Comments\Contracts\CommentQueryScope;
@@ -26,6 +28,7 @@ use Nvl\Comments\Services\CommentWriter;
 use Nvl\Comments\Tests\Fixtures\NativeCommentActor;
 use Nvl\Comments\Tests\Fixtures\NativeModerationPolicy;
 use Nvl\Comments\Tests\Fixtures\TestCommentTarget;
+use Nvl\Comments\Tests\Fixtures\TestConfiguredCommentTarget;
 use Nvl\Support\Enums\PublicActor;
 use Nvl\Support\Enums\SystemActor;
 
@@ -285,7 +288,9 @@ it('serializes comment events with scalar actor facts only', function (): void {
 
     foreach ($events as $event) {
         expect($event->actor)->toBe(['type' => $actor->type, 'id' => $actor->id, 'system' => false]);
-        expect(serialize($event))->not->toContain('event-private-token', NativeCommentActor::class, CommentActor::class);
+        expect(serialize($event))->not->toContain('event-private-token')
+            ->not->toContain('O:'.strlen(NativeCommentActor::class).':"'.NativeCommentActor::class.'"')
+            ->not->toContain(CommentActor::class);
         expect(unserialize(serialize($event))->actor)->toBe($event->actor);
     }
 });
@@ -367,3 +372,35 @@ it('caps configured content limits at the capacity of the body column', function
     expect(strlen($writer->create($target, ['body' => str_repeat('a', 65_535)], $actor)->body))->toBe(65_535)
         ->and(strlen($writer->createRich($target, $rich(60_000), $actor)->body))->toBe(60_000);
 });
+
+it('authorizes cross-connection creation and keyed replay against the target writer, not a stale replica', function (string $operation): void {
+    config()->set('database.connections.comments', ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true]);
+    DB::purge('comments');
+    Schema::connection('comments')->create('comment_configured_targets', function (Blueprint $table): void {
+        $table->id();
+        $table->string('name');
+        $table->timestamps();
+    });
+    $target = TestConfiguredCommentTarget::create(['name' => 'Writer target']);
+    $actor = NativeCommentActor::create(['name' => 'Author']);
+    $writer = app(CommentWriter::class);
+    $key = (string) Str::uuid();
+    if ($operation === 'keyed replay') {
+        $writer->create($target, ['body' => 'Receipt', 'idempotency_key' => $key], $actor);
+    }
+    $replica = new PDO('sqlite::memory:');
+    $replica->exec('CREATE TABLE comment_configured_targets (id INTEGER PRIMARY KEY, name TEXT, created_at TEXT, updated_at TEXT)');
+    $replica->prepare('INSERT INTO comment_configured_targets (id, name) VALUES (?, ?)')->execute([$target->id, 'Stale target']);
+    DB::connection('comments')->table('comment_configured_targets')->delete();
+    DB::connection('comments')->setReadPdo($replica);
+    $before = Comment::query()->count();
+
+    try {
+        expect(fn () => $writer->create($target, ['body' => 'Receipt', 'idempotency_key' => $key], $actor))
+            ->toThrow(InvalidCommentMutationException::class, 'Comments require a target that still exists.')
+            ->and(Comment::query()->count())->toBe($before);
+    } finally {
+        DB::connection('comments')->setReadPdo(null);
+        DB::purge('comments');
+    }
+})->with(['fresh creation', 'keyed replay']);
